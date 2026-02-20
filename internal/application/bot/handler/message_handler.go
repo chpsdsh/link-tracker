@@ -16,17 +16,17 @@ const (
 	unknownMessage  = "Неизвестная команда. Воспользуйтесь /help, чтобы посмотреть список доступных команд."
 )
 
-type MessageHandler interface {
+type Sender interface {
 	SendMessage(chatID int64, message string) error
 }
 
 type TelegramHandler struct {
-	MsgHandler MessageHandler
+	MsgSender  Sender
+	BaseLogger *slog.Logger
 }
 
 func (h TelegramHandler) HandleCommand(update tgbotapi.Update) {
 	var text string
-
 	switch update.Message.Command() {
 	case "start":
 		text = greetingMessage
@@ -36,7 +36,7 @@ func (h TelegramHandler) HandleCommand(update tgbotapi.Update) {
 		text = unknownMessage
 	}
 
-	if err := h.MsgHandler.SendMessage(update.Message.Chat.ID, text); err != nil {
-		slog.Error("error while sending message", slog.String("error", err.Error()))
+	if err := h.MsgSender.SendMessage(update.Message.Chat.ID, text); err != nil {
+		h.BaseLogger.Error("error while sending message", slog.String("error", err.Error()))
 	}
 }

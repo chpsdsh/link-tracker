@@ -15,21 +15,22 @@ const (
 	updateTimeout      = 60
 	startCommand       = "Старт"
 	helpCommand        = "Помощь"
-	trackCommand       = "начать отслеживание ссылки"
-	untrackCommand     = "закончить отслеживание ссылки"
-	listCommand        = "вывести список всех отслеживаемых ссылок"
+	trackCommand       = "Начать отслеживание ссылки"
+	untrackCommand     = "Закончить отслеживание ссылки"
+	listCommand        = "Вывести список всех отслеживаемых ссылок"
 )
 
 type TelegramBot struct {
-	Bot     *tgbotapi.BotAPI
-	Handler handler.TelegramHandler
+	Bot        *tgbotapi.BotAPI
+	Handler    handler.TelegramHandler
+	BaseLogger *slog.Logger
 }
 
 func (t TelegramBot) StartMainLoop(ctx context.Context, wg *sync.WaitGroup) {
 	if err := t.setupBotCommands(); err != nil {
-		slog.Error("error loading commands", slog.String("error", err.Error()))
+		t.BaseLogger.Error("error loading commands", slog.String("error", err.Error()))
 	} else {
-		slog.Info("all commands loaded")
+		t.BaseLogger.Info("all commands loaded")
 	}
 
 	u := tgbotapi.NewUpdate(updateOffset)
@@ -60,7 +61,7 @@ func (t TelegramBot) telegramWorker(ctx context.Context, updateChan tgbotapi.Upd
 func (t TelegramBot) SendMessage(chatID int64, message string) error {
 	msg := tgbotapi.NewMessage(chatID, message)
 	if _, err := t.Bot.Send(msg); err != nil {
-		slog.Error("message send error", slog.String("err", err.Error()))
+		t.BaseLogger.Error("message send error", slog.String("err", err.Error()))
 		return err
 	}
 	return nil

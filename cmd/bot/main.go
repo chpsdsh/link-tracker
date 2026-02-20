@@ -12,9 +12,13 @@ import (
 	"github.com/joho/godotenv"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/bot"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/bot/handler"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/logger"
 )
 
-const envFilename = ".env"
+const (
+	envFilename    = ".env"
+	telegramApiKey = "APP_TELEGRAM_TOKEN"
+)
 
 func main() {
 	if err := godotenv.Load(envFilename); err != nil {
@@ -22,23 +26,24 @@ func main() {
 		os.Exit(1)
 	}
 
-	api, err := tgbotapi.NewBotAPI(os.Getenv("APP_TELEGRAM_TOKEN"))
+	baseLogger := logger.NewLogger(os.Stdout, logger.OutputFormatJson, slog.LevelInfo)
+
+	api, err := tgbotapi.NewBotAPI(os.Getenv(telegramApiKey))
 	if err != nil {
 		slog.Error("Error loading .env file", slog.String("err", err.Error()))
 		os.Exit(1)
 	}
-
 	api.Debug = true
-	telegramBot := bot.TelegramBot{Bot: api}
 
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	telegramBot := bot.TelegramBot{Bot: api, BaseLogger: baseLogger}
+
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
 	wg := &sync.WaitGroup{}
 
-	telegramHandler := handler.TelegramHandler{MsgHandler: telegramBot}
+	telegramHandler := handler.TelegramHandler{MsgSender: telegramBot, BaseLogger: baseLogger}
 	telegramBot.Handler = telegramHandler
-
 	telegramBot.StartMainLoop(ctx, wg)
 
 	<-ctx.Done()
