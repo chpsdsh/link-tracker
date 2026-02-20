@@ -21,16 +21,16 @@ const (
 )
 
 func main() {
+	baseLogger := logger.NewLogger(os.Stdout, logger.OutputFormatJson, slog.LevelInfo)
+
 	if err := godotenv.Load(envFilename); err != nil {
-		slog.Error("Error loading .env file", slog.String("err", err.Error()), slog.String("file", envFilename))
+		baseLogger.Error("error loading file", slog.String("file", envFilename), slog.String("err", err.Error()))
 		os.Exit(1)
 	}
 
-	baseLogger := logger.NewLogger(os.Stdout, logger.OutputFormatJson, slog.LevelInfo)
-
 	api, err := tgbotapi.NewBotAPI(os.Getenv(telegramApiKey))
 	if err != nil {
-		slog.Error("Error loading .env file", slog.String("err", err.Error()))
+		baseLogger.Error("error creating telegram bot", slog.String("err", err.Error()))
 		os.Exit(1)
 	}
 	api.Debug = true
