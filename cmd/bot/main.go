@@ -11,13 +11,13 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/joho/godotenv"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/bot"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/config"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/logger"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/bot/handler"
 )
 
 const (
-	envFilename    = ".env"
-	telegramApiKey = "APP_TELEGRAM_TOKEN"
+	envFilename = ".env"
 )
 
 func main() {
@@ -28,9 +28,15 @@ func main() {
 		os.Exit(1)
 	}
 
-	api, err := tgbotapi.NewBotAPI(os.Getenv(telegramApiKey))
+	conf, err := config.ParseConfig()
 	if err != nil {
-		baseLogger.Error("error creating telegram bot", slog.String("err", err.Error()))
+		baseLogger.Error("error parsing environment variables", slog.String("err", err.Error()))
+		os.Exit(1)
+	}
+
+	api, err := tgbotapi.NewBotAPI(conf.TelegramToken)
+	if err != nil {
+		baseLogger.Error("failed to initialize telegram bot API", slog.String("err", err.Error()))
 		os.Exit(1)
 	}
 	api.Debug = true
