@@ -14,6 +14,7 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/config"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/logger"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/bot/handler"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/bot/statestorage"
 )
 
 const (
@@ -48,7 +49,7 @@ func main() {
 
 	wg := &sync.WaitGroup{}
 
-	telegramHandler := handler.TelegramHandler{MsgSender: telegramBot, BaseLogger: baseLogger}
+	telegramHandler := handler.TelegramHandler{MsgSender: telegramBot, Session: statestorage.NewStateStorage(), BaseLogger: baseLogger}
 	telegramBot.Handler = telegramHandler
 	telegramBot.StartMainLoop(ctx, wg)
 

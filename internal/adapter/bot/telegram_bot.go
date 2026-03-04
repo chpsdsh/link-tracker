@@ -51,7 +51,7 @@ func (t TelegramBot) telegramWorker(ctx context.Context, updateChan tgbotapi.Upd
 			if !ok {
 				return
 			}
-			t.Handler.HandleCommand(update)
+			t.Handler.HandleUpdate(update)
 		case <-ctx.Done():
 			return
 		}
