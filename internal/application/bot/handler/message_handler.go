@@ -5,6 +5,7 @@ import (
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/bot/statestorage"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/shared"
 )
 
 const (
@@ -92,5 +93,13 @@ func (h TelegramHandler) handleMessage(update tgbotapi.Update) {
 
 	if err := h.MsgSender.SendMessage(update.Message.Chat.ID, text); err != nil {
 		h.BaseLogger.Error("error while sending message", slog.String("error", err.Error()))
+	}
+}
+
+func (h TelegramHandler) HandleLinkUpdate(linkUpdate shared.LinkUpdate) {
+	for _, id := range *linkUpdate.TgChatIds {
+		if err := h.MsgSender.SendMessage(id, *linkUpdate.Description+" '"+*linkUpdate.Url); err != nil {
+			h.BaseLogger.Error("error while sending message", slog.String("error", err.Error()))
+		}
 	}
 }

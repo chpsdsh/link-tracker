@@ -1,5 +1,5 @@
-package: server
-output: ../../internal/adapter/scrapper/server/scrapper_server.gen.go
+package: scrapperserver
+output: ../../internal/adapter/scrapper/scrapperserver/scrapper_server.gen.go
 generate:
   models: true
   std-http-server: true

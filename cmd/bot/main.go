@@ -2,15 +2,19 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log/slog"
+	"net/http"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
+	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/joho/godotenv"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/bot"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/bot/botserver"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/config"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/logger"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/bot/handler"
@@ -18,7 +22,9 @@ import (
 )
 
 const (
-	envFilename = ".env"
+	envFilename      = ".env"
+	botServerAddr    = "localhost:8080"
+	shutdownDuration = 10 * time.Second
 )
 
 func main() {
@@ -51,8 +57,31 @@ func main() {
 
 	telegramHandler := handler.TelegramHandler{MsgSender: telegramBot, Session: statestorage.NewStateStorage(), BaseLogger: baseLogger}
 	telegramBot.Handler = telegramHandler
+
+	updatesServer := botserver.UpdatesServer{BaseLogger: baseLogger, Handler: telegramHandler}
+	mux := http.NewServeMux()
+	h := botserver.HandlerFromMux(&updatesServer, mux)
+
+	server := &http.Server{
+		Handler: h,
+		Addr:    botServerAddr,
+	}
+
+	go func() {
+		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			baseLogger.Error("error starting http server", slog.String("err", err.Error()))
+		}
+	}()
+
 	telegramBot.StartMainLoop(ctx, wg)
 
 	<-ctx.Done()
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownDuration)
+	defer cancel()
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		baseLogger.Error("error shutting down http server", slog.String("err", err.Error()))
+	}
+
 	wg.Wait()
 }

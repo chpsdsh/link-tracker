@@ -5,7 +5,8 @@ import "sync"
 type State int
 
 const (
-	WaitingForTrackUrlState State = iota
+	NoState State = iota
+	WaitingForTrackUrlState
 	WaitingForUnTrackUrlState
 	WaitingForTagsState
 	InitialState
