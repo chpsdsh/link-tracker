@@ -10,6 +10,26 @@ import (
 	"net/http"
 )
 
+// ApiErrorResponse defines model for ApiErrorResponse.
+type ApiErrorResponse struct {
+	Code             *string   `json:"code,omitempty"`
+	Description      *string   `json:"description,omitempty"`
+	ExceptionMessage *string   `json:"exceptionMessage,omitempty"`
+	ExceptionName    *string   `json:"exceptionName,omitempty"`
+	Stacktrace       *[]string `json:"stacktrace,omitempty"`
+}
+
+// LinkUpdate defines model for LinkUpdate.
+type LinkUpdate struct {
+	Description *string  `json:"description,omitempty"`
+	Id          *int64   `json:"id,omitempty"`
+	TgChatIds   *[]int64 `json:"tgChatIds,omitempty"`
+	Url         *string  `json:"url,omitempty"`
+}
+
+// PostUpdatesJSONRequestBody defines body for PostUpdates for application/json ContentType.
+type PostUpdatesJSONRequestBody = LinkUpdate
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// Отправить обновление

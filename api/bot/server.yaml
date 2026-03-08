@@ -1,4 +1,5 @@
 package: botserver
 output: ../../internal/adapter/bot/botserver/bot_server.gen.go
 generate:
+  models: true
   std-http-server: true

@@ -1,0 +1,50 @@
+package scrapper
+
+// ApiErrorResponse defines model for ApiErrorResponse.
+type ApiErrorResponse struct {
+	Code             *string   `json:"code,omitempty"`
+	Description      *string   `json:"description,omitempty"`
+	ExceptionMessage *string   `json:"exceptionMessage,omitempty"`
+	ExceptionName    *string   `json:"exceptionName,omitempty"`
+	Stacktrace       *[]string `json:"stacktrace,omitempty"`
+}
+
+// LinkResponse defines model for LinkResponse.
+type LinkResponse struct {
+	Filters *[]string `json:"filters,omitempty"`
+	Id      *int64    `json:"id,omitempty"`
+	Tags    *[]string `json:"tags,omitempty"`
+	Url     *string   `json:"url,omitempty"`
+}
+
+// ListLinksResponse defines model for ListLinksResponse.
+type ListLinksResponse struct {
+	Links *[]LinkResponse `json:"links,omitempty"`
+	Size  *int32          `json:"size,omitempty"`
+}
+
+// RemoveLinkRequest defines model for RemoveLinkRequest.
+type RemoveLinkRequest struct {
+	Link *string `json:"link,omitempty"`
+}
+
+// DeleteLinksParams defines parameters for DeleteLinks.
+type DeleteLinksParams struct {
+	TgChatId int64 `json:"Tg-Chat-Id"`
+}
+
+// GetLinksParams defines parameters for GetLinks.
+type GetLinksParams struct {
+	TgChatId int64 `json:"Tg-Chat-Id"`
+}
+
+// PostLinksParams defines parameters for PostLinks.
+type PostLinksParams struct {
+	TgChatId int64 `json:"Tg-Chat-Id"`
+}
+
+// DeleteLinksJSONRequestBody defines body for DeleteLinks for application/json ContentType.
+type DeleteLinksJSONRequestBody = RemoveLinkRequest
+
+// PostLinksJSONRequestBody defines body for PostLinks for application/json ContentType.
+type PostLinksJSONRequestBody = AddLinkRequest

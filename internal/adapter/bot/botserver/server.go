@@ -13,6 +13,7 @@ import (
 const (
 	errorUnmarshallingJson  = "failed to unmarshal json response"
 	errorReadingRequestBody = "failed to read request body"
+	badRequestCode          = "BAD_REQUEST"
 )
 
 type UpdatesServer struct {
@@ -29,7 +30,7 @@ func (u *UpdatesServer) PostUpdates(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	linkUpdate := shared.LinkUpdate{}
+	linkUpdate := LinkUpdate{}
 	if err = json.Unmarshal(body, &linkUpdate); err != nil {
 		sendApiErrorResponse(w, errorUnmarshallingJson, err)
 		u.BaseLogger.Error(errorUnmarshallingJson, slog.String("error", err.Error()))
@@ -37,13 +38,14 @@ func (u *UpdatesServer) PostUpdates(w http.ResponseWriter, r *http.Request) {
 	}
 
 	u.BaseLogger.Info("response ", slog.Any("update", linkUpdate))
-	u.Handler.HandleLinkUpdate(linkUpdate)
+	u.Handler.HandleLinkUpdate(shared.LinkUpdate{Description: *linkUpdate.Description, Id: *linkUpdate.Id,
+		TgChatIds: *linkUpdate.TgChatIds, Url: *linkUpdate.Url})
 
 	w.WriteHeader(http.StatusOK)
 }
 
 func sendApiErrorResponse(w http.ResponseWriter, desc string, err error) {
-	code := "BAD_REQUEST"
+	code := badRequestCode
 	errString := err.Error()
 	errResp := shared.ApiErrorResponse{Code: &code, Description: &desc, ExceptionMessage: &errString}
 	data, _ := json.Marshal(errResp)

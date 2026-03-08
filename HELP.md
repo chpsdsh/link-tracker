@@ -43,4 +43,4 @@ APP_TELEGRAM_TOKEN=123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11
 * [StackOverflow API](https://api.stackexchange.com/docs) — API для получения
   информации о вопросах и ответах
 
-Контракт взаимодействия между сервисами Bot и Scrapper описан в [OpenAPI-спецификации](https://gist.github.com/sanyarnd/e35dc3d4e0c8000205ec5029dac38f5a).
+Контракт взаимодействия между сервисами Bot и ScrapperServer описан в [OpenAPI-спецификации](https://gist.github.com/sanyarnd/e35dc3d4e0c8000205ec5029dac38f5a).

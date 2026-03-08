@@ -69,7 +69,7 @@ func main() {
 
 	go func() {
 		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			baseLogger.Error("error starting http server", slog.String("err", err.Error()))
+			baseLogger.Error("error starting bot http server", slog.String("err", err.Error()))
 		}
 	}()
 
@@ -80,7 +80,7 @@ func main() {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownDuration)
 	defer cancel()
 	if err := server.Shutdown(shutdownCtx); err != nil {
-		baseLogger.Error("error shutting down http server", slog.String("err", err.Error()))
+		baseLogger.Error("error shutting down bot http server", slog.String("err", err.Error()))
 	}
 
 	wg.Wait()
