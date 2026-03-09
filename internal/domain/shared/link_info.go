@@ -1,6 +1,6 @@
 package shared
 
-type TrackedLink struct {
+type LinkInfo struct {
 	Link string
 	Tags []string
 }

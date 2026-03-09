@@ -47,7 +47,7 @@ func (u *UpdatesServer) PostUpdates(w http.ResponseWriter, r *http.Request) {
 func sendApiErrorResponse(w http.ResponseWriter, desc string, err error) {
 	code := badRequestCode
 	errString := err.Error()
-	errResp := shared.ApiErrorResponse{Code: &code, Description: &desc, ExceptionMessage: &errString}
+	errResp := ApiErrorResponse{Code: &code, Description: &desc, ExceptionMessage: &errString}
 	data, _ := json.Marshal(errResp)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusBadRequest)

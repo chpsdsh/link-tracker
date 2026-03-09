@@ -28,12 +28,11 @@ func main() {
 	defer cancel()
 
 	repo := repository.NewLinkRepository()
-
 	scrapperHandler := handler.LinksHandler{Repo: repo}
 
-	scrapperServer := scrapperserver.ScrapperServer{BaseLogger: baseLogger, Handler: scrapperHandler}
-	mux := http.NewServeMux()
-	h := scrapperserver.HandlerFromMux(scrapperServer, mux)
+	serverImplementation := scrapperserver.ScrapperServer{BaseLogger: baseLogger, Handler: scrapperHandler}
+	h := scrapperserver.HandlerWithOptions(serverImplementation,
+		scrapperserver.StdHTTPServerOptions{ErrorHandlerFunc: scrapperserver.JSONErrorHandler})
 
 	server := &http.Server{Handler: h, Addr: scrapperServerPort}
 	go func() {
@@ -41,6 +40,7 @@ func main() {
 			baseLogger.Error("error starting scrapper http server", slog.String("error", err.Error()))
 		}
 	}()
+
 	<-ctx.Done()
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), shutdownDuration)
 	defer shutdownCancel()
