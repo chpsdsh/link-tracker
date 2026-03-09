@@ -4,7 +4,6 @@ import (
 	"errors"
 	"net/url"
 
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/scrapper"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/shared"
 )
 
@@ -53,7 +52,7 @@ func (h LinksHandler) GetLinks(chatId int64) ([]shared.LinkInfo, error) {
 	return links, nil
 }
 
-func (h LinksHandler) AddLink(chatId int64, linkRequest scrapper.AddLinkRequest) error {
+func (h LinksHandler) AddLink(chatId int64, linkRequest shared.AddLinkRequest) error {
 	if !h.Repo.ChatExists(chatId) {
 		return ErrChatNotFound
 	}

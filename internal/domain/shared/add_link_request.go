@@ -1,4 +1,4 @@
-package scrapper
+package shared
 
 type AddLinkRequest struct {
 	Filters *[]string `json:"filters,omitempty"`

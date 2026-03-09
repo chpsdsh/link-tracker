@@ -8,7 +8,7 @@ import (
 	"net/http"
 
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/scrapper/handler"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/scrapper"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/shared"
 )
 
 const (
@@ -119,7 +119,7 @@ func (s ScrapperServer) PostLinks(w http.ResponseWriter, r *http.Request, params
 		return
 	}
 
-	linkErr := s.Handler.AddLink(params.TgChatId, scrapper.AddLinkRequest{
+	linkErr := s.Handler.AddLink(params.TgChatId, shared.AddLinkRequest{
 		Filters: linkRequest.Filters,
 		Link:    linkRequest.Link,
 		Tags:    linkRequest.Tags,

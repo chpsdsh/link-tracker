@@ -14,6 +14,7 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/joho/godotenv"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/bot"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/bot/botclient"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/bot/botserver"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/config"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/logger"
@@ -25,6 +26,7 @@ const (
 	envFilename      = ".env"
 	botServerAddr    = "localhost:8080"
 	shutdownDuration = 10 * time.Second
+	clientTimeout    = 15 * time.Second
 )
 
 func main() {
@@ -55,7 +57,11 @@ func main() {
 
 	wg := &sync.WaitGroup{}
 
-	telegramHandler := handler.TelegramHandler{MsgSender: telegramBot, Session: statestorage.NewStateStorage(), BaseLogger: baseLogger}
+	client := &http.Client{Timeout: clientTimeout}
+
+	telegramHandler := handler.TelegramHandler{MsgSender: telegramBot,
+		Session:    statestorage.NewStateStorage(),
+		BaseLogger: baseLogger, Client: botclient.Client{Client: client}}
 	telegramBot.Handler = telegramHandler
 
 	updatesServer := botserver.UpdatesServer{BaseLogger: baseLogger, Handler: telegramHandler}
