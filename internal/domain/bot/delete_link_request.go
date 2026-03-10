@@ -1,4 +1,4 @@
-package scrapper
+package bot
 
 type RemoveLinkRequest struct {
 	Link string

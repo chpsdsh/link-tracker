@@ -120,9 +120,8 @@ func (s ScrapperServer) PostLinks(w http.ResponseWriter, r *http.Request, params
 	}
 
 	linkErr := s.Handler.AddLink(params.TgChatId, shared.AddLinkRequest{
-		Filters: linkRequest.Filters,
-		Link:    linkRequest.Link,
-		Tags:    linkRequest.Tags,
+		Link: *linkRequest.Link,
+		Tags: *linkRequest.Tags,
 	})
 
 	switch {

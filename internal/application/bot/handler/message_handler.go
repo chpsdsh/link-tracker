@@ -3,6 +3,8 @@ package handler
 import (
 	"errors"
 	"log/slog"
+	"net/url"
+	"strings"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/bot/statestorage"
@@ -35,6 +37,11 @@ const (
 	trackConfirmMessage        = "Ссылка добавлена для отслеживания"
 	untrackConfirmMessage      = "Ссылка удалена из отслеживания"
 	noTrackedLinks             = "Нет отслеживаемых ссылок"
+	isAlreadyTracked           = "Ссылка уже отслеживается"
+	chatNotFond                = "Для начала использования бота введите /start"
+	linkNotFound               = "Данная ссылка не отслеживается"
+	notUrlToTrack              = "Вы ввели не ссылку, для добавления ссылки введить /track"
+	notUrlToUntrack            = "Вы ввели не ссылку, для удаления ссылки введить /untrack"
 )
 
 type Sender interface {
@@ -44,12 +51,16 @@ type Sender interface {
 type StateStorage interface {
 	GetState(chatId int64) statestorage.State
 	SetState(chatId int64, state statestorage.State)
+	SetLinkAndUpdateState(chatId int64, link string, state statestorage.State)
+	GetLink(chatId int64) string
+	ClearLinkAndUpdateState(chatId int64, state statestorage.State)
 }
 
 type NetworkClient interface {
 	RegisterChat(chatId int64) error
 	GetLinks(chatId int64) (bot.ListLinksResponse, error)
-	AddLink(chatId int64)
+	AddLink(chatId int64, linkRequest shared.AddLinkRequest) (bot.LinkResponse, error)
+	RemoveLink(chatId int64, removeRequest bot.RemoveLinkRequest) (bot.LinkResponse, error)
 }
 
 type TelegramHandler struct {
@@ -103,7 +114,7 @@ func (h TelegramHandler) handleCommand(update tgbotapi.Update) {
 		return
 	case "cancel":
 		text = cancelMessage
-		h.Session.SetState(update.Message.Chat.ID, statestorage.InitialState)
+		h.Session.ClearLinkAndUpdateState(update.Message.Chat.ID, statestorage.InitialState)
 	default:
 		text = unknownMessage
 	}
@@ -131,15 +142,13 @@ func (h TelegramHandler) handleMessage(update tgbotapi.Update) {
 	var text string
 	switch h.Session.GetState(update.Message.Chat.ID) {
 	case statestorage.WaitingForTrackUrlState:
-		text = tagsMessage
-		h.Session.SetState(update.Message.Chat.ID, statestorage.WaitingForTagsState)
+		text = h.handleTrackUrl(update)
 	case statestorage.WaitingForTagsState:
-		text = trackConfirmMessage
-		h.Session.SetState(update.Message.Chat.ID, statestorage.InitialState)
-		//TODO: Сделать созранение ссылки в stateStore
+		text = h.handleTrack(update)
+		h.Session.ClearLinkAndUpdateState(update.Message.Chat.ID, statestorage.InitialState)
 	case statestorage.WaitingForUnTrackUrlState:
-		text = untrackConfirmMessage
-		h.Session.SetState(update.Message.Chat.ID, statestorage.InitialState)
+		text = h.handleUntrack(update)
+		h.Session.ClearLinkAndUpdateState(update.Message.Chat.ID, statestorage.InitialState)
 	default:
 		text = unknownMessage
 	}
@@ -149,10 +158,65 @@ func (h TelegramHandler) handleMessage(update tgbotapi.Update) {
 	}
 }
 
+func (h TelegramHandler) handleTrackUrl(update tgbotapi.Update) string {
+	var text string
+	if _, err := url.ParseRequestURI(update.Message.Text); err != nil {
+		h.Session.SetState(update.Message.Chat.ID, statestorage.InitialState)
+		return notUrlToTrack
+	}
+	h.Session.SetLinkAndUpdateState(update.Message.Chat.ID, update.Message.Text, statestorage.WaitingForTagsState)
+	text = tagsMessage
+	return text
+}
+
+func (h TelegramHandler) handleTrack(update tgbotapi.Update) string {
+	var text string
+	tags := parseTags(update.Message.Text)
+	linkResp, err := h.Client.AddLink(update.Message.Chat.ID, shared.AddLinkRequest{Link: h.Session.GetLink(update.Message.Chat.ID), Tags: tags})
+	switch {
+	case errors.Is(err, ErrIncorrectRequestParameters):
+		text = incorrectRequestParameters
+	case errors.Is(err, ErrChatNotFound):
+		text = chatNotFond
+	case errors.Is(err, ErrLinkExists):
+		text = isAlreadyTracked
+	default:
+		text = trackConfirmMessage + " " + linkResp.Url + " " + tagsToString(linkResp.Tags)
+	}
+	return text
+}
+
+func (h TelegramHandler) handleUntrack(update tgbotapi.Update) string {
+	var text string
+	if _, err := url.ParseRequestURI(update.Message.Text); err != nil {
+		return notUrlToUntrack
+	}
+	linkResp, err := h.Client.RemoveLink(update.Message.Chat.ID, bot.RemoveLinkRequest{Link: update.Message.Text})
+	switch {
+	case errors.Is(err, ErrIncorrectRequestParameters):
+		text = incorrectRequestParameters
+	case errors.Is(err, ErrChatNotFound):
+		text = chatNotFond
+	case errors.Is(err, ErrLinkNotExists):
+		text = linkNotFound
+	default:
+		text = untrackConfirmMessage + " " + linkResp.Url + " " + tagsToString(linkResp.Tags)
+	}
+	return text
+}
+
 func (h TelegramHandler) HandleLinkUpdate(linkUpdate shared.LinkUpdate) {
 	for _, id := range linkUpdate.TgChatIds {
 		if err := h.MsgSender.SendMessage(id, linkUpdate.Description+" '"+linkUpdate.Url); err != nil {
 			h.BaseLogger.Error("error while sending message", slog.String("error", err.Error()))
 		}
 	}
+}
+
+func parseTags(tags string) []string {
+	return strings.Split(tags, ",")
+}
+
+func tagsToString(tags []string) string {
+	return strings.Join(tags, ",")
 }

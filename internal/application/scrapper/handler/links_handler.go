@@ -56,8 +56,8 @@ func (h LinksHandler) AddLink(chatId int64, linkRequest shared.AddLinkRequest) e
 	if !h.Repo.ChatExists(chatId) {
 		return ErrChatNotFound
 	}
-	link := *linkRequest.Link
-	if _, err := url.Parse(*linkRequest.Link); err != nil {
+	link := linkRequest.Link
+	if _, err := url.Parse(linkRequest.Link); err != nil {
 		return ErrIncorrectRequestParameters
 	}
 
@@ -68,7 +68,7 @@ func (h LinksHandler) AddLink(chatId int64, linkRequest shared.AddLinkRequest) e
 		}
 	}
 
-	trackedLink := shared.LinkInfo{Link: link, Tags: *linkRequest.Tags}
+	trackedLink := shared.LinkInfo{Link: link, Tags: linkRequest.Tags}
 	h.Repo.AddLink(chatId, trackedLink)
 
 	return nil

@@ -155,3 +155,40 @@ func (c Client) AddLink(chatId int64, linkRequest shared.AddLinkRequest) (bot.Li
 		return linksResponse, nil
 	}
 }
+
+func (c Client) RemoveLink(chatId int64, removeRequest bot.RemoveLinkRequest) (bot.LinkResponse, error) {
+	data, err := json.Marshal(removeRequest)
+	if err != nil {
+		return bot.LinkResponse{}, err
+	}
+	req, err := http.NewRequest(http.MethodDelete, scrapperUrl+"/links", bytes.NewBuffer(data))
+	if err != nil {
+		return bot.LinkResponse{}, err
+	}
+
+	stringId := strconv.FormatInt(chatId, 10)
+	req.Header.Set(tgHeaderKey, stringId)
+	req.Header.Set(contentTypeKey, typeApplicationJSON)
+
+	resp, err := c.Client.Do(req)
+	if err != nil {
+		return bot.LinkResponse{}, err
+	}
+	defer func() { _ = resp.Body.Close() }()
+	switch resp.StatusCode {
+	case http.StatusBadRequest:
+		return bot.LinkResponse{}, handler.ErrIncorrectRequestParameters
+	case http.StatusNotFound:
+		return bot.LinkResponse{}, handler.ErrLinkNotExists
+	default:
+		data, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return bot.LinkResponse{}, err
+		}
+		linksResponse := bot.LinkResponse{}
+		if err := json.Unmarshal(data, &linksResponse); err != nil {
+			return bot.LinkResponse{}, err
+		}
+		return linksResponse, nil
+	}
+}
