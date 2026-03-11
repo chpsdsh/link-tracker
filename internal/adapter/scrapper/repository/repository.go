@@ -3,6 +3,7 @@ package repository
 import (
 	"slices"
 	"sync"
+	"time"
 
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/shared"
 )
@@ -57,4 +58,44 @@ func (r *LinkRepository) DeleteChat(chatId int64) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	delete(r.linkStorage, chatId)
+}
+
+func (r *LinkRepository) GetAllLinks() []shared.LinkInfo {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	links := make([]shared.LinkInfo, 0)
+	for _, l := range r.linkStorage {
+		links = append(links, l...)
+	}
+	return links
+}
+
+func (r *LinkRepository) GetChatIdsByLink(link string) []int64 {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	ids := make([]int64, 0)
+
+	for id, chatLinks := range r.linkStorage {
+		for _, l := range chatLinks {
+			if l.Link == link {
+				ids = append(ids, id)
+				break
+			}
+		}
+	}
+
+	return ids
+}
+
+func (r *LinkRepository) UpdateLinksTime(newTime time.Time, linkToUpdate shared.LinkInfo) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for _, chatLinks := range r.linkStorage {
+		for i, link := range chatLinks {
+			if link.Link == linkToUpdate.Link {
+				chatLinks[i].LastUpdateTime = newTime
+				break
+			}
+		}
+	}
 }

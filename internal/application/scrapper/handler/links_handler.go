@@ -2,7 +2,9 @@ package handler
 
 import (
 	"errors"
+	"log/slog"
 	"net/url"
+	"time"
 
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/shared"
 )
@@ -22,10 +24,14 @@ type Repository interface {
 	DeleteLink(chatId int64, link string) (shared.LinkInfo, bool)
 	DeleteChat(chatId int64)
 	AddChat(chatId int64)
+	GetAllLinks() []shared.LinkInfo
+	GetChatIdsByLink(link string) []int64
+	UpdateLinksTime(newTime time.Time, linkToUpdate shared.LinkInfo)
 }
 
 type LinksHandler struct {
-	Repo Repository
+	Repo       Repository
+	BaseLogger *slog.Logger
 }
 
 func (h LinksHandler) AddChatId(chatId int64) error {
@@ -68,7 +74,7 @@ func (h LinksHandler) AddLink(chatId int64, linkRequest shared.AddLinkRequest) e
 		}
 	}
 
-	trackedLink := shared.LinkInfo{Link: link, Tags: linkRequest.Tags}
+	trackedLink := shared.LinkInfo{Link: link, Tags: linkRequest.Tags, LastUpdateTime: time.Now()}
 	h.Repo.AddLink(chatId, trackedLink)
 
 	return nil

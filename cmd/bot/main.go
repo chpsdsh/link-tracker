@@ -16,14 +16,14 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/bot"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/bot/botclient"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/bot/botserver"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/config"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/bot/config"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/logger"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/bot/handler"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/bot/statestorage"
 )
 
 const (
-	envFilename      = ".env"
+	envFilename      = "bot.env"
 	botServerAddr    = "localhost:8080"
 	shutdownDuration = 10 * time.Second
 	clientTimeout    = 15 * time.Second
@@ -61,7 +61,9 @@ func main() {
 
 	telegramHandler := handler.TelegramHandler{MsgSender: telegramBot,
 		Session:    statestorage.NewStateStorage(),
-		BaseLogger: baseLogger, Client: botclient.Client{Client: client}}
+		BaseLogger: baseLogger,
+		Client:     botclient.Client{Client: client}}
+
 	telegramBot.Handler = telegramHandler
 
 	updatesServer := botserver.UpdatesServer{BaseLogger: baseLogger, Handler: telegramHandler}

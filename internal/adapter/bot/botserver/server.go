@@ -38,7 +38,7 @@ func (u *UpdatesServer) PostUpdates(w http.ResponseWriter, r *http.Request) {
 	}
 
 	u.BaseLogger.Info("response ", slog.Any("update", linkUpdate))
-	u.Handler.HandleLinkUpdate(shared.LinkUpdate{Description: *linkUpdate.Description, Id: *linkUpdate.Id,
+	u.Handler.HandleLinkUpdate(shared.LinkUpdate{Description: *linkUpdate.Description,
 		TgChatIds: *linkUpdate.TgChatIds, Url: *linkUpdate.Url})
 
 	w.WriteHeader(http.StatusOK)

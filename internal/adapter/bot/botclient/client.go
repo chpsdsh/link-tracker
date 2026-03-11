@@ -136,6 +136,7 @@ func (c Client) AddLink(chatId int64, linkRequest shared.AddLinkRequest) (bot.Li
 		return bot.LinkResponse{}, err
 	}
 	defer func() { _ = resp.Body.Close() }()
+
 	switch resp.StatusCode {
 	case http.StatusBadRequest:
 		return bot.LinkResponse{}, handler.ErrIncorrectRequestParameters
@@ -175,18 +176,19 @@ func (c Client) RemoveLink(chatId int64, removeRequest bot.RemoveLinkRequest) (b
 		return bot.LinkResponse{}, err
 	}
 	defer func() { _ = resp.Body.Close() }()
+
 	switch resp.StatusCode {
 	case http.StatusBadRequest:
 		return bot.LinkResponse{}, handler.ErrIncorrectRequestParameters
 	case http.StatusNotFound:
 		return bot.LinkResponse{}, handler.ErrLinkNotExists
 	default:
-		data, err := io.ReadAll(resp.Body)
+		respData, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return bot.LinkResponse{}, err
 		}
 		linksResponse := bot.LinkResponse{}
-		if err := json.Unmarshal(data, &linksResponse); err != nil {
+		if err := json.Unmarshal(respData, &linksResponse); err != nil {
 			return bot.LinkResponse{}, err
 		}
 		return linksResponse, nil
