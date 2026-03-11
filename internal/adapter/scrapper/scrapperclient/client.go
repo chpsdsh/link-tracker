@@ -51,6 +51,30 @@ func (c Client) DoGithubRequest(url string) (scrapper.GitHubUpdate, error) {
 	return gitUpdate, nil
 }
 
+func (c Client) DoStackOverflowRequest(url string) (scrapper.StackOverflowUpdate, error) {
+	req, err := http.NewRequest(http.MethodGet, url+"?"+"site=stackoverflow"+"&"+"key="+c.Config.StackoverflowToken, nil)
+	if err != nil {
+		return scrapper.StackOverflowUpdate{}, err
+	}
+
+	resp, err := c.Client.Do(req)
+	if err != nil {
+		return scrapper.StackOverflowUpdate{}, err
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return scrapper.StackOverflowUpdate{}, err
+	}
+
+	stackOverflowUpdate := scrapper.StackOverflowUpdate{}
+	if err := json.Unmarshal(data, &stackOverflowUpdate); err != nil {
+		return scrapper.StackOverflowUpdate{}, err
+	}
+	return stackOverflowUpdate, nil
+}
+
 func (c Client) SendLinkUpdate(update shared.LinkUpdate) error {
 	data, err := json.Marshal(update)
 	if err != nil {

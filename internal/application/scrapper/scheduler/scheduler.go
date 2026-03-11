@@ -14,21 +14,26 @@ import (
 )
 
 var (
-	notGitHubUrlError               = errors.New("not github")
-	invalidGitHubUrlError           = errors.New("invalid github url")
+	NotGitHubUrlError               = errors.New("not github")
+	InvalidGitHubUrlError           = errors.New("invalid github url")
 	IncorrectRequestParametersError = errors.New("incorrect request parameters")
+	NotStackOverflowError           = errors.New("not StackOverflow")
+	InvalidStackOverflowUrlError    = errors.New("invalid StackOverflow url")
 )
 
 const (
-	linkTrackInterval  = time.Second * 10
-	gitHubHost         = "github.com"
-	gitHubIssues       = "issues"
-	gitHubPullRequests = "pull"
+	linkTrackInterval      = time.Second * 10
+	gitHubHost             = "github.com"
+	gitHubIssues           = "issues"
+	gitHubPullRequests     = "pull"
+	stackOverflowHost      = "stackoverflow.com"
+	stackOverflowQuestions = "questions"
 )
 
 type NetworkClient interface {
 	DoGithubRequest(url string) (scrapper.GitHubUpdate, error)
 	SendLinkUpdate(update shared.LinkUpdate) error
+	DoStackOverflowRequest(url string) (scrapper.StackOverflowUpdate, error)
 }
 
 type LinksRequester struct {
@@ -86,8 +91,6 @@ func (r LinksRequester) HandleGithubLinks() {
 			continue
 		}
 
-		diff := l.LastUpdateTime.Sub(updateTime)
-		r.BaseLogger.Info("times", slog.Any("updateTime", updateTime), slog.Any("last", l.LastUpdateTime), slog.Any("diff", diff))
 		if updateTime.After(l.LastUpdateTime) {
 			r.Repo.UpdateLinksTime(updateTime, l)
 
@@ -106,9 +109,32 @@ func (r LinksRequester) HandleGithubLinks() {
 
 func (r LinksRequester) HandleStackOverflowLinks() {
 	links := r.Repo.GetAllLinks()
-	for _, link := range links {
-		if strings.Contains(link.Link, "stackoverflow") {
+	for _, l := range links {
+		link, err := ParseStackOverflowLink(l.Link)
+		if err != nil {
+			continue
+		}
+		stackUpdate, err := r.Client.DoStackOverflowRequest(link.ConvertToUrl())
+		if err != nil {
+			r.BaseLogger.Error("error during stack overflow", slog.String("error", err.Error()))
+			continue
+		}
 
+		updateTime := time.Unix(stackUpdate.LastActivityDate, 0)
+
+		r.BaseLogger.Info("diff", slog.Any("diff", updateTime.Sub(l.LastUpdateTime)))
+		if updateTime.After(l.LastUpdateTime) {
+			r.Repo.UpdateLinksTime(updateTime, l)
+
+			chatIds := r.Repo.GetChatIdsByLink(l.Link)
+			update := shared.LinkUpdate{Description: "link updated", TgChatIds: chatIds, Url: l.Link}
+
+			err := r.Client.SendLinkUpdate(update)
+			if err != nil {
+				r.BaseLogger.Error("error sending link update", slog.String("error", err.Error()))
+				continue
+			}
+			r.BaseLogger.Info("link is sent to chats", slog.String("link", l.Link), slog.Any("chats", chatIds))
 		}
 	}
 }
@@ -120,13 +146,13 @@ func ParseGithubLink(link string) (scrapper.GithubLink, error) {
 	}
 
 	if u.Host != gitHubHost {
-		return scrapper.GithubLink{}, notGitHubUrlError
+		return scrapper.GithubLink{}, NotGitHubUrlError
 	}
 
 	parts := strings.Split(strings.Trim(u.Path, "/"), "/")
 
 	if len(parts) < 2 {
-		return scrapper.GithubLink{}, invalidGitHubUrlError
+		return scrapper.GithubLink{}, InvalidGitHubUrlError
 	}
 
 	owner := parts[0]
@@ -156,4 +182,32 @@ func ParseGithubLink(link string) (scrapper.GithubLink, error) {
 	}
 
 	return scrapper.GithubLink{}, errors.New("unsupported github url")
+}
+
+func ParseStackOverflowLink(link string) (scrapper.StackOverflowLink, error) {
+	u, err := url.Parse(link)
+	if err != nil {
+		return scrapper.StackOverflowLink{}, err
+	}
+
+	if u.Host != stackOverflowHost {
+		return scrapper.StackOverflowLink{}, NotStackOverflowError
+	}
+
+	parts := strings.Split(strings.Trim(u.Path, "/"), "/")
+
+	if len(parts) < 2 {
+		return scrapper.StackOverflowLink{}, InvalidStackOverflowUrlError
+	}
+
+	if parts[0] != stackOverflowQuestions {
+		return scrapper.StackOverflowLink{}, InvalidStackOverflowUrlError
+	}
+
+	id := parts[1]
+
+	return scrapper.StackOverflowLink{
+		Type: scrapper.StackOverflowQuestion,
+		ID:   id,
+	}, nil
 }
