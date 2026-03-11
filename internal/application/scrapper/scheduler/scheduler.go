@@ -91,19 +91,23 @@ func (r LinksRequester) HandleGithubLinks() {
 			continue
 		}
 
-		if updateTime.After(l.LastUpdateTime) {
-			r.Repo.UpdateLinksTime(updateTime, l)
+		r.sendUpdate(updateTime, l)
+	}
+}
 
-			chatIds := r.Repo.GetChatIdsByLink(l.Link)
-			update := shared.LinkUpdate{Description: "link updated", TgChatIds: chatIds, Url: l.Link}
+func (r LinksRequester) sendUpdate(updateTime time.Time, linkInfo shared.LinkInfo) {
+	if updateTime.After(linkInfo.LastUpdateTime) {
+		r.Repo.UpdateLinksTime(updateTime, linkInfo)
 
-			err := r.Client.SendLinkUpdate(update)
-			if err != nil {
-				r.BaseLogger.Error("error sending link update", slog.String("error", err.Error()))
-				continue
-			}
-			r.BaseLogger.Info("link is sent to chats", slog.String("link", l.Link), slog.Any("chats", chatIds))
+		chatIds := r.Repo.GetChatIdsByLink(linkInfo.Link)
+		update := shared.LinkUpdate{Description: "link updated", TgChatIds: chatIds, Url: linkInfo.Link}
+
+		err := r.Client.SendLinkUpdate(update)
+		if err != nil {
+			r.BaseLogger.Error("error sending link update", slog.String("error", err.Error()))
+			return
 		}
+		r.BaseLogger.Info("link is sent to chats", slog.String("link", linkInfo.Link), slog.Any("chats", chatIds))
 	}
 }
 
@@ -122,20 +126,7 @@ func (r LinksRequester) HandleStackOverflowLinks() {
 
 		updateTime := time.Unix(stackUpdate.LastActivityDate, 0)
 
-		r.BaseLogger.Info("diff", slog.Any("diff", updateTime.Sub(l.LastUpdateTime)))
-		if updateTime.After(l.LastUpdateTime) {
-			r.Repo.UpdateLinksTime(updateTime, l)
-
-			chatIds := r.Repo.GetChatIdsByLink(l.Link)
-			update := shared.LinkUpdate{Description: "link updated", TgChatIds: chatIds, Url: l.Link}
-
-			err := r.Client.SendLinkUpdate(update)
-			if err != nil {
-				r.BaseLogger.Error("error sending link update", slog.String("error", err.Error()))
-				continue
-			}
-			r.BaseLogger.Info("link is sent to chats", slog.String("link", l.Link), slog.Any("chats", chatIds))
-		}
+		r.sendUpdate(updateTime, l)
 	}
 }
 
