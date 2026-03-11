@@ -16,6 +16,9 @@ const (
 	botPostAddress      = "http://localhost:8080/updates"
 	contentTypeKey      = "Content-Type"
 	typeApplicationJSON = "application/json"
+	applicationType     = "application/vnd.github.v3+json"
+	version             = "2022-11-28"
+	stackOverflowUrl    = "?site=stackoverflow&key="
 )
 
 type Client struct {
@@ -29,9 +32,9 @@ func (c Client) DoGithubRequest(url string) (scrapper.GitHubUpdate, error) {
 		return scrapper.GitHubUpdate{}, err
 	}
 
-	req.Header.Add("Accept", "application/vnd.github.v3+json")
+	req.Header.Add("Accept", applicationType)
 	req.Header.Add("Authorization", c.Config.GithubToken)
-	req.Header.Add("X-GitHub-Api-Version", "2022-11-28")
+	req.Header.Add("X-GitHub-Api-Version", version)
 
 	resp, err := c.Client.Do(req)
 	if err != nil {
@@ -52,7 +55,7 @@ func (c Client) DoGithubRequest(url string) (scrapper.GitHubUpdate, error) {
 }
 
 func (c Client) DoStackOverflowRequest(url string) (scrapper.StackOverflowUpdate, error) {
-	req, err := http.NewRequest(http.MethodGet, url+"?"+"site=stackoverflow"+"&"+"key="+c.Config.StackoverflowToken, nil)
+	req, err := http.NewRequest(http.MethodGet, url+stackOverflowUrl+c.Config.StackoverflowToken, nil)
 	if err != nil {
 		return scrapper.StackOverflowUpdate{}, err
 	}
@@ -95,8 +98,7 @@ func (c Client) SendLinkUpdate(update shared.LinkUpdate) error {
 	switch resp.StatusCode {
 	case http.StatusOK:
 		return nil
-	case http.StatusBadRequest:
+	default:
 		return scheduler.IncorrectRequestParametersError
 	}
-	return nil
 }

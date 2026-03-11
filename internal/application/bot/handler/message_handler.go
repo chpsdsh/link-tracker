@@ -1,3 +1,4 @@
+//go:generate mockgen -source message_handler.go -destination=../mocks/message_handler_mocks.go -package=mocks
 package handler
 
 import (
@@ -129,6 +130,7 @@ func (h TelegramHandler) handleLinks(chatID int64, links bot.ListLinksResponse) 
 		if err := h.MsgSender.SendMessage(chatID, noTrackedLinks); err != nil {
 			h.BaseLogger.Error("error while sending message", slog.String("error", err.Error()))
 		}
+		return
 	}
 
 	for _, link := range links.Links {

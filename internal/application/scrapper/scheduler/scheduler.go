@@ -1,3 +1,4 @@
+//go:generate mockgen -source scheduler.go -destination=../mocks/scheduler_mocks.go -package=mocks
 package scheduler
 
 import (
@@ -19,6 +20,8 @@ var (
 	IncorrectRequestParametersError = errors.New("incorrect request parameters")
 	NotStackOverflowError           = errors.New("not StackOverflow")
 	InvalidStackOverflowUrlError    = errors.New("invalid StackOverflow url")
+	UnsupportedGithubUrlError       = errors.New("unsupported github url")
+	NotUrlError                     = errors.New("not url")
 )
 
 const (
@@ -124,7 +127,7 @@ func (r LinksRequester) HandleStackOverflowLinks() {
 			continue
 		}
 
-		updateTime := time.Unix(stackUpdate.LastActivityDate, 0)
+		updateTime := time.Unix(stackUpdate.LastActivityDate, 0).UTC()
 
 		r.sendUpdate(updateTime, l)
 	}
@@ -133,7 +136,7 @@ func (r LinksRequester) HandleStackOverflowLinks() {
 func ParseGithubLink(link string) (scrapper.GithubLink, error) {
 	u, err := url.Parse(link)
 	if err != nil {
-		return scrapper.GithubLink{}, err
+		return scrapper.GithubLink{}, errors.Join(err, NotUrlError)
 	}
 
 	if u.Host != gitHubHost {
@@ -172,13 +175,13 @@ func ParseGithubLink(link string) (scrapper.GithubLink, error) {
 		}, nil
 	}
 
-	return scrapper.GithubLink{}, errors.New("unsupported github url")
+	return scrapper.GithubLink{}, UnsupportedGithubUrlError
 }
 
 func ParseStackOverflowLink(link string) (scrapper.StackOverflowLink, error) {
 	u, err := url.Parse(link)
 	if err != nil {
-		return scrapper.StackOverflowLink{}, err
+		return scrapper.StackOverflowLink{}, errors.Join(err, NotUrlError)
 	}
 
 	if u.Host != stackOverflowHost {
