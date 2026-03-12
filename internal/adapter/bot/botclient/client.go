@@ -7,13 +7,13 @@ import (
 	"net/http"
 	"strconv"
 
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/bot/config"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/bot/handler"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/bot"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/shared"
 )
 
 const (
-	scrapperUrl         = "http://localhost:8081"
 	tgHeaderKey         = "Tg-Chat-Id"
 	contentTypeKey      = "Content-Type"
 	typeApplicationJSON = "application/json"
@@ -21,6 +21,7 @@ const (
 
 type Client struct {
 	Client *http.Client
+	Config config.Config
 }
 
 func (c Client) doRequest(chatId int64, method, url string) (*http.Response, error) {
@@ -55,7 +56,7 @@ func (c Client) doRequestWithHeader(chatId int64, method, url string) (*http.Res
 }
 
 func (c Client) RegisterChat(chatId int64) error {
-	resp, err := c.doRequest(chatId, http.MethodPost, scrapperUrl+"/tg-chat/")
+	resp, err := c.doRequest(chatId, http.MethodPost, c.Config.ScrapperServerAddress+"/tg-chat/")
 	if err != nil {
 		return err
 	}
@@ -74,7 +75,7 @@ func (c Client) RegisterChat(chatId int64) error {
 }
 
 func (c Client) UnregisterChat(chatId int64) error {
-	resp, err := c.doRequest(chatId, http.MethodDelete, scrapperUrl+"/tg-chat/")
+	resp, err := c.doRequest(chatId, http.MethodDelete, c.Config.ScrapperServerAddress+"/tg-chat/")
 	if err != nil {
 		return err
 	}
@@ -93,7 +94,7 @@ func (c Client) UnregisterChat(chatId int64) error {
 }
 
 func (c Client) GetLinks(chatId int64) (bot.ListLinksResponse, error) {
-	resp, err := c.doRequestWithHeader(chatId, http.MethodGet, scrapperUrl+"/links")
+	resp, err := c.doRequestWithHeader(chatId, http.MethodGet, c.Config.ScrapperServerAddress+"/links")
 	if err != nil {
 		return bot.ListLinksResponse{}, err
 	}
@@ -122,7 +123,7 @@ func (c Client) AddLink(chatId int64, linkRequest shared.AddLinkRequest) (bot.Li
 	if err != nil {
 		return bot.LinkResponse{}, err
 	}
-	req, err := http.NewRequest(http.MethodPost, scrapperUrl+"/links", bytes.NewBuffer(data))
+	req, err := http.NewRequest(http.MethodPost, c.Config.ScrapperServerAddress+"/links", bytes.NewBuffer(data))
 	if err != nil {
 		return bot.LinkResponse{}, err
 	}
@@ -162,7 +163,7 @@ func (c Client) RemoveLink(chatId int64, removeRequest bot.RemoveLinkRequest) (b
 	if err != nil {
 		return bot.LinkResponse{}, err
 	}
-	req, err := http.NewRequest(http.MethodDelete, scrapperUrl+"/links", bytes.NewBuffer(data))
+	req, err := http.NewRequest(http.MethodDelete, c.Config.ScrapperServerAddress+"/links", bytes.NewBuffer(data))
 	if err != nil {
 		return bot.LinkResponse{}, err
 	}

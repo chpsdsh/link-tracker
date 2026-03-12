@@ -13,10 +13,10 @@ import (
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/joho/godotenv"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/bot"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/bot/botclient"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/bot/botserver"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/bot/config"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/bot/telegram"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/logger"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/bot/handler"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/bot/statestorage"
@@ -50,7 +50,7 @@ func main() {
 	}
 	api.Debug = true
 
-	telegramBot := bot.TelegramBot{Bot: api, BaseLogger: baseLogger}
+	telegramBot := telegram.TelegramBot{Bot: api, BaseLogger: baseLogger}
 
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
@@ -62,7 +62,7 @@ func main() {
 	telegramHandler := handler.TelegramHandler{MsgSender: telegramBot,
 		Session:    statestorage.NewStateStorage(),
 		BaseLogger: baseLogger,
-		Client:     botclient.Client{Client: client}}
+		Client:     botclient.Client{Client: client, Config: conf}}
 
 	telegramBot.Handler = telegramHandler
 

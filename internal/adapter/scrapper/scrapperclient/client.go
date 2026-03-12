@@ -3,6 +3,7 @@ package scrapperclient
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 
@@ -12,13 +13,15 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/shared"
 )
 
+var JsonUnmarshallingError = errors.New("json unmarshalling error")
+
 const (
-	botPostAddress      = "http://localhost:8080/updates"
+	botPostEndpoint     = "/updates"
 	contentTypeKey      = "Content-Type"
 	typeApplicationJSON = "application/json"
 	applicationType     = "application/vnd.github.v3+json"
 	version             = "2022-11-28"
-	stackOverflowUrl    = "?site=stackoverflow&key="
+	stackOverflowKey    = "&key="
 )
 
 type Client struct {
@@ -46,16 +49,15 @@ func (c Client) DoGithubRequest(url string) (scrapper.GitHubUpdate, error) {
 	if err != nil {
 		return scrapper.GitHubUpdate{}, err
 	}
-
 	gitUpdate := scrapper.GitHubUpdate{}
 	if err := json.Unmarshal(data, &gitUpdate); err != nil {
-		return scrapper.GitHubUpdate{}, err
+		return scrapper.GitHubUpdate{}, errors.Join(err, JsonUnmarshallingError)
 	}
 	return gitUpdate, nil
 }
 
 func (c Client) DoStackOverflowRequest(url string) (scrapper.StackOverflowUpdate, error) {
-	req, err := http.NewRequest(http.MethodGet, url+stackOverflowUrl+c.Config.StackoverflowToken, nil)
+	req, err := http.NewRequest(http.MethodGet, url+stackOverflowKey+c.Config.StackoverflowToken, nil)
 	if err != nil {
 		return scrapper.StackOverflowUpdate{}, err
 	}
@@ -67,14 +69,16 @@ func (c Client) DoStackOverflowRequest(url string) (scrapper.StackOverflowUpdate
 	defer func() { _ = resp.Body.Close() }()
 
 	data, err := io.ReadAll(resp.Body)
+
 	if err != nil {
 		return scrapper.StackOverflowUpdate{}, err
 	}
 
 	stackOverflowUpdate := scrapper.StackOverflowUpdate{}
 	if err := json.Unmarshal(data, &stackOverflowUpdate); err != nil {
-		return scrapper.StackOverflowUpdate{}, err
+		return scrapper.StackOverflowUpdate{}, errors.Join(err, JsonUnmarshallingError)
 	}
+
 	return stackOverflowUpdate, nil
 }
 
@@ -84,7 +88,7 @@ func (c Client) SendLinkUpdate(update shared.LinkUpdate) error {
 		return err
 	}
 
-	req, err := http.NewRequest(http.MethodPost, botPostAddress, bytes.NewReader(data))
+	req, err := http.NewRequest(http.MethodPost, c.Config.BotServerAddr+botPostEndpoint, bytes.NewReader(data))
 	if err != nil {
 		return err
 	}

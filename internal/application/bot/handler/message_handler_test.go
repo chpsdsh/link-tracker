@@ -782,21 +782,21 @@ func TestTelegramHandlerHandleLinkUpdate(t *testing.T) {
 	}
 
 	update := shared.LinkUpdate{
-		Description: "updated",
+		Description: "Ссылка обновлена",
 		Url:         "https://github.com/golang/go",
 		TgChatIds:   []int64{1, 2, 3},
 	}
 
 	mockSender.EXPECT().
-		SendMessage(int64(1), "updated 'https://github.com/golang/go").
+		SendMessage(int64(1), "Ссылка обновлена https://github.com/golang/go").
 		Return(nil)
 
 	mockSender.EXPECT().
-		SendMessage(int64(2), "updated 'https://github.com/golang/go").
+		SendMessage(int64(2), "Ссылка обновлена https://github.com/golang/go").
 		Return(nil)
 
 	mockSender.EXPECT().
-		SendMessage(int64(3), "updated 'https://github.com/golang/go").
+		SendMessage(int64(3), "Ссылка обновлена https://github.com/golang/go").
 		Return(nil)
 
 	h.HandleLinkUpdate(update)

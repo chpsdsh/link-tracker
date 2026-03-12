@@ -1,3 +1,4 @@
+//go:generate mockgen -source server.go -destination=../mocks/server_mocks.go -package=mocks
 package scrapperserver
 
 import (
@@ -26,9 +27,17 @@ const (
 	internalError                   = "internal_error"
 )
 
+type ScrapperHandler interface {
+	AddChatId(chatId int64) error
+	DeleteChat(chatId int64) error
+	GetLinks(chatId int64) ([]shared.LinkInfo, error)
+	AddLink(chatId int64, linkRequest shared.AddLinkRequest) error
+	DeleteLink(chatId int64, link string) (shared.LinkInfo, error)
+}
+
 type ScrapperServer struct {
 	BaseLogger *slog.Logger
-	Handler    handler.LinksHandler
+	Handler    ScrapperHandler
 }
 
 func (s ScrapperServer) DeleteLinks(w http.ResponseWriter, r *http.Request, params DeleteLinksParams) {
@@ -42,7 +51,9 @@ func (s ScrapperServer) DeleteLinks(w http.ResponseWriter, r *http.Request, para
 
 	removeRequest := RemoveLinkRequest{}
 	if err = json.Unmarshal(body, &removeRequest); err != nil {
-
+		s.sendApiErrorResponse(w, errorMarshallingJson, err, http.StatusBadRequest)
+		s.BaseLogger.Error(errorMarshallingJson, slog.String("error", err.Error()))
+		return
 	}
 
 	link, deleteLinkErr := s.Handler.DeleteLink(params.TgChatId, *removeRequest.Link)

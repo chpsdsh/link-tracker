@@ -209,7 +209,7 @@ func (h TelegramHandler) handleUntrack(update tgbotapi.Update) string {
 
 func (h TelegramHandler) HandleLinkUpdate(linkUpdate shared.LinkUpdate) {
 	for _, id := range linkUpdate.TgChatIds {
-		if err := h.MsgSender.SendMessage(id, linkUpdate.Description+" '"+linkUpdate.Url); err != nil {
+		if err := h.MsgSender.SendMessage(id, linkUpdate.Description+" "+linkUpdate.Url); err != nil {
 			h.BaseLogger.Error("error while sending message", slog.String("error", err.Error()))
 		}
 	}

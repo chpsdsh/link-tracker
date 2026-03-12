@@ -1,3 +1,4 @@
+//go:generate mockgen -source server.go -destination=../mocks/server_mocks.go -package=mocks
 package botserver
 
 import (
@@ -6,7 +7,6 @@ import (
 	"log/slog"
 	"net/http"
 
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/bot/handler"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/shared"
 )
 
@@ -16,9 +16,13 @@ const (
 	badRequestCode          = "BAD_REQUEST"
 )
 
+type TelegramBotHandler interface {
+	HandleLinkUpdate(linkUpdate shared.LinkUpdate)
+}
+
 type UpdatesServer struct {
 	BaseLogger *slog.Logger
-	Handler    handler.TelegramHandler
+	Handler    TelegramBotHandler
 }
 
 func (u *UpdatesServer) PostUpdates(w http.ResponseWriter, r *http.Request) {

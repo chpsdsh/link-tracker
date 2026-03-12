@@ -1,4 +1,5 @@
-package bot
+//go:generate mockgen -source telegram_bot.go -destination=../mocks/telegram_bot_mocks.go -package=mocks
+package telegram
 
 import (
 	"context"
@@ -6,7 +7,6 @@ import (
 	"sync"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/bot/handler"
 )
 
 const (
@@ -20,9 +20,19 @@ const (
 	listCommand        = "Вывести список всех отслеживаемых ссылок"
 )
 
+type BotHandler interface {
+	HandleUpdate(update tgbotapi.Update)
+}
+
+type TelegramAPI interface {
+	GetUpdatesChan(config tgbotapi.UpdateConfig) tgbotapi.UpdatesChannel
+	Send(c tgbotapi.Chattable) (tgbotapi.Message, error)
+	Request(c tgbotapi.Chattable) (*tgbotapi.APIResponse, error)
+}
+
 type TelegramBot struct {
-	Bot        *tgbotapi.BotAPI
-	Handler    handler.TelegramHandler
+	Bot        TelegramAPI
+	Handler    BotHandler
 	BaseLogger *slog.Logger
 }
 

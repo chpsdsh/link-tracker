@@ -103,7 +103,7 @@ func (r LinksRequester) sendUpdate(updateTime time.Time, linkInfo shared.LinkInf
 		r.Repo.UpdateLinksTime(updateTime, linkInfo)
 
 		chatIds := r.Repo.GetChatIdsByLink(linkInfo.Link)
-		update := shared.LinkUpdate{Description: "link updated", TgChatIds: chatIds, Url: linkInfo.Link}
+		update := shared.LinkUpdate{Description: "Ссылка обновлена", TgChatIds: chatIds, Url: linkInfo.Link}
 
 		err := r.Client.SendLinkUpdate(update)
 		if err != nil {
@@ -127,7 +127,7 @@ func (r LinksRequester) HandleStackOverflowLinks() {
 			continue
 		}
 
-		updateTime := time.Unix(stackUpdate.LastActivityDate, 0).UTC()
+		updateTime := time.Unix(stackUpdate.Items[0].LastActivityDate, 0).UTC()
 
 		r.sendUpdate(updateTime, l)
 	}

@@ -238,7 +238,7 @@ func TestLinksRequesterSendUpdate(t *testing.T) {
 
 				mockClient.EXPECT().
 					SendLinkUpdate(shared.LinkUpdate{
-						Description: "link updated",
+						Description: "Ссылка обновлена",
 						TgChatIds:   tt.chatIDs,
 						Url:         tt.linkInfo.Link,
 					}).
@@ -290,7 +290,7 @@ func TestLinksRequesterHandleGithubLinks(t *testing.T) {
 
 				mockClient.EXPECT().
 					SendLinkUpdate(shared.LinkUpdate{
-						Description: "link updated",
+						Description: "Ссылка обновлена",
 						TgChatIds:   []int64{1, 2},
 						Url:         "https://github.com/golang/go",
 					}).
@@ -375,7 +375,15 @@ func TestLinksRequesterHandleStackOverflowLinks(t *testing.T) {
 
 				mockClient.EXPECT().
 					DoStackOverflowRequest("https://api.stackexchange.com/2.3/questions/11227809?site=stackoverflow").
-					Return(scrapper.StackOverflowUpdate{LastActivityDate: newTime.Unix()}, nil)
+					Return(scrapper.StackOverflowUpdate{
+						Items: []struct {
+							LastActivityDate int64 `json:"last_activity_date"`
+						}{
+							{
+								LastActivityDate: newTime.Unix(),
+							},
+						},
+					}, nil)
 
 				mockRepo.EXPECT().
 					UpdateLinksTime(newTime, linkInfo)
@@ -386,7 +394,7 @@ func TestLinksRequesterHandleStackOverflowLinks(t *testing.T) {
 
 				mockClient.EXPECT().
 					SendLinkUpdate(shared.LinkUpdate{
-						Description: "link updated",
+						Description: "Ссылка обновлена",
 						TgChatIds:   []int64{100},
 						Url:         "https://stackoverflow.com/questions/11227809/test",
 					}).
