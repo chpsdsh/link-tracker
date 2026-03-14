@@ -12,14 +12,14 @@ func TestStateStorageGetSetState(t *testing.T) {
 		{
 			name:     "set waiting track state",
 			chatID:   1,
-			state:    WaitingForTrackUrlState,
-			expected: WaitingForTrackUrlState,
+			state:    WaitingForTrackURLState,
+			expected: WaitingForTrackURLState,
 		},
 		{
 			name:     "set waiting untrack state",
 			chatID:   2,
-			state:    WaitingForUnTrackUrlState,
-			expected: WaitingForUnTrackUrlState,
+			state:    WaitingForUntrackURLState,
+			expected: WaitingForUntrackURLState,
 		},
 		{
 			name:     "set initial state",
@@ -64,9 +64,9 @@ func TestStateStorageSetLinkAndGetLink(t *testing.T) {
 			name:     "set link and waiting track state",
 			chatID:   2,
 			link:     "https://stackoverflow.com/questions/123",
-			state:    WaitingForTrackUrlState,
+			state:    WaitingForTrackURLState,
 			expLink:  "https://stackoverflow.com/questions/123",
-			expState: WaitingForTrackUrlState,
+			expState: WaitingForTrackURLState,
 		},
 	}
 
@@ -109,8 +109,8 @@ func TestStateStorageClearLinkAndUpdateState(t *testing.T) {
 			name:         "clear link and set waiting state",
 			chatID:       2,
 			initialLink:  "https://stackoverflow.com/questions/123",
-			initialState: WaitingForTrackUrlState,
-			newState:     WaitingForUnTrackUrlState,
+			initialState: WaitingForTrackURLState,
+			newState:     WaitingForUntrackURLState,
 		},
 	}
 

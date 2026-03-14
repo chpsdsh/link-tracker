@@ -34,18 +34,18 @@ func (m *MockScrapperHandler) EXPECT() *MockScrapperHandlerMockRecorder {
 	return m.recorder
 }
 
-// AddChatId mocks base method.
-func (m *MockScrapperHandler) AddChatId(chatId int64) error {
+// AddChatID mocks base method.
+func (m *MockScrapperHandler) AddChatID(chatId int64) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AddChatId", chatId)
+	ret := m.ctrl.Call(m, "AddChatID", chatId)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// AddChatId indicates an expected call of AddChatId.
-func (mr *MockScrapperHandlerMockRecorder) AddChatId(chatId interface{}) *gomock.Call {
+// AddChatID indicates an expected call of AddChatID.
+func (mr *MockScrapperHandlerMockRecorder) AddChatID(chatId interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddChatId", reflect.TypeOf((*MockScrapperHandler)(nil).AddChatId), chatId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddChatID", reflect.TypeOf((*MockScrapperHandler)(nil).AddChatID), chatId)
 }
 
 // AddLink mocks base method.

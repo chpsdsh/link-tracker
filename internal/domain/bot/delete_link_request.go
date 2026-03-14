@@ -1,5 +1,5 @@
 package bot
 
 type RemoveLinkRequest struct {
-	Link string
+	Link string `json:"link,omitempty"`
 }

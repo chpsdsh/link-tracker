@@ -53,22 +53,22 @@ func TestParseGithubLink(t *testing.T) {
 		{
 			name:        "not github host",
 			link:        "https://gitlab.com/golang/go",
-			expectedErr: NotGitHubUrlError,
+			expectedErr: ErrNotGitHubURL,
 		},
 		{
 			name:        "invalid github path",
 			link:        "https://github.com/golang",
-			expectedErr: InvalidGitHubUrlError,
+			expectedErr: ErrInvalidGitHubURL,
 		},
 		{
 			name:        "unsupported github url",
 			link:        "https://github.com/golang/go/wiki/home",
-			expectedErr: UnsupportedGithubUrlError,
+			expectedErr: ErrUnsupportedGithubURL,
 		},
 		{
 			name:        "not url",
 			link:        "://bad-url",
-			expectedErr: NotUrlError,
+			expectedErr: ErrNotURL,
 		},
 	}
 
@@ -120,22 +120,22 @@ func TestParseStackOverflowLink(t *testing.T) {
 		{
 			name:        "not stackoverflow host",
 			link:        "https://github.com/questions/11227809",
-			expectedErr: NotStackOverflowError,
+			expectedErr: ErrNotStackOverflow,
 		},
 		{
 			name:        "invalid path",
 			link:        "https://stackoverflow.com/answers/11227809",
-			expectedErr: InvalidStackOverflowUrlError,
+			expectedErr: ErrInvalidStackOverflowURL,
 		},
 		{
 			name:        "too short path",
 			link:        "https://stackoverflow.com/questions",
-			expectedErr: InvalidStackOverflowUrlError,
+			expectedErr: ErrInvalidStackOverflowURL,
 		},
 		{
 			name:        "not url",
 			link:        "://bad-url",
-			expectedErr: NotUrlError,
+			expectedErr: ErrNotURL,
 		},
 	}
 
@@ -233,14 +233,14 @@ func TestLinksRequesterSendUpdate(t *testing.T) {
 					UpdateLinksTime(tt.updateTime, tt.linkInfo)
 
 				mockRepo.EXPECT().
-					GetChatIdsByLink(tt.linkInfo.Link).
+					GetChatIDsByLink(tt.linkInfo.Link).
 					Return(tt.chatIDs)
 
 				mockClient.EXPECT().
 					SendLinkUpdate(shared.LinkUpdate{
 						Description: "Ссылка обновлена",
-						TgChatIds:   tt.chatIDs,
-						Url:         tt.linkInfo.Link,
+						TgChatIDs:   tt.chatIDs,
+						URL:         tt.linkInfo.Link,
 					}).
 					Return(tt.sendUpdateError)
 			}
@@ -264,7 +264,7 @@ func TestLinksRequesterHandleGithubLinks(t *testing.T) {
 			links: []shared.LinkInfo{
 				{Link: "https://stackoverflow.com/questions/11227809", LastUpdateTime: oldTime},
 			},
-			setup: func(mockClient *mocks.MockNetworkClient, mockRepo *mocks.MockRepository) {},
+			setup: func(_ *mocks.MockNetworkClient, _ *mocks.MockRepository) {},
 		},
 		{
 			name: "github link updated successfully",
@@ -285,14 +285,14 @@ func TestLinksRequesterHandleGithubLinks(t *testing.T) {
 					UpdateLinksTime(newTime, linkInfo)
 
 				mockRepo.EXPECT().
-					GetChatIdsByLink("https://github.com/golang/go").
+					GetChatIDsByLink("https://github.com/golang/go").
 					Return([]int64{1, 2})
 
 				mockClient.EXPECT().
 					SendLinkUpdate(shared.LinkUpdate{
 						Description: "Ссылка обновлена",
-						TgChatIds:   []int64{1, 2},
-						Url:         "https://github.com/golang/go",
+						TgChatIDs:   []int64{1, 2},
+						URL:         "https://github.com/golang/go",
 					}).
 					Return(nil)
 			},
@@ -302,7 +302,7 @@ func TestLinksRequesterHandleGithubLinks(t *testing.T) {
 			links: []shared.LinkInfo{
 				{Link: "https://github.com/golang/go", LastUpdateTime: oldTime},
 			},
-			setup: func(mockClient *mocks.MockNetworkClient, mockRepo *mocks.MockRepository) {
+			setup: func(mockClient *mocks.MockNetworkClient, _ *mocks.MockRepository) {
 				mockClient.EXPECT().
 					DoGithubRequest("https://api.github.com/repos/golang/go").
 					Return(scrapper.GitHubUpdate{}, errors.New("github error"))
@@ -313,7 +313,7 @@ func TestLinksRequesterHandleGithubLinks(t *testing.T) {
 			links: []shared.LinkInfo{
 				{Link: "https://github.com/golang/go", LastUpdateTime: oldTime},
 			},
-			setup: func(mockClient *mocks.MockNetworkClient, mockRepo *mocks.MockRepository) {
+			setup: func(mockClient *mocks.MockNetworkClient, _ *mocks.MockRepository) {
 				mockClient.EXPECT().
 					DoGithubRequest("https://api.github.com/repos/golang/go").
 					Return(scrapper.GitHubUpdate{UpdatedAt: "bad-time"}, nil)
@@ -360,7 +360,7 @@ func TestLinksRequesterHandleStackOverflowLinks(t *testing.T) {
 			links: []shared.LinkInfo{
 				{Link: "https://github.com/golang/go", LastUpdateTime: oldTime},
 			},
-			setup: func(mockClient *mocks.MockNetworkClient, mockRepo *mocks.MockRepository) {},
+			setup: func(_ *mocks.MockNetworkClient, _ *mocks.MockRepository) {},
 		},
 		{
 			name: "stackoverflow link updated successfully",
@@ -389,14 +389,14 @@ func TestLinksRequesterHandleStackOverflowLinks(t *testing.T) {
 					UpdateLinksTime(newTime, linkInfo)
 
 				mockRepo.EXPECT().
-					GetChatIdsByLink("https://stackoverflow.com/questions/11227809/test").
+					GetChatIDsByLink("https://stackoverflow.com/questions/11227809/test").
 					Return([]int64{100})
 
 				mockClient.EXPECT().
 					SendLinkUpdate(shared.LinkUpdate{
 						Description: "Ссылка обновлена",
-						TgChatIds:   []int64{100},
-						Url:         "https://stackoverflow.com/questions/11227809/test",
+						TgChatIDs:   []int64{100},
+						URL:         "https://stackoverflow.com/questions/11227809/test",
 					}).
 					Return(nil)
 			},
@@ -406,7 +406,7 @@ func TestLinksRequesterHandleStackOverflowLinks(t *testing.T) {
 			links: []shared.LinkInfo{
 				{Link: "https://stackoverflow.com/questions/11227809/test", LastUpdateTime: oldTime},
 			},
-			setup: func(mockClient *mocks.MockNetworkClient, mockRepo *mocks.MockRepository) {
+			setup: func(mockClient *mocks.MockNetworkClient, _ *mocks.MockRepository) {
 				mockClient.EXPECT().
 					DoStackOverflowRequest("https://api.stackexchange.com/2.3/questions/11227809?site=stackoverflow").
 					Return(scrapper.StackOverflowUpdate{}, errors.New("stackoverflow error"))

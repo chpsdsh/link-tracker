@@ -17,7 +17,7 @@ type GithubLink struct {
 	ID    string
 }
 
-func (g GithubLink) ConvertToUrl() string {
+func (g GithubLink) ConvertToURL() string {
 	var url string
 	switch g.Type {
 	case GithubRepo:

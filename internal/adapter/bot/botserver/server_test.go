@@ -34,8 +34,8 @@ func TestUpdatesServerPostUpdates(t *testing.T) {
 				m.EXPECT().
 					HandleLinkUpdate(shared.LinkUpdate{
 						Description: "link updated",
-						TgChatIds:   []int64{1, 2},
-						Url:         "https://github.com/golang/go",
+						TgChatIDs:   []int64{1, 2},
+						URL:         "https://github.com/golang/go",
 					})
 			},
 			expectedStatus: http.StatusOK,
@@ -46,14 +46,14 @@ func TestUpdatesServerPostUpdates(t *testing.T) {
 			body: `{
 				"description":
 			}`,
-			setupMock:      func(m *mocks.MockTelegramBotHandler) {},
+			setupMock:      func(_ *mocks.MockTelegramBotHandler) {},
 			expectedStatus: http.StatusBadRequest,
 			checkBody:      true,
 		},
 		{
 			name: "missing required pointer fields causes unmarshal success but panic is not handled here",
 			body: `{"description":"link updated"}`,
-			setupMock: func(m *mocks.MockTelegramBotHandler) {
+			setupMock: func(_ *mocks.MockTelegramBotHandler) {
 			},
 			expectedStatus: http.StatusOK,
 			checkBody:      false,
@@ -96,8 +96,8 @@ func TestUpdatesServerPostUpdates(t *testing.T) {
 					t.Fatalf("expected code %q, got %+v", badRequestCode, resp.Code)
 				}
 
-				if resp.Description == nil || *resp.Description != errorUnmarshallingJson {
-					t.Fatalf("expected description %q, got %+v", errorUnmarshallingJson, resp.Description)
+				if resp.Description == nil || *resp.Description != errorUnmarshallingJSON {
+					t.Fatalf("expected description %q, got %+v", errorUnmarshallingJSON, resp.Description)
 				}
 			}
 		})
@@ -107,7 +107,7 @@ func TestUpdatesServerPostUpdates(t *testing.T) {
 func TestSendApiErrorResponse(t *testing.T) {
 	rec := httptest.NewRecorder()
 
-	sendApiErrorResponse(rec, "bad body", io.EOF)
+	sendAPIErrorResponse(rec, "bad body", io.EOF)
 
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("expected status %d, got %d", http.StatusBadRequest, rec.Code)

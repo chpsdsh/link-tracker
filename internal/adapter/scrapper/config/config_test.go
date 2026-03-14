@@ -32,7 +32,7 @@ func TestParseConfig(t *testing.T) {
 			stackToken:    "stack_token",
 			botServerAddr: "http://localhost:8080",
 			expectedCfg:   Config{},
-			expectedErr:   NoTelegramTokenErr,
+			expectedErr:   ErrNoTelegramToken,
 		},
 		{
 			name:          "missing stackoverflow token",
@@ -40,7 +40,7 @@ func TestParseConfig(t *testing.T) {
 			stackToken:    "",
 			botServerAddr: "http://localhost:8080",
 			expectedCfg:   Config{},
-			expectedErr:   NoStackOverflowTokenErr,
+			expectedErr:   ErrNoStackOverflowToken,
 		},
 		{
 			name:          "missing bot server address",
@@ -48,14 +48,14 @@ func TestParseConfig(t *testing.T) {
 			stackToken:    "stack_token",
 			botServerAddr: "",
 			expectedCfg:   Config{},
-			expectedErr:   NoBotServerAddressErr,
+			expectedErr:   ErrNoBotServerAddress,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Setenv(githubApiKey, tt.githubToken)
-			t.Setenv(stackoverflowApiKey, tt.stackToken)
+			t.Setenv(githubAPIKey, tt.githubToken)
+			t.Setenv(stackoverflowAPIKey, tt.stackToken)
 			t.Setenv(botServerAddress, tt.botServerAddr)
 
 			cfg, err := ParseConfig()

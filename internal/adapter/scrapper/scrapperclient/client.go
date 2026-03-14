@@ -2,8 +2,10 @@ package scrapperclient
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 
@@ -13,7 +15,7 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/shared"
 )
 
-var JsonUnmarshallingError = errors.New("json unmarshalling error")
+var ErrUnmarshallingJSON = errors.New("json unmarshalling error")
 
 const (
 	botPostEndpoint     = "/updates"
@@ -30,9 +32,9 @@ type Client struct {
 }
 
 func (c Client) DoGithubRequest(url string) (scrapper.GitHubUpdate, error) {
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, url, nil)
 	if err != nil {
-		return scrapper.GitHubUpdate{}, err
+		return scrapper.GitHubUpdate{}, fmt.Errorf("error creating request: %w", err)
 	}
 
 	req.Header.Add("Accept", applicationType)
@@ -41,42 +43,42 @@ func (c Client) DoGithubRequest(url string) (scrapper.GitHubUpdate, error) {
 
 	resp, err := c.Client.Do(req)
 	if err != nil {
-		return scrapper.GitHubUpdate{}, err
+		return scrapper.GitHubUpdate{}, fmt.Errorf("error doing request: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return scrapper.GitHubUpdate{}, err
+		return scrapper.GitHubUpdate{}, fmt.Errorf("error reading response body: %w", err)
 	}
 	gitUpdate := scrapper.GitHubUpdate{}
-	if err := json.Unmarshal(data, &gitUpdate); err != nil {
-		return scrapper.GitHubUpdate{}, errors.Join(err, JsonUnmarshallingError)
+	if err = json.Unmarshal(data, &gitUpdate); err != nil {
+		return scrapper.GitHubUpdate{}, errors.Join(err, ErrUnmarshallingJSON)
 	}
 	return gitUpdate, nil
 }
 
 func (c Client) DoStackOverflowRequest(url string) (scrapper.StackOverflowUpdate, error) {
-	req, err := http.NewRequest(http.MethodGet, url+stackOverflowKey+c.Config.StackoverflowToken, nil)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, url+stackOverflowKey+c.Config.StackoverflowToken, nil)
 	if err != nil {
-		return scrapper.StackOverflowUpdate{}, err
+		return scrapper.StackOverflowUpdate{}, fmt.Errorf("error creating request: %w", err)
 	}
 
 	resp, err := c.Client.Do(req)
 	if err != nil {
-		return scrapper.StackOverflowUpdate{}, err
+		return scrapper.StackOverflowUpdate{}, fmt.Errorf("error doing request: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
 	data, err := io.ReadAll(resp.Body)
 
 	if err != nil {
-		return scrapper.StackOverflowUpdate{}, err
+		return scrapper.StackOverflowUpdate{}, fmt.Errorf("error reading response body: %w", err)
 	}
 
 	stackOverflowUpdate := scrapper.StackOverflowUpdate{}
-	if err := json.Unmarshal(data, &stackOverflowUpdate); err != nil {
-		return scrapper.StackOverflowUpdate{}, errors.Join(err, JsonUnmarshallingError)
+	if err = json.Unmarshal(data, &stackOverflowUpdate); err != nil {
+		return scrapper.StackOverflowUpdate{}, errors.Join(err, ErrUnmarshallingJSON)
 	}
 
 	return stackOverflowUpdate, nil
@@ -85,24 +87,24 @@ func (c Client) DoStackOverflowRequest(url string) (scrapper.StackOverflowUpdate
 func (c Client) SendLinkUpdate(update shared.LinkUpdate) error {
 	data, err := json.Marshal(update)
 	if err != nil {
-		return err
+		return fmt.Errorf("error marshalling JSON: %w", err)
 	}
 
-	req, err := http.NewRequest(http.MethodPost, c.Config.BotServerAddr+botPostEndpoint, bytes.NewReader(data))
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, c.Config.BotServerAddr+botPostEndpoint, bytes.NewReader(data))
 	if err != nil {
-		return err
+		return fmt.Errorf("error creating request: %w", err)
 	}
 	req.Header.Add(contentTypeKey, typeApplicationJSON)
 
 	resp, err := c.Client.Do(req)
 	if err != nil {
-		return err
+		return fmt.Errorf("error doing request: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 	switch resp.StatusCode {
 	case http.StatusOK:
 		return nil
 	default:
-		return scheduler.IncorrectRequestParametersError
+		return scheduler.ErrIncorrectRequestParameters
 	}
 }

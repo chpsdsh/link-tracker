@@ -11,11 +11,10 @@ type StackOverflowLink struct {
 	ID   string
 }
 
-func (s StackOverflowLink) ConvertToUrl() string {
+func (s StackOverflowLink) ConvertToURL() string {
 	var url string
 
-	switch s.Type {
-	case StackOverflowQuestion:
+	if s.Type == StackOverflowQuestion {
 		url = fmt.Sprintf(
 			"https://api.stackexchange.com/2.3/questions/%s?site=stackoverflow",
 			s.ID,

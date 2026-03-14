@@ -58,7 +58,7 @@ func TestLinksHandlerAddChatId(t *testing.T) {
 					AddChat(tt.chatID)
 			}
 
-			err := h.AddChatId(tt.chatID)
+			err := h.AddChatID(tt.chatID)
 
 			if !errors.Is(err, tt.expectedErr) {
 				t.Fatalf("expected error %v, got %v", tt.expectedErr, err)
@@ -252,46 +252,11 @@ func TestLinksHandlerAddLink(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctrl := gomock.NewController(t)
-			defer ctrl.Finish()
+			h, mockRepo := newLinksHandlerTest(t)
 
-			mockRepo := mocks.NewMockRepository(ctrl)
-
-			h := LinksHandler{
-				Repo:       mockRepo,
-				BaseLogger: slog.New(slog.NewTextHandler(io.Discard, nil)),
-			}
-
-			mockRepo.EXPECT().
-				ChatExists(tt.chatID).
-				Return(tt.chatExists)
-
-			if tt.chatExists && tt.expectedErr != ErrIncorrectRequestParameters {
-				mockRepo.EXPECT().
-					GetLinks(tt.chatID).
-					Return(tt.existingLinks)
-			}
-
-			if tt.expectAdd {
-				mockRepo.EXPECT().
-					AddLink(tt.chatID, gomock.Any()).
-					Do(func(chatID int64, link shared.LinkInfo) {
-						if link.Link != tt.request.Link {
-							t.Fatalf("expected link %s, got %s", tt.request.Link, link.Link)
-						}
-						if len(link.Tags) != len(tt.request.Tags) {
-							t.Fatalf("expected tags %v, got %v", tt.request.Tags, link.Tags)
-						}
-						for i := range link.Tags {
-							if link.Tags[i] != tt.request.Tags[i] {
-								t.Fatalf("expected tags %v, got %v", tt.request.Tags, link.Tags)
-							}
-						}
-						if time.Since(link.LastUpdateTime) > time.Second {
-							t.Fatalf("expected recent LastUpdateTime, got %v", link.LastUpdateTime)
-						}
-					})
-			}
+			expectChatExists(mockRepo, tt.chatID, tt.chatExists)
+			expectGetLinksIfNeeded(mockRepo, tt.chatID, tt.chatExists, tt.expectedErr, tt.existingLinks)
+			expectAddLinkIfNeeded(t, mockRepo, tt.chatID, tt.request, tt.expectAdd)
 
 			err := h.AddLink(tt.chatID, tt.request)
 
@@ -299,6 +264,86 @@ func TestLinksHandlerAddLink(t *testing.T) {
 				t.Fatalf("expected error %v, got %v", tt.expectedErr, err)
 			}
 		})
+	}
+}
+
+func newLinksHandlerTest(t *testing.T) (LinksHandler, *mocks.MockRepository) {
+	t.Helper()
+
+	ctrl := gomock.NewController(t)
+	t.Cleanup(ctrl.Finish)
+
+	mockRepo := mocks.NewMockRepository(ctrl)
+
+	h := LinksHandler{
+		Repo:       mockRepo,
+		BaseLogger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+	}
+
+	return h, mockRepo
+}
+
+func expectChatExists(mockRepo *mocks.MockRepository, chatID int64, chatExists bool) {
+	mockRepo.EXPECT().
+		ChatExists(chatID).
+		Return(chatExists)
+}
+
+func expectGetLinksIfNeeded(
+	mockRepo *mocks.MockRepository,
+	chatID int64,
+	chatExists bool,
+	expectedErr error,
+	existingLinks []shared.LinkInfo,
+) {
+	if !chatExists || errors.Is(expectedErr, ErrIncorrectRequestParameters) {
+		return
+	}
+
+	mockRepo.EXPECT().
+		GetLinks(chatID).
+		Return(existingLinks)
+}
+
+func expectAddLinkIfNeeded(
+	t *testing.T,
+	mockRepo *mocks.MockRepository,
+	chatID int64,
+	request shared.AddLinkRequest,
+	expectAdd bool,
+) {
+	t.Helper()
+
+	if !expectAdd {
+		return
+	}
+
+	mockRepo.EXPECT().
+		AddLink(chatID, gomock.Any()).
+		DoAndReturn(func(_ int64, link shared.LinkInfo) {
+			assertAddedLink(t, link, request)
+		})
+}
+
+func assertAddedLink(t *testing.T, got shared.LinkInfo, expected shared.AddLinkRequest) {
+	t.Helper()
+
+	if got.Link != expected.Link {
+		t.Fatalf("expected link %s, got %s", expected.Link, got.Link)
+	}
+
+	if len(got.Tags) != len(expected.Tags) {
+		t.Fatalf("expected tags %v, got %v", expected.Tags, got.Tags)
+	}
+
+	for i := range got.Tags {
+		if got.Tags[i] != expected.Tags[i] {
+			t.Fatalf("expected tags %v, got %v", expected.Tags, got.Tags)
+		}
+	}
+
+	if time.Since(got.LastUpdateTime) > time.Second {
+		t.Fatalf("expected recent LastUpdateTime, got %v", got.LastUpdateTime)
 	}
 }
 

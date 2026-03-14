@@ -36,68 +36,68 @@ func (m *MockRepository) EXPECT() *MockRepositoryMockRecorder {
 }
 
 // AddChat mocks base method.
-func (m *MockRepository) AddChat(chatId int64) {
+func (m *MockRepository) AddChat(chatID int64) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "AddChat", chatId)
+	m.ctrl.Call(m, "AddChat", chatID)
 }
 
 // AddChat indicates an expected call of AddChat.
-func (mr *MockRepositoryMockRecorder) AddChat(chatId interface{}) *gomock.Call {
+func (mr *MockRepositoryMockRecorder) AddChat(chatID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddChat", reflect.TypeOf((*MockRepository)(nil).AddChat), chatId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddChat", reflect.TypeOf((*MockRepository)(nil).AddChat), chatID)
 }
 
 // AddLink mocks base method.
-func (m *MockRepository) AddLink(chatId int64, link shared.LinkInfo) {
+func (m *MockRepository) AddLink(chatID int64, link shared.LinkInfo) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "AddLink", chatId, link)
+	m.ctrl.Call(m, "AddLink", chatID, link)
 }
 
 // AddLink indicates an expected call of AddLink.
-func (mr *MockRepositoryMockRecorder) AddLink(chatId, link interface{}) *gomock.Call {
+func (mr *MockRepositoryMockRecorder) AddLink(chatID, link interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddLink", reflect.TypeOf((*MockRepository)(nil).AddLink), chatId, link)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddLink", reflect.TypeOf((*MockRepository)(nil).AddLink), chatID, link)
 }
 
 // ChatExists mocks base method.
-func (m *MockRepository) ChatExists(chatId int64) bool {
+func (m *MockRepository) ChatExists(chatID int64) bool {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ChatExists", chatId)
+	ret := m.ctrl.Call(m, "ChatExists", chatID)
 	ret0, _ := ret[0].(bool)
 	return ret0
 }
 
 // ChatExists indicates an expected call of ChatExists.
-func (mr *MockRepositoryMockRecorder) ChatExists(chatId interface{}) *gomock.Call {
+func (mr *MockRepositoryMockRecorder) ChatExists(chatID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChatExists", reflect.TypeOf((*MockRepository)(nil).ChatExists), chatId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChatExists", reflect.TypeOf((*MockRepository)(nil).ChatExists), chatID)
 }
 
 // DeleteChat mocks base method.
-func (m *MockRepository) DeleteChat(chatId int64) {
+func (m *MockRepository) DeleteChat(chatID int64) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "DeleteChat", chatId)
+	m.ctrl.Call(m, "DeleteChat", chatID)
 }
 
 // DeleteChat indicates an expected call of DeleteChat.
-func (mr *MockRepositoryMockRecorder) DeleteChat(chatId interface{}) *gomock.Call {
+func (mr *MockRepositoryMockRecorder) DeleteChat(chatID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteChat", reflect.TypeOf((*MockRepository)(nil).DeleteChat), chatId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteChat", reflect.TypeOf((*MockRepository)(nil).DeleteChat), chatID)
 }
 
 // DeleteLink mocks base method.
-func (m *MockRepository) DeleteLink(chatId int64, link string) (shared.LinkInfo, bool) {
+func (m *MockRepository) DeleteLink(chatID int64, link string) (shared.LinkInfo, bool) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteLink", chatId, link)
+	ret := m.ctrl.Call(m, "DeleteLink", chatID, link)
 	ret0, _ := ret[0].(shared.LinkInfo)
 	ret1, _ := ret[1].(bool)
 	return ret0, ret1
 }
 
 // DeleteLink indicates an expected call of DeleteLink.
-func (mr *MockRepositoryMockRecorder) DeleteLink(chatId, link interface{}) *gomock.Call {
+func (mr *MockRepositoryMockRecorder) DeleteLink(chatID, link interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteLink", reflect.TypeOf((*MockRepository)(nil).DeleteLink), chatId, link)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteLink", reflect.TypeOf((*MockRepository)(nil).DeleteLink), chatID, link)
 }
 
 // GetAllLinks mocks base method.
@@ -114,32 +114,32 @@ func (mr *MockRepositoryMockRecorder) GetAllLinks() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAllLinks", reflect.TypeOf((*MockRepository)(nil).GetAllLinks))
 }
 
-// GetChatIdsByLink mocks base method.
-func (m *MockRepository) GetChatIdsByLink(link string) []int64 {
+// GetChatIDsByLink mocks base method.
+func (m *MockRepository) GetChatIDsByLink(link string) []int64 {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetChatIdsByLink", link)
+	ret := m.ctrl.Call(m, "GetChatIDsByLink", link)
 	ret0, _ := ret[0].([]int64)
 	return ret0
 }
 
-// GetChatIdsByLink indicates an expected call of GetChatIdsByLink.
-func (mr *MockRepositoryMockRecorder) GetChatIdsByLink(link interface{}) *gomock.Call {
+// GetChatIDsByLink indicates an expected call of GetChatIDsByLink.
+func (mr *MockRepositoryMockRecorder) GetChatIDsByLink(link interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetChatIdsByLink", reflect.TypeOf((*MockRepository)(nil).GetChatIdsByLink), link)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetChatIDsByLink", reflect.TypeOf((*MockRepository)(nil).GetChatIDsByLink), link)
 }
 
 // GetLinks mocks base method.
-func (m *MockRepository) GetLinks(chatId int64) []shared.LinkInfo {
+func (m *MockRepository) GetLinks(chatID int64) []shared.LinkInfo {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetLinks", chatId)
+	ret := m.ctrl.Call(m, "GetLinks", chatID)
 	ret0, _ := ret[0].([]shared.LinkInfo)
 	return ret0
 }
 
 // GetLinks indicates an expected call of GetLinks.
-func (mr *MockRepositoryMockRecorder) GetLinks(chatId interface{}) *gomock.Call {
+func (mr *MockRepositoryMockRecorder) GetLinks(chatID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLinks", reflect.TypeOf((*MockRepository)(nil).GetLinks), chatId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLinks", reflect.TypeOf((*MockRepository)(nil).GetLinks), chatID)
 }
 
 // UpdateLinksTime mocks base method.

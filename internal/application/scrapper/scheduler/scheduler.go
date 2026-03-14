@@ -15,22 +15,26 @@ import (
 )
 
 var (
-	NotGitHubUrlError               = errors.New("not github")
-	InvalidGitHubUrlError           = errors.New("invalid github url")
-	IncorrectRequestParametersError = errors.New("incorrect request parameters")
-	NotStackOverflowError           = errors.New("not StackOverflow")
-	InvalidStackOverflowUrlError    = errors.New("invalid StackOverflow url")
-	UnsupportedGithubUrlError       = errors.New("unsupported github url")
-	NotUrlError                     = errors.New("not url")
+	ErrNotGitHubURL               = errors.New("not github")
+	ErrInvalidGitHubURL           = errors.New("invalid github url")
+	ErrIncorrectRequestParameters = errors.New("incorrect request parameters")
+	ErrNotStackOverflow           = errors.New("not StackOverflow")
+	ErrInvalidStackOverflowURL    = errors.New("invalid StackOverflow url")
+	ErrUnsupportedGithubURL       = errors.New("unsupported github url")
+	ErrNotURL                     = errors.New("not url")
 )
 
 const (
-	linkTrackInterval      = time.Second * 10
-	gitHubHost             = "github.com"
-	gitHubIssues           = "issues"
-	gitHubPullRequests     = "pull"
-	stackOverflowHost      = "stackoverflow.com"
-	stackOverflowQuestions = "questions"
+	linkTrackInterval         = time.Second * 10
+	gitHubHost                = "github.com"
+	gitHubIssues              = "issues"
+	gitHubPullRequests        = "pull"
+	stackOverflowHost         = "stackoverflow.com"
+	stackOverflowQuestions    = "questions"
+	minGithubURLParts         = 2
+	gitHubIssueURLParts       = 4
+	gitHubPullRequestURLParts = 4
+	minStackOverflowURLParts  = 2
 )
 
 type NetworkClient interface {
@@ -82,7 +86,7 @@ func (r LinksRequester) HandleGithubLinks() {
 			continue
 		}
 
-		gitUpdate, err := r.Client.DoGithubRequest(link.ConvertToUrl())
+		gitUpdate, err := r.Client.DoGithubRequest(link.ConvertToURL())
 		if err != nil {
 			r.BaseLogger.Error("error during github quarry", slog.String("error", err.Error()))
 			continue
@@ -98,22 +102,6 @@ func (r LinksRequester) HandleGithubLinks() {
 	}
 }
 
-func (r LinksRequester) sendUpdate(updateTime time.Time, linkInfo shared.LinkInfo) {
-	if updateTime.After(linkInfo.LastUpdateTime) {
-		r.Repo.UpdateLinksTime(updateTime, linkInfo)
-
-		chatIds := r.Repo.GetChatIdsByLink(linkInfo.Link)
-		update := shared.LinkUpdate{Description: "Ссылка обновлена", TgChatIds: chatIds, Url: linkInfo.Link}
-
-		err := r.Client.SendLinkUpdate(update)
-		if err != nil {
-			r.BaseLogger.Error("error sending link update", slog.String("error", err.Error()))
-			return
-		}
-		r.BaseLogger.Info("link is sent to chats", slog.String("link", linkInfo.Link), slog.Any("chats", chatIds))
-	}
-}
-
 func (r LinksRequester) HandleStackOverflowLinks() {
 	links := r.Repo.GetAllLinks()
 	for _, l := range links {
@@ -121,7 +109,7 @@ func (r LinksRequester) HandleStackOverflowLinks() {
 		if err != nil {
 			continue
 		}
-		stackUpdate, err := r.Client.DoStackOverflowRequest(link.ConvertToUrl())
+		stackUpdate, err := r.Client.DoStackOverflowRequest(link.ConvertToURL())
 		if err != nil {
 			r.BaseLogger.Error("error during stack overflow", slog.String("error", err.Error()))
 			continue
@@ -133,40 +121,56 @@ func (r LinksRequester) HandleStackOverflowLinks() {
 	}
 }
 
+func (r LinksRequester) sendUpdate(updateTime time.Time, linkInfo shared.LinkInfo) {
+	if updateTime.After(linkInfo.LastUpdateTime) {
+		r.Repo.UpdateLinksTime(updateTime, linkInfo)
+
+		chatIDs := r.Repo.GetChatIDsByLink(linkInfo.Link)
+		update := shared.LinkUpdate{Description: "Ссылка обновлена", TgChatIDs: chatIDs, URL: linkInfo.Link}
+
+		err := r.Client.SendLinkUpdate(update)
+		if err != nil {
+			r.BaseLogger.Error("error sending link update", slog.String("error", err.Error()))
+			return
+		}
+		r.BaseLogger.Info("link is sent to chats", slog.String("link", linkInfo.Link), slog.Any("chats", chatIDs))
+	}
+}
+
 func ParseGithubLink(link string) (scrapper.GithubLink, error) {
 	u, err := url.Parse(link)
 	if err != nil {
-		return scrapper.GithubLink{}, errors.Join(err, NotUrlError)
+		return scrapper.GithubLink{}, errors.Join(err, ErrNotURL)
 	}
 
 	if u.Host != gitHubHost {
-		return scrapper.GithubLink{}, NotGitHubUrlError
+		return scrapper.GithubLink{}, ErrNotGitHubURL
 	}
 
 	parts := strings.Split(strings.Trim(u.Path, "/"), "/")
 
-	if len(parts) < 2 {
-		return scrapper.GithubLink{}, InvalidGitHubUrlError
+	if len(parts) < minGithubURLParts {
+		return scrapper.GithubLink{}, ErrInvalidGitHubURL
 	}
 
 	owner := parts[0]
 	repo := parts[1]
 
 	switch {
-	case len(parts) == 2:
+	case len(parts) == minGithubURLParts:
 		return scrapper.GithubLink{
 			Type:  scrapper.GithubRepo,
 			Owner: owner,
 			Repo:  repo,
 		}, nil
-	case len(parts) == 4 && parts[2] == gitHubIssues:
+	case len(parts) == gitHubIssueURLParts && parts[2] == gitHubIssues:
 		return scrapper.GithubLink{
 			Type:  scrapper.GithubIssue,
 			Owner: owner,
 			Repo:  repo,
 			ID:    parts[3],
 		}, nil
-	case len(parts) == 4 && parts[2] == gitHubPullRequests:
+	case len(parts) == gitHubPullRequestURLParts && parts[2] == gitHubPullRequests:
 		return scrapper.GithubLink{
 			Type:  scrapper.GithubPull,
 			Owner: owner,
@@ -175,27 +179,27 @@ func ParseGithubLink(link string) (scrapper.GithubLink, error) {
 		}, nil
 	}
 
-	return scrapper.GithubLink{}, UnsupportedGithubUrlError
+	return scrapper.GithubLink{}, ErrUnsupportedGithubURL
 }
 
 func ParseStackOverflowLink(link string) (scrapper.StackOverflowLink, error) {
 	u, err := url.Parse(link)
 	if err != nil {
-		return scrapper.StackOverflowLink{}, errors.Join(err, NotUrlError)
+		return scrapper.StackOverflowLink{}, errors.Join(err, ErrNotURL)
 	}
 
 	if u.Host != stackOverflowHost {
-		return scrapper.StackOverflowLink{}, NotStackOverflowError
+		return scrapper.StackOverflowLink{}, ErrNotStackOverflow
 	}
 
 	parts := strings.Split(strings.Trim(u.Path, "/"), "/")
 
-	if len(parts) < 2 {
-		return scrapper.StackOverflowLink{}, InvalidStackOverflowUrlError
+	if len(parts) < minStackOverflowURLParts {
+		return scrapper.StackOverflowLink{}, ErrInvalidStackOverflowURL
 	}
 
 	if parts[0] != stackOverflowQuestions {
-		return scrapper.StackOverflowLink{}, InvalidStackOverflowUrlError
+		return scrapper.StackOverflowLink{}, ErrInvalidStackOverflowURL
 	}
 
 	id := parts[1]

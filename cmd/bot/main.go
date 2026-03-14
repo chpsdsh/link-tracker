@@ -30,7 +30,7 @@ const (
 )
 
 func main() {
-	baseLogger := logger.NewLogger(os.Stdout, logger.OutputFormatJson, slog.LevelInfo)
+	baseLogger := logger.NewLogger(os.Stdout, logger.OutputFormatJSON, slog.LevelInfo)
 
 	if err := godotenv.Load(envFilename); err != nil {
 		baseLogger.Error("error loading file", slog.String("file", envFilename), slog.String("err", err.Error()))
@@ -50,7 +50,7 @@ func main() {
 	}
 	api.Debug = true
 
-	telegramBot := telegram.TelegramBot{Bot: api, BaseLogger: baseLogger}
+	telegramBot := telegram.Bot{BotAPI: api, BaseLogger: baseLogger}
 
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
@@ -76,7 +76,7 @@ func main() {
 	}
 
 	go func() {
-		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		if err = server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			baseLogger.Error("error starting bot http server", slog.String("err", err.Error()))
 		}
 	}()
@@ -87,7 +87,7 @@ func main() {
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownDuration)
 	defer cancel()
-	if err := server.Shutdown(shutdownCtx); err != nil {
+	if err = server.Shutdown(shutdownCtx); err != nil {
 		baseLogger.Error("error shutting down bot http server", slog.String("err", err.Error()))
 	}
 

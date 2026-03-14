@@ -6,13 +6,13 @@ import (
 )
 
 const (
-	telegramApiKey        = "APP_TELEGRAM_TOKEN"
+	telegramAPIKey        = "APP_TELEGRAM_TOKEN"
 	scrapperServerAddress = "SCRAPPER_SERVER_ADDRESS"
 )
 
 var (
-	NoTelegramTokenError   = errors.New("telegram token should be set up with " + telegramApiKey + " environment variable")
-	NoScrapperAddressError = errors.New("scrapper server address should be set up with " + scrapperServerAddress + " environment variable")
+	ErrNoTelegramToken   = errors.New("telegram token should be set up with " + telegramAPIKey + " environment variable")
+	ErrNoScrapperAddress = errors.New("scrapper server address should be set up with " + scrapperServerAddress + " environment variable")
 )
 
 type Config struct {
@@ -21,13 +21,13 @@ type Config struct {
 }
 
 func ParseConfig() (Config, error) {
-	token := os.Getenv(telegramApiKey)
+	token := os.Getenv(telegramAPIKey)
 	if token == "" {
-		return Config{}, NoTelegramTokenError
+		return Config{}, ErrNoTelegramToken
 	}
 	scrapperAddr := os.Getenv(scrapperServerAddress)
 	if scrapperAddr == "" {
-		return Config{}, NoScrapperAddressError
+		return Config{}, ErrNoScrapperAddress
 	}
 	return Config{TelegramToken: token, ScrapperServerAddress: scrapperAddr}, nil
 }

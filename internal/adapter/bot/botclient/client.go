@@ -2,7 +2,9 @@ package botclient
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"strconv"
@@ -14,7 +16,7 @@ import (
 )
 
 const (
-	tgHeaderKey         = "Tg-Chat-Id"
+	tgHeaderKey         = "Tg-Chat-ID"
 	contentTypeKey      = "Content-Type"
 	typeApplicationJSON = "application/json"
 )
@@ -24,39 +26,8 @@ type Client struct {
 	Config config.Config
 }
 
-func (c Client) doRequest(chatId int64, method, url string) (*http.Response, error) {
-	stringId := strconv.FormatInt(chatId, 10)
-	req, err := http.NewRequest(method, url+stringId, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := c.Client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-
-	return resp, nil
-}
-
-func (c Client) doRequestWithHeader(chatId int64, method, url string) (*http.Response, error) {
-	req, err := http.NewRequest(method, url, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	stringId := strconv.FormatInt(chatId, 10)
-	req.Header.Set(tgHeaderKey, stringId)
-	resp, err := c.Client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-
-	return resp, nil
-}
-
-func (c Client) RegisterChat(chatId int64) error {
-	resp, err := c.doRequest(chatId, http.MethodPost, c.Config.ScrapperServerAddress+"/tg-chat/")
+func (c Client) RegisterChat(chatID int64) error {
+	resp, err := c.doRequest(chatID, http.MethodPost, c.Config.ScrapperServerAddress+"/tg-chat/")
 	if err != nil {
 		return err
 	}
@@ -74,8 +45,8 @@ func (c Client) RegisterChat(chatId int64) error {
 	return nil
 }
 
-func (c Client) UnregisterChat(chatId int64) error {
-	resp, err := c.doRequest(chatId, http.MethodDelete, c.Config.ScrapperServerAddress+"/tg-chat/")
+func (c Client) UnregisterChat(chatID int64) error {
+	resp, err := c.doRequest(chatID, http.MethodDelete, c.Config.ScrapperServerAddress+"/tg-chat/")
 	if err != nil {
 		return err
 	}
@@ -93,8 +64,8 @@ func (c Client) UnregisterChat(chatId int64) error {
 	return nil
 }
 
-func (c Client) GetLinks(chatId int64) (bot.ListLinksResponse, error) {
-	resp, err := c.doRequestWithHeader(chatId, http.MethodGet, c.Config.ScrapperServerAddress+"/links")
+func (c Client) GetLinks(chatID int64) (bot.ListLinksResponse, error) {
+	resp, err := c.doRequestWithHeader(chatID, http.MethodGet, c.Config.ScrapperServerAddress+"/links")
 	if err != nil {
 		return bot.ListLinksResponse{}, err
 	}
@@ -106,35 +77,35 @@ func (c Client) GetLinks(chatId int64) (bot.ListLinksResponse, error) {
 	case http.StatusNotFound:
 		return bot.ListLinksResponse{}, handler.ErrChatNotFound
 	default:
-		data, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return bot.ListLinksResponse{}, err
+		data, errRead := io.ReadAll(resp.Body)
+		if errRead != nil {
+			return bot.ListLinksResponse{}, fmt.Errorf("error reading response body: %w", errRead)
 		}
 		linksResponse := bot.ListLinksResponse{}
-		if err := json.Unmarshal(data, &linksResponse); err != nil {
-			return bot.ListLinksResponse{}, err
+		if errUnmarshall := json.Unmarshal(data, &linksResponse); errUnmarshall != nil {
+			return bot.ListLinksResponse{}, fmt.Errorf("error unmarshalling JSON: %w", errUnmarshall)
 		}
 		return linksResponse, nil
 	}
 }
 
-func (c Client) AddLink(chatId int64, linkRequest shared.AddLinkRequest) (bot.LinkResponse, error) {
+func (c Client) AddLink(chatID int64, linkRequest shared.AddLinkRequest) (bot.LinkResponse, error) {
 	data, err := json.Marshal(linkRequest)
 	if err != nil {
-		return bot.LinkResponse{}, err
+		return bot.LinkResponse{}, fmt.Errorf("error marshalling JSON: %w", err)
 	}
-	req, err := http.NewRequest(http.MethodPost, c.Config.ScrapperServerAddress+"/links", bytes.NewBuffer(data))
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, c.Config.ScrapperServerAddress+"/links", bytes.NewBuffer(data))
 	if err != nil {
-		return bot.LinkResponse{}, err
+		return bot.LinkResponse{}, fmt.Errorf("error creating request: %w", err)
 	}
 
-	stringId := strconv.FormatInt(chatId, 10)
-	req.Header.Set(tgHeaderKey, stringId)
+	stringID := strconv.FormatInt(chatID, 10)
+	req.Header.Set(tgHeaderKey, stringID)
 	req.Header.Set(contentTypeKey, typeApplicationJSON)
 
 	resp, err := c.Client.Do(req)
 	if err != nil {
-		return bot.LinkResponse{}, err
+		return bot.LinkResponse{}, fmt.Errorf("error doing request: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
@@ -146,35 +117,35 @@ func (c Client) AddLink(chatId int64, linkRequest shared.AddLinkRequest) (bot.Li
 	case http.StatusConflict:
 		return bot.LinkResponse{}, handler.ErrLinkExists
 	default:
-		data, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return bot.LinkResponse{}, err
+		dataRead, errRead := io.ReadAll(resp.Body)
+		if errRead != nil {
+			return bot.LinkResponse{}, fmt.Errorf("error reading response: %w", errRead)
 		}
 		linksResponse := bot.LinkResponse{}
-		if err := json.Unmarshal(data, &linksResponse); err != nil {
-			return bot.LinkResponse{}, err
+		if errUnmarshall := json.Unmarshal(dataRead, &linksResponse); errUnmarshall != nil {
+			return bot.LinkResponse{}, fmt.Errorf("error unmarshalling JSON: %w", errUnmarshall)
 		}
 		return linksResponse, nil
 	}
 }
 
-func (c Client) RemoveLink(chatId int64, removeRequest bot.RemoveLinkRequest) (bot.LinkResponse, error) {
+func (c Client) RemoveLink(chatID int64, removeRequest bot.RemoveLinkRequest) (bot.LinkResponse, error) {
 	data, err := json.Marshal(removeRequest)
 	if err != nil {
-		return bot.LinkResponse{}, err
+		return bot.LinkResponse{}, fmt.Errorf("error marshalling JSON: %w", err)
 	}
-	req, err := http.NewRequest(http.MethodDelete, c.Config.ScrapperServerAddress+"/links", bytes.NewBuffer(data))
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodDelete, c.Config.ScrapperServerAddress+"/links", bytes.NewBuffer(data))
 	if err != nil {
-		return bot.LinkResponse{}, err
+		return bot.LinkResponse{}, fmt.Errorf("error creating request: %w", err)
 	}
 
-	stringId := strconv.FormatInt(chatId, 10)
-	req.Header.Set(tgHeaderKey, stringId)
+	stringID := strconv.FormatInt(chatID, 10)
+	req.Header.Set(tgHeaderKey, stringID)
 	req.Header.Set(contentTypeKey, typeApplicationJSON)
 
 	resp, err := c.Client.Do(req)
 	if err != nil {
-		return bot.LinkResponse{}, err
+		return bot.LinkResponse{}, fmt.Errorf("error doing request: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
@@ -184,14 +155,45 @@ func (c Client) RemoveLink(chatId int64, removeRequest bot.RemoveLinkRequest) (b
 	case http.StatusNotFound:
 		return bot.LinkResponse{}, handler.ErrLinkNotExists
 	default:
-		respData, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return bot.LinkResponse{}, err
+		respData, errRead := io.ReadAll(resp.Body)
+		if errRead != nil {
+			return bot.LinkResponse{}, fmt.Errorf("error reading response: %w", errRead)
 		}
 		linksResponse := bot.LinkResponse{}
-		if err := json.Unmarshal(respData, &linksResponse); err != nil {
-			return bot.LinkResponse{}, err
+		if errUnmarshall := json.Unmarshal(respData, &linksResponse); errUnmarshall != nil {
+			return bot.LinkResponse{}, fmt.Errorf("error unmarshalling JSON: %w", errUnmarshall)
 		}
 		return linksResponse, nil
 	}
+}
+
+func (c Client) doRequest(chatID int64, method, url string) (*http.Response, error) {
+	stringID := strconv.FormatInt(chatID, 10)
+	req, err := http.NewRequestWithContext(context.Background(), method, url+stringID, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request: %w", err)
+	}
+
+	resp, err := c.Client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("error doing request: %w", err)
+	}
+
+	return resp, nil
+}
+
+func (c Client) doRequestWithHeader(chatID int64, method, url string) (*http.Response, error) {
+	req, err := http.NewRequestWithContext(context.Background(), method, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request: %w", err)
+	}
+
+	stringID := strconv.FormatInt(chatID, 10)
+	req.Header.Set(tgHeaderKey, stringID)
+	resp, err := c.Client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("error doing request: %w", err)
+	}
+
+	return resp, nil
 }

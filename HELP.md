@@ -8,7 +8,7 @@
 
 - `cmd` – директория, содержащая исполняемые файлы приложения.
   - [bot](.cmd/bot) – сервис Telegram-бота, отвечающий за взаимодействие с пользователем
-  через [Telegram Bot API](https://core.telegram.org/bots/api)
+  через [Telegram BotAPI API](https://core.telegram.org/bots/api)
   - [scrapper](./cmd/scrapper) – сервис мониторинга контента, отвечающий за отслеживание изменений по ссылкам и отправку обновлений
   - [agent](./cmd/agent) – сервис интеллектуальной обработки данных
   - [report](./cmd/report) – служебный модуль для агрегирования отчётов сборки
@@ -35,7 +35,7 @@ APP_TELEGRAM_TOKEN=123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11
 
 В проекте используются следующие внешние API:
 
-* [Telegram Bot API](https://core.telegram.org/bots/api) — API для взаимодействия
+* [Telegram BotAPI API](https://core.telegram.org/bots/api) — API для взаимодействия
   с Telegram. В проекте используется SDK
   [java-telegram-bot-api](https://github.com/pengrad/java-telegram-bot-api)
 * [GitHub REST API](https://docs.github.com/en/rest) — API для получения информации
@@ -43,4 +43,4 @@ APP_TELEGRAM_TOKEN=123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11
 * [StackOverflow API](https://api.stackexchange.com/docs) — API для получения
   информации о вопросах и ответах
 
-Контракт взаимодействия между сервисами Bot и ScrapperServer описан в [OpenAPI-спецификации](https://gist.github.com/sanyarnd/e35dc3d4e0c8000205ec5029dac38f5a).
+Контракт взаимодействия между сервисами BotAPI и ScrapperServer описан в [OpenAPI-спецификации](https://gist.github.com/sanyarnd/e35dc3d4e0c8000205ec5029dac38f5a).

@@ -49,17 +49,17 @@ type RemoveLinkRequest struct {
 
 // DeleteLinksParams defines parameters for DeleteLinks.
 type DeleteLinksParams struct {
-	TgChatId int64 `json:"Tg-Chat-Id"`
+	TgChatId int64 `json:"Tg-Chat-ID"`
 }
 
 // GetLinksParams defines parameters for GetLinks.
 type GetLinksParams struct {
-	TgChatId int64 `json:"Tg-Chat-Id"`
+	TgChatId int64 `json:"Tg-Chat-ID"`
 }
 
 // PostLinksParams defines parameters for PostLinks.
 type PostLinksParams struct {
-	TgChatId int64 `json:"Tg-Chat-Id"`
+	TgChatId int64 `json:"Tg-Chat-ID"`
 }
 
 // DeleteLinksJSONRequestBody defines body for DeleteLinks for application/json ContentType.
@@ -106,26 +106,26 @@ func (siw *ServerInterfaceWrapper) DeleteLinks(w http.ResponseWriter, r *http.Re
 
 	headers := r.Header
 
-	// ------------- Required header parameter "Tg-Chat-Id" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("Tg-Chat-Id")]; found {
+	// ------------- Required header parameter "Tg-Chat-ID" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Tg-Chat-ID")]; found {
 		var TgChatId int64
 		n := len(valueList)
 		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Tg-Chat-Id", Count: n})
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Tg-Chat-ID", Count: n})
 			return
 		}
 
-		err = runtime.BindStyledParameterWithOptions("simple", "Tg-Chat-Id", valueList[0], &TgChatId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: "int64"})
+		err = runtime.BindStyledParameterWithOptions("simple", "Tg-Chat-ID", valueList[0], &TgChatId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: "int64"})
 		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Tg-Chat-Id", Err: err})
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Tg-Chat-ID", Err: err})
 			return
 		}
 
 		params.TgChatId = TgChatId
 
 	} else {
-		err := fmt.Errorf("Header parameter Tg-Chat-Id is required, but not found")
-		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Tg-Chat-Id", Err: err})
+		err := fmt.Errorf("Header parameter Tg-Chat-ID is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Tg-Chat-ID", Err: err})
 		return
 	}
 
@@ -150,26 +150,26 @@ func (siw *ServerInterfaceWrapper) GetLinks(w http.ResponseWriter, r *http.Reque
 
 	headers := r.Header
 
-	// ------------- Required header parameter "Tg-Chat-Id" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("Tg-Chat-Id")]; found {
+	// ------------- Required header parameter "Tg-Chat-ID" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Tg-Chat-ID")]; found {
 		var TgChatId int64
 		n := len(valueList)
 		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Tg-Chat-Id", Count: n})
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Tg-Chat-ID", Count: n})
 			return
 		}
 
-		err = runtime.BindStyledParameterWithOptions("simple", "Tg-Chat-Id", valueList[0], &TgChatId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: "int64"})
+		err = runtime.BindStyledParameterWithOptions("simple", "Tg-Chat-ID", valueList[0], &TgChatId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: "int64"})
 		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Tg-Chat-Id", Err: err})
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Tg-Chat-ID", Err: err})
 			return
 		}
 
 		params.TgChatId = TgChatId
 
 	} else {
-		err := fmt.Errorf("Header parameter Tg-Chat-Id is required, but not found")
-		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Tg-Chat-Id", Err: err})
+		err := fmt.Errorf("Header parameter Tg-Chat-ID is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Tg-Chat-ID", Err: err})
 		return
 	}
 
@@ -194,26 +194,26 @@ func (siw *ServerInterfaceWrapper) PostLinks(w http.ResponseWriter, r *http.Requ
 
 	headers := r.Header
 
-	// ------------- Required header parameter "Tg-Chat-Id" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("Tg-Chat-Id")]; found {
+	// ------------- Required header parameter "Tg-Chat-ID" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Tg-Chat-ID")]; found {
 		var TgChatId int64
 		n := len(valueList)
 		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Tg-Chat-Id", Count: n})
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Tg-Chat-ID", Count: n})
 			return
 		}
 
-		err = runtime.BindStyledParameterWithOptions("simple", "Tg-Chat-Id", valueList[0], &TgChatId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: "int64"})
+		err = runtime.BindStyledParameterWithOptions("simple", "Tg-Chat-ID", valueList[0], &TgChatId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: "int64"})
 		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Tg-Chat-Id", Err: err})
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Tg-Chat-ID", Err: err})
 			return
 		}
 
 		params.TgChatId = TgChatId
 
 	} else {
-		err := fmt.Errorf("Header parameter Tg-Chat-Id is required, but not found")
-		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Tg-Chat-Id", Err: err})
+		err := fmt.Errorf("Header parameter Tg-Chat-ID is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Tg-Chat-ID", Err: err})
 		return
 	}
 

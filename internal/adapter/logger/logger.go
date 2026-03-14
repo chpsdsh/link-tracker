@@ -8,14 +8,14 @@ import (
 type OutputFormat int
 
 const (
-	OutputFormatJson OutputFormat = iota
+	OutputFormatJSON OutputFormat = iota
 	OutputFormatText
 )
 
 func NewLogger(writer io.Writer, format OutputFormat, level slog.Level) *slog.Logger {
 	var log slog.Handler
 	switch format {
-	case OutputFormatJson:
+	case OutputFormatJSON:
 		log = slog.NewJSONHandler(writer, &slog.HandlerOptions{Level: level})
 	case OutputFormatText:
 		log = slog.NewTextHandler(writer, &slog.HandlerOptions{Level: level})

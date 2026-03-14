@@ -45,8 +45,8 @@ func TestTelegramBotSendMessage(t *testing.T) {
 
 			mockBot := mocks.NewMockTelegramAPI(ctrl)
 
-			bot := TelegramBot{
-				Bot:        mockBot,
+			bot := Bot{
+				BotAPI:     mockBot,
 				BaseLogger: slog.New(slog.NewTextHandler(io.Discard, nil)),
 			}
 
@@ -74,7 +74,7 @@ func TestTelegramBotSendMessage(t *testing.T) {
 			if tt.expectedErr != nil && err == nil {
 				t.Fatal("expected error")
 			}
-			if tt.expectedErr != nil && err.Error() != tt.expectedErr.Error() {
+			if tt.expectedErr != nil && errors.Is(err, tt.expectedErr) {
 				t.Fatalf("expected error %q, got %q", tt.expectedErr.Error(), err.Error())
 			}
 		})
@@ -109,49 +109,87 @@ func TestTelegramBotSetupBotCommands(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctrl := gomock.NewController(t)
-			defer ctrl.Finish()
+			bot, mockBot := newTelegramBotTest(t)
 
-			mockBot := mocks.NewMockTelegramAPI(ctrl)
-
-			bot := TelegramBot{
-				Bot:        mockBot,
-				BaseLogger: slog.New(slog.NewTextHandler(io.Discard, nil)),
-			}
-
-			mockBot.EXPECT().
-				Request(gomock.Any()).
-				DoAndReturn(func(c tgbotapi.Chattable) (*tgbotapi.APIResponse, error) {
-					cfg, ok := c.(tgbotapi.SetMyCommandsConfig)
-					if !ok {
-						t.Fatalf("expected SetMyCommandsConfig, got %T", c)
-					}
-
-					if len(cfg.Commands) != len(expectedCommands) {
-						t.Fatalf("expected %d commands, got %d", len(expectedCommands), len(cfg.Commands))
-					}
-
-					for i := range expectedCommands {
-						if cfg.Commands[i].Command != expectedCommands[i].Command {
-							t.Fatalf("expected command %q, got %q", expectedCommands[i].Command, cfg.Commands[i].Command)
-						}
-						if cfg.Commands[i].Description != expectedCommands[i].Description {
-							t.Fatalf("expected description %q, got %q", expectedCommands[i].Description, cfg.Commands[i].Description)
-						}
-					}
-
-					return &tgbotapi.APIResponse{Ok: tt.requestErr == nil}, tt.requestErr
-				})
+			expectSetupBotCommandsRequest(t, mockBot, expectedCommands, tt.requestErr)
 
 			err := bot.setupBotCommands()
 
-			if tt.expectedErr && err == nil {
-				t.Fatal("expected error")
-			}
-			if !tt.expectedErr && err != nil {
-				t.Fatalf("unexpected error %v", err)
-			}
+			assertSetupBotCommandsError(t, err, tt.expectedErr)
 		})
+	}
+}
+
+func newTelegramBotTest(t *testing.T) (Bot, *mocks.MockTelegramAPI) {
+	t.Helper()
+
+	ctrl := gomock.NewController(t)
+	t.Cleanup(ctrl.Finish)
+
+	mockBot := mocks.NewMockTelegramAPI(ctrl)
+
+	bot := Bot{
+		BotAPI:     mockBot,
+		BaseLogger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+	}
+
+	return bot, mockBot
+}
+
+func expectSetupBotCommandsRequest(
+	t *testing.T,
+	mockBot *mocks.MockTelegramAPI,
+	expectedCommands []tgbotapi.BotCommand,
+	requestErr error,
+) {
+	t.Helper()
+
+	mockBot.EXPECT().
+		Request(gomock.Any()).
+		DoAndReturn(func(c tgbotapi.Chattable) (*tgbotapi.APIResponse, error) {
+			cfg := assertSetMyCommandsConfig(t, c)
+			assertBotCommands(t, cfg.Commands, expectedCommands)
+
+			return &tgbotapi.APIResponse{Ok: requestErr == nil}, requestErr
+		})
+}
+
+func assertSetMyCommandsConfig(t *testing.T, c tgbotapi.Chattable) tgbotapi.SetMyCommandsConfig {
+	t.Helper()
+
+	cfg, ok := c.(tgbotapi.SetMyCommandsConfig)
+	if !ok {
+		t.Fatalf("expected SetMyCommandsConfig, got %T", c)
+	}
+
+	return cfg
+}
+
+func assertBotCommands(t *testing.T, got, expected []tgbotapi.BotCommand) {
+	t.Helper()
+
+	if len(got) != len(expected) {
+		t.Fatalf("expected %d commands, got %d", len(expected), len(got))
+	}
+
+	for i := range expected {
+		if got[i].Command != expected[i].Command {
+			t.Fatalf("expected command %q, got %q", expected[i].Command, got[i].Command)
+		}
+		if got[i].Description != expected[i].Description {
+			t.Fatalf("expected description %q, got %q", expected[i].Description, got[i].Description)
+		}
+	}
+}
+
+func assertSetupBotCommandsError(t *testing.T, err error, expectedErr bool) {
+	t.Helper()
+
+	if expectedErr && err == nil {
+		t.Fatal("expected error")
+	}
+	if !expectedErr && err != nil {
+		t.Fatalf("unexpected error %v", err)
 	}
 }
 
@@ -161,7 +199,7 @@ func TestTelegramBotTelegramWorkerHandlesUpdate(t *testing.T) {
 
 	mockHandler := mocks.NewMockBotHandler(ctrl)
 
-	bot := TelegramBot{
+	bot := Bot{
 		Handler:    mockHandler,
 		BaseLogger: slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}

@@ -41,7 +41,7 @@ func TestDoGithubRequestSuccess(t *testing.T) {
 
 	resp, err := client.DoGithubRequest(server.URL)
 
-	if errors.Is(err, JsonUnmarshallingError) {
+	if errors.Is(err, ErrUnmarshallingJSON) {
 		t.Fatalf("unexpected error %v", err)
 	}
 
@@ -51,7 +51,7 @@ func TestDoGithubRequestSuccess(t *testing.T) {
 }
 
 func TestDoGithubRequestInvalidJSON(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte(`invalid json`))
 	}))
 	defer server.Close()
@@ -65,7 +65,7 @@ func TestDoGithubRequestInvalidJSON(t *testing.T) {
 
 	_, err := client.DoGithubRequest(server.URL)
 
-	if !errors.Is(err, JsonUnmarshallingError) {
+	if !errors.Is(err, ErrUnmarshallingJSON) {
 		t.Fatal("expected json error")
 	}
 }
@@ -110,7 +110,7 @@ func TestDoStackOverflowRequestSuccess(t *testing.T) {
 }
 
 func TestDoStackOverflowRequestInvalidJSON(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte(`invalid json`))
 	}))
 	defer server.Close()
@@ -124,7 +124,7 @@ func TestDoStackOverflowRequestInvalidJSON(t *testing.T) {
 
 	_, err := client.DoStackOverflowRequest(server.URL + "?site=stackoverflow")
 
-	if !errors.Is(err, JsonUnmarshallingError) {
+	if !errors.Is(err, ErrUnmarshallingJSON) {
 		t.Fatalf("expected json error, got %v", err)
 	}
 }
@@ -133,8 +133,8 @@ func TestSendLinkUpdateSuccess(t *testing.T) {
 
 	update := shared.LinkUpdate{
 		Description: "link updated",
-		TgChatIds:   []int64{1, 2},
-		Url:         "https://github.com/golang/go",
+		TgChatIDs:   []int64{1, 2},
+		URL:         "https://github.com/golang/go",
 	}
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -153,12 +153,12 @@ func TestSendLinkUpdateSuccess(t *testing.T) {
 		}
 
 		var received shared.LinkUpdate
-		if err := json.Unmarshal(body, &received); err != nil {
+		if err = json.Unmarshal(body, &received); err != nil {
 			t.Fatal(err)
 		}
 
-		if received.Url != update.Url {
-			t.Fatalf("expected url %s, got %s", update.Url, received.Url)
+		if received.URL != update.URL {
+			t.Fatalf("expected url %s, got %s", update.URL, received.URL)
 		}
 
 		w.WriteHeader(http.StatusOK)
@@ -180,11 +180,11 @@ func TestSendLinkUpdateSuccess(t *testing.T) {
 func TestSendLinkUpdateBadStatus(t *testing.T) {
 	update := shared.LinkUpdate{
 		Description: "link updated",
-		TgChatIds:   []int64{1},
-		Url:         "https://github.com/golang/go",
+		TgChatIDs:   []int64{1},
+		URL:         "https://github.com/golang/go",
 	}
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 	}))
 	defer server.Close()
@@ -196,7 +196,7 @@ func TestSendLinkUpdateBadStatus(t *testing.T) {
 
 	err := client.SendLinkUpdate(update)
 
-	if !errors.Is(err, scheduler.IncorrectRequestParametersError) {
-		t.Fatalf("expected IncorrectRequestParametersError, got %v", err)
+	if !errors.Is(err, scheduler.ErrIncorrectRequestParameters) {
+		t.Fatalf("expected ErrIncorrectRequestParameters, got %v", err)
 	}
 }

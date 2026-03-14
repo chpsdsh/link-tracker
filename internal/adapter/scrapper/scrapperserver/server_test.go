@@ -56,7 +56,7 @@ func TestScrapperServerPostTgChatId(t *testing.T) {
 			rec := httptest.NewRecorder()
 
 			mockHandler.EXPECT().
-				AddChatId(tt.id).
+				AddChatID(tt.id).
 				Return(tt.handlerErr)
 
 			s.PostTgChatId(rec, req, tt.id)
@@ -219,7 +219,7 @@ func TestScrapperServerPostLinks(t *testing.T) {
 			name:   "invalid json",
 			chatID: 1,
 			body:   `{"link":`,
-			setupMock: func(m *mocks.MockScrapperHandler) {
+			setupMock: func(_ *mocks.MockScrapperHandler) {
 			},
 			expectedStatus: http.StatusBadRequest,
 		},
@@ -284,7 +284,7 @@ func TestScrapperServerPostLinks(t *testing.T) {
 			rec := httptest.NewRecorder()
 
 			s.PostLinks(rec, req, PostLinksParams{TgChatId: tt.chatID})
-			
+
 			if rec.Code != tt.expectedStatus {
 				t.Fatalf("expected status %d, got %d; body=%s", tt.expectedStatus, rec.Code, rec.Body.String())
 			}
@@ -340,7 +340,7 @@ func TestScrapperServerDeleteLinks(t *testing.T) {
 			name:           "bad json",
 			chatID:         1,
 			body:           `{"link":`,
-			setupMock:      func(m *mocks.MockScrapperHandler) {},
+			setupMock:      func(_ *mocks.MockScrapperHandler) {},
 			expectedStatus: http.StatusBadRequest,
 		},
 	}
@@ -385,13 +385,13 @@ func TestJSONErrorHandler(t *testing.T) {
 		},
 		{
 			name:           "required header error",
-			err:            &RequiredHeaderError{ParamName: "Tg-Chat-Id", Err: errors.New("missing")},
+			err:            &RequiredHeaderError{ParamName: "Tg-Chat-ID", Err: errors.New("missing")},
 			expectedStatus: http.StatusBadRequest,
 			expectedCode:   missingHeder,
 		},
 		{
 			name:           "too many values",
-			err:            &TooManyValuesForParamError{ParamName: "Tg-Chat-Id", Count: 2},
+			err:            &TooManyValuesForParamError{ParamName: "Tg-Chat-ID", Count: 2},
 			expectedStatus: http.StatusBadRequest,
 			expectedCode:   invalidParameter,
 		},

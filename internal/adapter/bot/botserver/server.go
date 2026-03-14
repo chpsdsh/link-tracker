@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	errorUnmarshallingJson  = "failed to unmarshal json response"
+	errorUnmarshallingJSON  = "failed to unmarshal json response"
 	errorReadingRequestBody = "failed to read request body"
 	badRequestCode          = "BAD_REQUEST"
 )
@@ -29,26 +29,26 @@ func (u *UpdatesServer) PostUpdates(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	defer func() { _ = r.Body.Close() }()
 	if err != nil {
-		sendApiErrorResponse(w, errorReadingRequestBody, err)
+		sendAPIErrorResponse(w, errorReadingRequestBody, err)
 		u.BaseLogger.Error(errorReadingRequestBody, slog.String("error", err.Error()))
 		return
 	}
 
 	linkUpdate := LinkUpdate{}
 	if err = json.Unmarshal(body, &linkUpdate); err != nil {
-		sendApiErrorResponse(w, errorUnmarshallingJson, err)
-		u.BaseLogger.Error(errorUnmarshallingJson, slog.String("error", err.Error()))
+		sendAPIErrorResponse(w, errorUnmarshallingJSON, err)
+		u.BaseLogger.Error(errorUnmarshallingJSON, slog.String("error", err.Error()))
 		return
 	}
 
 	u.BaseLogger.Info("response ", slog.Any("update", linkUpdate))
 	u.Handler.HandleLinkUpdate(shared.LinkUpdate{Description: *linkUpdate.Description,
-		TgChatIds: *linkUpdate.TgChatIds, Url: *linkUpdate.Url})
+		TgChatIDs: *linkUpdate.TgChatIds, URL: *linkUpdate.Url})
 
 	w.WriteHeader(http.StatusOK)
 }
 
-func sendApiErrorResponse(w http.ResponseWriter, desc string, err error) {
+func sendAPIErrorResponse(w http.ResponseWriter, desc string, err error) {
 	code := badRequestCode
 	errString := err.Error()
 	errResp := ApiErrorResponse{Code: &code, Description: &desc, ExceptionMessage: &errString}

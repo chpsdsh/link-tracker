@@ -29,7 +29,7 @@ const (
 )
 
 func main() {
-	baseLogger := logger.NewLogger(os.Stdout, logger.OutputFormatJson, slog.LevelInfo)
+	baseLogger := logger.NewLogger(os.Stdout, logger.OutputFormatJSON, slog.LevelInfo)
 	if err := godotenv.Load(envFilename); err != nil {
 		baseLogger.Error("error loading file", slog.String("file", envFilename), slog.String("err", err.Error()))
 		os.Exit(1)
@@ -74,7 +74,7 @@ func main() {
 	server := &http.Server{Handler: h, Addr: scrapperServerPort}
 
 	go func() {
-		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		if err = server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			baseLogger.Error("error starting scrapper http server", slog.String("error", err.Error()))
 		}
 	}()
@@ -82,7 +82,7 @@ func main() {
 	<-ctx.Done()
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), shutdownDuration)
 	defer shutdownCancel()
-	if err := server.Shutdown(shutdownCtx); err != nil {
+	if err = server.Shutdown(shutdownCtx); err != nil {
 		baseLogger.Error("error shutting down scrapper http server", slog.String("error", err.Error()))
 	}
 

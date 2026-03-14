@@ -30,17 +30,17 @@ func TestTelegramHandlerHandleCommandStartSuccess(t *testing.T) {
 		BaseLogger: slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}
 
-	update := newCommandUpdate(123, "/start", "start")
+	update := newCommandUpdate(1, "/start", "start")
 
 	mockClient.EXPECT().
-		RegisterChat(int64(123)).
+		RegisterChat(int64(1)).
 		Return(nil)
 
 	mockSession.EXPECT().
-		SetState(int64(123), statestorage.InitialState)
+		SetState(int64(1), statestorage.InitialState)
 
 	mockSender.EXPECT().
-		SendMessage(int64(123), greetingMessage).
+		SendMessage(int64(1), greetingMessage).
 		Return(nil)
 
 	h.handleCommand(update)
@@ -143,11 +143,39 @@ func TestTelegramHandlerHandleCommandTrack(t *testing.T) {
 
 	update := newCommandUpdate(123, "/track", "track")
 
+	mockSession.EXPECT().GetState(int64(123)).Return(statestorage.InitialState)
+
 	mockSession.EXPECT().
-		SetState(int64(123), statestorage.WaitingForTrackUrlState)
+		SetState(int64(123), statestorage.WaitingForTrackURLState)
 
 	mockSender.EXPECT().
 		SendMessage(int64(123), trackMessage).
+		Return(nil)
+
+	h.handleCommand(update)
+}
+
+func TestTelegramHandlerHandleCommandTrackNoState(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockSender := mocks.NewMockSender(ctrl)
+	mockSession := mocks.NewMockStateStorage(ctrl)
+	mockClient := mocks.NewMockNetworkClient(ctrl)
+
+	h := TelegramHandler{
+		MsgSender:  mockSender,
+		Session:    mockSession,
+		Client:     mockClient,
+		BaseLogger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+	}
+
+	update := newCommandUpdate(123, "/cancel", "cancel")
+
+	mockSession.EXPECT().GetState(int64(123)).Return(statestorage.NoState)
+
+	mockSender.EXPECT().
+		SendMessage(int64(123), notAuthorizedMessage).
 		Return(nil)
 
 	h.handleCommand(update)
@@ -170,11 +198,39 @@ func TestTelegramHandlerHandleCommandUntrack(t *testing.T) {
 
 	update := newCommandUpdate(123, "/untrack", "untrack")
 
+	mockSession.EXPECT().GetState(int64(123)).Return(statestorage.InitialState)
+
 	mockSession.EXPECT().
-		SetState(int64(123), statestorage.WaitingForUnTrackUrlState)
+		SetState(int64(123), statestorage.WaitingForUntrackURLState)
 
 	mockSender.EXPECT().
 		SendMessage(int64(123), untrackMessage).
+		Return(nil)
+
+	h.handleCommand(update)
+}
+
+func TestTelegramHandlerHandleCommandUntrackNoState(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockSender := mocks.NewMockSender(ctrl)
+	mockSession := mocks.NewMockStateStorage(ctrl)
+	mockClient := mocks.NewMockNetworkClient(ctrl)
+
+	h := TelegramHandler{
+		MsgSender:  mockSender,
+		Session:    mockSession,
+		Client:     mockClient,
+		BaseLogger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+	}
+
+	update := newCommandUpdate(123, "/untrack", "untrack")
+
+	mockSession.EXPECT().GetState(int64(123)).Return(statestorage.NoState)
+
+	mockSender.EXPECT().
+		SendMessage(int64(123), notAuthorizedMessage).
 		Return(nil)
 
 	h.handleCommand(update)
@@ -197,11 +253,39 @@ func TestTelegramHandlerHandleCommandCancel(t *testing.T) {
 
 	update := newCommandUpdate(123, "/cancel", "cancel")
 
+	mockSession.EXPECT().GetState(int64(123)).Return(statestorage.InitialState)
+
 	mockSession.EXPECT().
 		ClearLinkAndUpdateState(int64(123), statestorage.InitialState)
 
 	mockSender.EXPECT().
 		SendMessage(int64(123), cancelMessage).
+		Return(nil)
+
+	h.handleCommand(update)
+}
+
+func TestTelegramHandlerHandleCommandCancelNoState(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockSender := mocks.NewMockSender(ctrl)
+	mockSession := mocks.NewMockStateStorage(ctrl)
+	mockClient := mocks.NewMockNetworkClient(ctrl)
+
+	h := TelegramHandler{
+		MsgSender:  mockSender,
+		Session:    mockSession,
+		Client:     mockClient,
+		BaseLogger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+	}
+
+	update := newCommandUpdate(123, "/cancel", "cancel")
+
+	mockSession.EXPECT().GetState(int64(123)).Return(statestorage.NoState)
+
+	mockSender.EXPECT().
+		SendMessage(int64(123), notAuthorizedMessage).
 		Return(nil)
 
 	h.handleCommand(update)
@@ -248,9 +332,37 @@ func TestTelegramHandlerHandleCommandListGetLinksError(t *testing.T) {
 
 	update := newCommandUpdate(123, "/list", "list")
 
+	mockSession.EXPECT().GetState(int64(123)).Return(statestorage.InitialState)
+
 	mockClient.EXPECT().
 		GetLinks(int64(123)).
 		Return(botdomain.ListLinksResponse{}, errors.New("get links failed"))
+
+	h.handleCommand(update)
+}
+
+func TestTelegramHandlerHandleCommandListNoState(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockSender := mocks.NewMockSender(ctrl)
+	mockSession := mocks.NewMockStateStorage(ctrl)
+	mockClient := mocks.NewMockNetworkClient(ctrl)
+
+	h := TelegramHandler{
+		MsgSender:  mockSender,
+		Session:    mockSession,
+		Client:     mockClient,
+		BaseLogger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+	}
+
+	update := newCommandUpdate(123, "/list", "list")
+
+	mockSession.EXPECT().GetState(int64(123)).Return(statestorage.NoState)
+
+	mockSender.EXPECT().
+		SendMessage(int64(123), notAuthorizedMessage).
+		Return(nil)
 
 	h.handleCommand(update)
 }
@@ -310,7 +422,7 @@ func TestTelegramHandlerHandleLinksOneLink(t *testing.T) {
 	links := botdomain.ListLinksResponse{
 		Size: 1,
 		Links: []botdomain.LinkResponse{
-			{Url: "https://github.com/test/repo"},
+			{URL: "https://github.com/test/repo"},
 		},
 	}
 
@@ -335,8 +447,8 @@ func TestTelegramHandlerHandleLinksMultipleLinks(t *testing.T) {
 	links := botdomain.ListLinksResponse{
 		Size: 2,
 		Links: []botdomain.LinkResponse{
-			{Url: "https://github.com/test/repo"},
-			{Url: "https://stackoverflow.com/questions/123"},
+			{URL: "https://github.com/test/repo"},
+			{URL: "https://stackoverflow.com/questions/123"},
 		},
 	}
 
@@ -396,18 +508,18 @@ func TestTelegramHandlerHandleMessageWaitingForTrackUrlState(t *testing.T) {
 		BaseLogger: slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}
 
-	update := newTextUpdate(123, "https://github.com/golang/go")
+	update := newTextUpdate(1, "https://github.com/golang/go")
 
 	mockSession.EXPECT().
-		GetState(int64(123)).
-		Return(statestorage.WaitingForTrackUrlState)
+		GetState(int64(1)).
+		Return(statestorage.WaitingForTrackURLState)
 
 	mockSession.EXPECT().
-		SetLinkAndUpdateState(int64(123), gomock.Any(), gomock.Any()).
+		SetLinkAndUpdateState(int64(1), gomock.Any(), gomock.Any()).
 		AnyTimes()
 
 	mockSender.EXPECT().
-		SendMessage(int64(123), gomock.Any()).
+		SendMessage(int64(1), gomock.Any()).
 		Return(nil)
 
 	h.handleMessage(update)
@@ -473,7 +585,7 @@ func TestTelegramHandlerHandleMessageWaitingForUnTrackUrlState(t *testing.T) {
 
 	mockSession.EXPECT().
 		GetState(int64(123)).
-		Return(statestorage.WaitingForUnTrackUrlState)
+		Return(statestorage.WaitingForUntrackURLState)
 
 	mockClient.EXPECT().
 		RemoveLink(int64(123), gomock.Any()).
@@ -515,7 +627,7 @@ func TestTelegramHandlerHandleTrack(t *testing.T) {
 			inputText:  "work,bug",
 			storedLink: "https://github.com/golang/go",
 			addResp: botdomain.LinkResponse{
-				Url:  "https://github.com/golang/go",
+				URL:  "https://github.com/golang/go",
 				Tags: []string{"work", "bug"},
 			},
 			addErr: nil,
@@ -564,7 +676,7 @@ func TestTelegramHandlerHandleTrack(t *testing.T) {
 			inputText:  "",
 			storedLink: "https://github.com/golang/go",
 			addResp: botdomain.LinkResponse{
-				Url:  "https://github.com/golang/go",
+				URL:  "https://github.com/golang/go",
 				Tags: []string{""},
 			},
 			addErr: nil,
@@ -625,14 +737,14 @@ func TestTelegramHandlerHandleUntrack(t *testing.T) {
 		{
 			name:       "invalid url",
 			inputText:  "not-a-url",
-			expected:   notUrlToUntrack,
+			expected:   notURLToUntrack,
 			expectCall: false,
 		},
 		{
 			name:      "success",
 			inputText: "https://github.com/golang/go",
 			removeResp: botdomain.LinkResponse{
-				Url:  "https://github.com/golang/go",
+				URL:  "https://github.com/golang/go",
 				Tags: []string{"work", "bug"},
 			},
 			removeErr:  nil,
@@ -783,8 +895,8 @@ func TestTelegramHandlerHandleLinkUpdate(t *testing.T) {
 
 	update := shared.LinkUpdate{
 		Description: "Ссылка обновлена",
-		Url:         "https://github.com/golang/go",
-		TgChatIds:   []int64{1, 2, 3},
+		URL:         "https://github.com/golang/go",
+		TgChatIDs:   []int64{1, 2, 3},
 	}
 
 	mockSender.EXPECT().

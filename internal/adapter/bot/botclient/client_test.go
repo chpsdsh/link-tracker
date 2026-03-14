@@ -132,8 +132,8 @@ func TestClientUnregisterChat(t *testing.T) {
 func TestClientGetLinks(t *testing.T) {
 	expectedResp := bot.ListLinksResponse{
 		Links: []bot.LinkResponse{
-			{Url: "https://github.com/golang/go", Tags: []string{"work"}},
-			{Url: "https://stackoverflow.com/questions/1/test", Tags: []string{"study"}},
+			{URL: "https://github.com/golang/go", Tags: []string{"work"}},
+			{URL: "https://stackoverflow.com/questions/1/test", Tags: []string{"study"}},
 		},
 		Size: 2,
 	}
@@ -218,7 +218,7 @@ func TestClientAddLink(t *testing.T) {
 		Tags: []string{"work"},
 	}
 	expectedResp := bot.LinkResponse{
-		Url:  "https://github.com/golang/go",
+		URL:  "https://github.com/golang/go",
 		Tags: []string{"work"},
 	}
 
@@ -254,37 +254,10 @@ func TestClientAddLink(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if r.Method != http.MethodPost {
-					t.Fatalf("expected POST, got %s", r.Method)
-				}
-				if r.URL.Path != "/links" {
-					t.Fatalf("expected path /links, got %s", r.URL.Path)
-				}
-				if r.Header.Get(tgHeaderKey) != "123" {
-					t.Fatalf("expected header %s=123, got %s", tgHeaderKey, r.Header.Get(tgHeaderKey))
-				}
-				if r.Header.Get(contentTypeKey) != typeApplicationJSON {
-					t.Fatalf("expected header %s=%s, got %s", contentTypeKey, typeApplicationJSON, r.Header.Get(contentTypeKey))
-				}
-
-				var reqBody shared.AddLinkRequest
-				if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
-					t.Fatal(err)
-				}
-
-				if reqBody.Link != linkReq.Link {
-					t.Fatalf("expected link %s, got %s", linkReq.Link, reqBody.Link)
-				}
-				if len(reqBody.Tags) != 1 || reqBody.Tags[0] != "work" {
-					t.Fatalf("unexpected tags %+v", reqBody.Tags)
-				}
+				assertAddLinkRequest(t, r, linkReq)
 
 				w.WriteHeader(tt.status)
-				if tt.responseBody != nil {
-					if err := json.NewEncoder(w).Encode(tt.responseBody); err != nil {
-						t.Fatal(err)
-					}
-				}
+				writeJSONResponse(t, w, tt.responseBody)
 			}))
 			defer server.Close()
 
@@ -299,10 +272,56 @@ func TestClientAddLink(t *testing.T) {
 				t.Fatalf("expected error %v, got %v", tt.expectedErr, err)
 			}
 
-			if tt.expectedErr == nil && resp.Url != expectedResp.Url {
-				t.Fatalf("expected url %s, got %s", expectedResp.Url, resp.Url)
+			if tt.expectedErr == nil && resp.URL != expectedResp.URL {
+				t.Fatalf("expected url %s, got %s", expectedResp.URL, resp.URL)
 			}
 		})
+	}
+}
+
+func assertAddLinkRequest(t *testing.T, r *http.Request, expected shared.AddLinkRequest) {
+	t.Helper()
+
+	if r.Method != http.MethodPost {
+		t.Fatalf("expected POST, got %s", r.Method)
+	}
+	if r.URL.Path != "/links" {
+		t.Fatalf("expected path /links, got %s", r.URL.Path)
+	}
+	if r.Header.Get(tgHeaderKey) != "123" {
+		t.Fatalf("expected header %s=123, got %s", tgHeaderKey, r.Header.Get(tgHeaderKey))
+	}
+	if r.Header.Get(contentTypeKey) != typeApplicationJSON {
+		t.Fatalf("expected header %s=%s, got %s", contentTypeKey, typeApplicationJSON, r.Header.Get(contentTypeKey))
+	}
+
+	var reqBody shared.AddLinkRequest
+	if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
+		t.Fatal(err)
+	}
+
+	if reqBody.Link != expected.Link {
+		t.Fatalf("expected link %s, got %s", expected.Link, reqBody.Link)
+	}
+	if len(reqBody.Tags) != len(expected.Tags) {
+		t.Fatalf("expected tags %+v, got %+v", expected.Tags, reqBody.Tags)
+	}
+	for i := range expected.Tags {
+		if reqBody.Tags[i] != expected.Tags[i] {
+			t.Fatalf("expected tags %+v, got %+v", expected.Tags, reqBody.Tags)
+		}
+	}
+}
+
+func writeJSONResponse(t *testing.T, w http.ResponseWriter, body any) {
+	t.Helper()
+
+	if body == nil {
+		return
+	}
+
+	if err := json.NewEncoder(w).Encode(body); err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -311,7 +330,7 @@ func TestClientRemoveLink(t *testing.T) {
 		Link: "https://github.com/golang/go",
 	}
 	expectedResp := bot.LinkResponse{
-		Url:  "https://github.com/golang/go",
+		URL:  "https://github.com/golang/go",
 		Tags: []string{"work"},
 	}
 
@@ -342,34 +361,10 @@ func TestClientRemoveLink(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if r.Method != http.MethodDelete {
-					t.Fatalf("expected DELETE, got %s", r.Method)
-				}
-				if r.URL.Path != "/links" {
-					t.Fatalf("expected path /links, got %s", r.URL.Path)
-				}
-				if r.Header.Get(tgHeaderKey) != "123" {
-					t.Fatalf("expected header %s=123, got %s", tgHeaderKey, r.Header.Get(tgHeaderKey))
-				}
-				if r.Header.Get(contentTypeKey) != typeApplicationJSON {
-					t.Fatalf("expected header %s=%s, got %s", contentTypeKey, typeApplicationJSON, r.Header.Get(contentTypeKey))
-				}
-
-				var reqBody bot.RemoveLinkRequest
-				if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
-					t.Fatal(err)
-				}
-
-				if reqBody.Link != removeReq.Link {
-					t.Fatalf("expected link %s, got %s", removeReq.Link, reqBody.Link)
-				}
+				assertRemoveLinkRequest(t, r, removeReq)
 
 				w.WriteHeader(tt.status)
-				if tt.responseBody != nil {
-					if err := json.NewEncoder(w).Encode(tt.responseBody); err != nil {
-						t.Fatal(err)
-					}
-				}
+				writeJSONResponse(t, w, tt.responseBody)
 			}))
 			defer server.Close()
 
@@ -384,9 +379,35 @@ func TestClientRemoveLink(t *testing.T) {
 				t.Fatalf("expected error %v, got %v", tt.expectedErr, err)
 			}
 
-			if tt.expectedErr == nil && resp.Url != expectedResp.Url {
-				t.Fatalf("expected url %s, got %s", expectedResp.Url, resp.Url)
+			if tt.expectedErr == nil && resp.URL != expectedResp.URL {
+				t.Fatalf("expected url %s, got %s", expectedResp.URL, resp.URL)
 			}
 		})
+	}
+}
+
+func assertRemoveLinkRequest(t *testing.T, r *http.Request, expected bot.RemoveLinkRequest) {
+	t.Helper()
+
+	if r.Method != http.MethodDelete {
+		t.Fatalf("expected DELETE, got %s", r.Method)
+	}
+	if r.URL.Path != "/links" {
+		t.Fatalf("expected path /links, got %s", r.URL.Path)
+	}
+	if r.Header.Get(tgHeaderKey) != "123" {
+		t.Fatalf("expected header %s=123, got %s", tgHeaderKey, r.Header.Get(tgHeaderKey))
+	}
+	if r.Header.Get(contentTypeKey) != typeApplicationJSON {
+		t.Fatalf("expected header %s=%s, got %s", contentTypeKey, typeApplicationJSON, r.Header.Get(contentTypeKey))
+	}
+
+	var reqBody bot.RemoveLinkRequest
+	if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
+		t.Fatal(err)
+	}
+
+	if reqBody.Link != expected.Link {
+		t.Fatalf("expected link %s, got %s", expected.Link, reqBody.Link)
 	}
 }

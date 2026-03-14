@@ -14,8 +14,8 @@ import (
 
 const (
 	errorReadingRequestBody         = "failed to read request body"
-	errorUnmarshallingJson          = "failed to unmarshal json response"
-	errorMarshallingJson            = "failed to marshal json response"
+	errorUnmarshallingJSON          = "failed to unmarshal json response"
+	errorMarshallingJSON            = "failed to marshal json response"
 	errorIncorrectRequestParameters = "incorrect request parameters"
 	errorChatNotFound               = "chat not found"
 	errorLinkIsAlreadyTracked       = "link is already tracked"
@@ -28,11 +28,11 @@ const (
 )
 
 type ScrapperHandler interface {
-	AddChatId(chatId int64) error
-	DeleteChat(chatId int64) error
-	GetLinks(chatId int64) ([]shared.LinkInfo, error)
-	AddLink(chatId int64, linkRequest shared.AddLinkRequest) error
-	DeleteLink(chatId int64, link string) (shared.LinkInfo, error)
+	AddChatID(chatID int64) error
+	DeleteChat(chatID int64) error
+	GetLinks(chatID int64) ([]shared.LinkInfo, error)
+	AddLink(chatID int64, linkRequest shared.AddLinkRequest) error
+	DeleteLink(chatID int64, link string) (shared.LinkInfo, error)
 }
 
 type ScrapperServer struct {
@@ -44,15 +44,15 @@ func (s ScrapperServer) DeleteLinks(w http.ResponseWriter, r *http.Request, para
 	body, err := io.ReadAll(r.Body)
 	defer func() { _ = r.Body.Close() }()
 	if err != nil {
-		s.sendApiErrorResponse(w, errorReadingRequestBody, err, http.StatusBadRequest)
+		s.sendAPIErrorResponse(w, errorReadingRequestBody, err, http.StatusBadRequest)
 		s.BaseLogger.Error(errorReadingRequestBody, slog.String("error", err.Error()))
 		return
 	}
 
 	removeRequest := RemoveLinkRequest{}
 	if err = json.Unmarshal(body, &removeRequest); err != nil {
-		s.sendApiErrorResponse(w, errorMarshallingJson, err, http.StatusBadRequest)
-		s.BaseLogger.Error(errorMarshallingJson, slog.String("error", err.Error()))
+		s.sendAPIErrorResponse(w, errorMarshallingJSON, err, http.StatusBadRequest)
+		s.BaseLogger.Error(errorMarshallingJSON, slog.String("error", err.Error()))
 		return
 	}
 
@@ -63,27 +63,27 @@ func (s ScrapperServer) DeleteLinks(w http.ResponseWriter, r *http.Request, para
 		w.WriteHeader(http.StatusOK)
 		w.Header().Set("Content-Type", "application/json")
 		linkResponse := LinkResponse{Tags: &link.Tags, Url: &link.Link}
-		data, err := json.Marshal(linkResponse)
-		if err != nil {
-			s.sendApiErrorResponse(w, errorMarshallingJson, err, http.StatusBadRequest)
-			s.BaseLogger.Error(errorMarshallingJson, slog.String("error", err.Error()))
+		data, errMarshall := json.Marshal(linkResponse)
+		if errMarshall != nil {
+			s.sendAPIErrorResponse(w, errorMarshallingJSON, errMarshall, http.StatusBadRequest)
+			s.BaseLogger.Error(errorMarshallingJSON, slog.String("error", errMarshall.Error()))
 			return
 		}
 
-		if _, err := w.Write(data); err != nil {
-			s.BaseLogger.Error("write response failed", slog.String("error", err.Error()))
+		if _, errWrite := w.Write(data); errWrite != nil {
+			s.BaseLogger.Error("write response failed", slog.String("error", errWrite.Error()))
 		}
 	case errors.Is(deleteLinkErr, handler.ErrChatNotFound):
-		s.sendApiErrorResponse(w, errorChatNotFound, deleteLinkErr, http.StatusNotFound)
+		s.sendAPIErrorResponse(w, errorChatNotFound, deleteLinkErr, http.StatusNotFound)
 		s.BaseLogger.Error(errorChatNotFound, slog.String("error", deleteLinkErr.Error()))
 	case errors.Is(deleteLinkErr, handler.ErrLinkNotExists):
-		s.sendApiErrorResponse(w, errorLinkNotExists, deleteLinkErr, http.StatusNotFound)
+		s.sendAPIErrorResponse(w, errorLinkNotExists, deleteLinkErr, http.StatusNotFound)
 		s.BaseLogger.Error(errorLinkNotExists, slog.String("error", deleteLinkErr.Error()))
 	}
 
 }
 
-func (s ScrapperServer) GetLinks(w http.ResponseWriter, r *http.Request, params GetLinksParams) {
+func (s ScrapperServer) GetLinks(w http.ResponseWriter, _ *http.Request, params GetLinksParams) {
 	links, err := s.Handler.GetLinks(params.TgChatId)
 	switch {
 	case err == nil:
@@ -98,18 +98,18 @@ func (s ScrapperServer) GetLinks(w http.ResponseWriter, r *http.Request, params 
 		w.WriteHeader(http.StatusOK)
 		w.Header().Set("Content-Type", "application/json")
 
-		data, err := json.Marshal(listLinkResponse)
-		if err != nil {
-			s.sendApiErrorResponse(w, errorMarshallingJson, err, http.StatusBadRequest)
-			s.BaseLogger.Error(errorMarshallingJson, slog.String("error", err.Error()))
+		data, errMarshall := json.Marshal(listLinkResponse)
+		if errMarshall != nil {
+			s.sendAPIErrorResponse(w, errorMarshallingJSON, errMarshall, http.StatusBadRequest)
+			s.BaseLogger.Error(errorMarshallingJSON, slog.String("error", errMarshall.Error()))
 			return
 		}
 
-		if _, err := w.Write(data); err != nil {
-			s.BaseLogger.Error("write response failed", slog.String("error", err.Error()))
+		if _, errWrite := w.Write(data); errWrite != nil {
+			s.BaseLogger.Error("write response failed", slog.String("error", errWrite.Error()))
 		}
 	case errors.Is(err, handler.ErrChatNotFound):
-		s.sendApiErrorResponse(w, errorChatNotFound, err, http.StatusNotFound)
+		s.sendAPIErrorResponse(w, errorChatNotFound, err, http.StatusNotFound)
 		s.BaseLogger.Error(errorChatNotFound, slog.String("error", err.Error()))
 	}
 }
@@ -118,15 +118,15 @@ func (s ScrapperServer) PostLinks(w http.ResponseWriter, r *http.Request, params
 	body, err := io.ReadAll(r.Body)
 	defer func() { _ = r.Body.Close() }()
 	if err != nil {
-		s.sendApiErrorResponse(w, errorReadingRequestBody, err, http.StatusBadRequest)
+		s.sendAPIErrorResponse(w, errorReadingRequestBody, err, http.StatusBadRequest)
 		s.BaseLogger.Error(errorReadingRequestBody, slog.String("error", err.Error()))
 		return
 	}
 
 	linkRequest := AddLinkRequest{}
-	if err := json.Unmarshal(body, &linkRequest); err != nil {
-		s.sendApiErrorResponse(w, errorUnmarshallingJson, err, http.StatusBadRequest)
-		s.BaseLogger.Error(errorUnmarshallingJson, slog.String("error", err.Error()))
+	if errUnmarshall := json.Unmarshal(body, &linkRequest); errUnmarshall != nil {
+		s.sendAPIErrorResponse(w, errorUnmarshallingJSON, errUnmarshall, http.StatusBadRequest)
+		s.BaseLogger.Error(errorUnmarshallingJSON, slog.String("error", errUnmarshall.Error()))
 		return
 	}
 
@@ -141,63 +141,63 @@ func (s ScrapperServer) PostLinks(w http.ResponseWriter, r *http.Request, params
 		w.Header().Set("Content-Type", "application/json")
 		linkResponse := LinkResponse{Filters: linkRequest.Filters, Tags: linkRequest.Tags,
 			Id: &params.TgChatId, Url: linkRequest.Link}
-		data, err := json.Marshal(linkResponse)
-		if err != nil {
-			s.sendApiErrorResponse(w, errorMarshallingJson, err, http.StatusBadRequest)
-			s.BaseLogger.Error(errorMarshallingJson, slog.String("error", err.Error()))
+		data, errMarshall := json.Marshal(linkResponse)
+		if errMarshall != nil {
+			s.sendAPIErrorResponse(w, errorMarshallingJSON, errMarshall, http.StatusBadRequest)
+			s.BaseLogger.Error(errorMarshallingJSON, slog.String("error", errMarshall.Error()))
 			return
 		}
-		if _, err := w.Write(data); err != nil {
-			s.BaseLogger.Error("write response failed", slog.String("error", err.Error()))
+		if _, errWrite := w.Write(data); errWrite != nil {
+			s.BaseLogger.Error("write response failed", slog.String("error", errWrite.Error()))
 		}
 	case errors.Is(linkErr, handler.ErrIncorrectRequestParameters):
-		s.sendApiErrorResponse(w, errorIncorrectRequestParameters, linkErr, http.StatusBadRequest)
+		s.sendAPIErrorResponse(w, errorIncorrectRequestParameters, linkErr, http.StatusBadRequest)
 		s.BaseLogger.Error(errorIncorrectRequestParameters, slog.String("error", linkErr.Error()))
 	case errors.Is(linkErr, handler.ErrChatNotFound):
-		s.sendApiErrorResponse(w, errorChatNotFound, linkErr, http.StatusNotFound)
+		s.sendAPIErrorResponse(w, errorChatNotFound, linkErr, http.StatusNotFound)
 		s.BaseLogger.Error(errorChatNotFound, slog.String("error", linkErr.Error()))
 	case errors.Is(linkErr, handler.ErrLinkExists):
-		s.sendApiErrorResponse(w, errorLinkIsAlreadyTracked, linkErr, http.StatusConflict)
+		s.sendAPIErrorResponse(w, errorLinkIsAlreadyTracked, linkErr, http.StatusConflict)
 		s.BaseLogger.Error(errorLinkIsAlreadyTracked, slog.String("error", linkErr.Error()))
 	}
 }
 
-func (s ScrapperServer) DeleteTgChatId(w http.ResponseWriter, r *http.Request, id int64) {
+func (s ScrapperServer) DeleteTgChatId(w http.ResponseWriter, _ *http.Request, id int64) { //nolint:revive,staticcheck // method name required by oapi-codegen interface
 	chatErr := s.Handler.DeleteChat(id)
 	switch {
 	case chatErr == nil:
 		w.WriteHeader(http.StatusOK)
 	case errors.Is(chatErr, handler.ErrChatNotFound):
-		s.sendApiErrorResponse(w, errorChatNotFound, chatErr, http.StatusNotFound)
+		s.sendAPIErrorResponse(w, errorChatNotFound, chatErr, http.StatusNotFound)
 		s.BaseLogger.Error(errorChatNotFound, slog.String("error", chatErr.Error()))
 	}
 
 }
 
-func (s ScrapperServer) PostTgChatId(w http.ResponseWriter, r *http.Request, id int64) {
-	chatErr := s.Handler.AddChatId(id)
+func (s ScrapperServer) PostTgChatId(w http.ResponseWriter, _ *http.Request, id int64) { //nolint:revive,staticcheck // method name required by oapi-codegen interface
+	chatErr := s.Handler.AddChatID(id)
 	switch {
 	case chatErr == nil:
 		w.WriteHeader(http.StatusOK)
 	case errors.Is(chatErr, handler.ErrChatAlreadyExists):
-		s.sendApiErrorResponse(w, errorChatAlreadyExists, chatErr, http.StatusConflict)
+		s.sendAPIErrorResponse(w, errorChatAlreadyExists, chatErr, http.StatusConflict)
 		s.BaseLogger.Error(errorChatAlreadyExists, slog.String("error", chatErr.Error()))
 	}
 }
 
-func (s ScrapperServer) sendApiErrorResponse(w http.ResponseWriter, desc string, err error, status int) {
+func (s ScrapperServer) sendAPIErrorResponse(w http.ResponseWriter, desc string, err error, status int) {
 	code := badRequest
 	errString := err.Error()
 	errResp := ApiErrorResponse{Code: &code, Description: &desc, ExceptionMessage: &errString}
 	data, _ := json.Marshal(errResp)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	if _, err := w.Write(data); err != nil {
-		s.BaseLogger.Error("write response failed", slog.String("error", err.Error()))
+	if _, errWrite := w.Write(data); errWrite != nil {
+		s.BaseLogger.Error("write response failed", slog.String("error", errWrite.Error()))
 	}
 }
 
-func JSONErrorHandler(w http.ResponseWriter, r *http.Request, err error) {
+func JSONErrorHandler(w http.ResponseWriter, _ *http.Request, err error) {
 	var status = http.StatusBadRequest
 	code := badRequest
 

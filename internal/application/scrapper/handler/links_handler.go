@@ -19,14 +19,14 @@ var (
 )
 
 type Repository interface {
-	ChatExists(chatId int64) bool
-	GetLinks(chatId int64) []shared.LinkInfo
-	AddLink(chatId int64, link shared.LinkInfo)
-	DeleteLink(chatId int64, link string) (shared.LinkInfo, bool)
-	DeleteChat(chatId int64)
-	AddChat(chatId int64)
+	ChatExists(chatID int64) bool
+	GetLinks(chatID int64) []shared.LinkInfo
+	AddLink(chatID int64, link shared.LinkInfo)
+	DeleteLink(chatID int64, link string) (shared.LinkInfo, bool)
+	DeleteChat(chatID int64)
+	AddChat(chatID int64)
 	GetAllLinks() []shared.LinkInfo
-	GetChatIdsByLink(link string) []int64
+	GetChatIDsByLink(link string) []int64
 	UpdateLinksTime(newTime time.Time, linkToUpdate shared.LinkInfo)
 }
 
@@ -35,32 +35,32 @@ type LinksHandler struct {
 	BaseLogger *slog.Logger
 }
 
-func (h LinksHandler) AddChatId(chatId int64) error {
-	if h.Repo.ChatExists(chatId) {
+func (h LinksHandler) AddChatID(chatID int64) error {
+	if h.Repo.ChatExists(chatID) {
 		return ErrChatAlreadyExists
 	}
-	h.Repo.AddChat(chatId)
+	h.Repo.AddChat(chatID)
 	return nil
 }
 
-func (h LinksHandler) DeleteChat(chatId int64) error {
-	if !h.Repo.ChatExists(chatId) {
+func (h LinksHandler) DeleteChat(chatID int64) error {
+	if !h.Repo.ChatExists(chatID) {
 		return ErrChatNotFound
 	}
-	h.Repo.DeleteChat(chatId)
+	h.Repo.DeleteChat(chatID)
 	return nil
 }
 
-func (h LinksHandler) GetLinks(chatId int64) ([]shared.LinkInfo, error) {
-	if !h.Repo.ChatExists(chatId) {
+func (h LinksHandler) GetLinks(chatID int64) ([]shared.LinkInfo, error) {
+	if !h.Repo.ChatExists(chatID) {
 		return nil, ErrChatNotFound
 	}
-	links := h.Repo.GetLinks(chatId)
+	links := h.Repo.GetLinks(chatID)
 	return links, nil
 }
 
-func (h LinksHandler) AddLink(chatId int64, linkRequest shared.AddLinkRequest) error {
-	if !h.Repo.ChatExists(chatId) {
+func (h LinksHandler) AddLink(chatID int64, linkRequest shared.AddLinkRequest) error {
+	if !h.Repo.ChatExists(chatID) {
 		return ErrChatNotFound
 	}
 	link := linkRequest.Link
@@ -68,7 +68,7 @@ func (h LinksHandler) AddLink(chatId int64, linkRequest shared.AddLinkRequest) e
 		return ErrIncorrectRequestParameters
 	}
 
-	links := h.Repo.GetLinks(chatId)
+	links := h.Repo.GetLinks(chatID)
 	for _, l := range links {
 		if l.Link == link {
 			return ErrLinkExists
@@ -76,16 +76,16 @@ func (h LinksHandler) AddLink(chatId int64, linkRequest shared.AddLinkRequest) e
 	}
 
 	trackedLink := shared.LinkInfo{Link: link, Tags: linkRequest.Tags, LastUpdateTime: time.Now()}
-	h.Repo.AddLink(chatId, trackedLink)
+	h.Repo.AddLink(chatID, trackedLink)
 
 	return nil
 }
 
-func (h LinksHandler) DeleteLink(chatId int64, link string) (shared.LinkInfo, error) {
-	if !h.Repo.ChatExists(chatId) {
+func (h LinksHandler) DeleteLink(chatID int64, link string) (shared.LinkInfo, error) {
+	if !h.Repo.ChatExists(chatID) {
 		return shared.LinkInfo{}, ErrChatNotFound
 	}
-	linkInfo, ok := h.Repo.DeleteLink(chatId, link)
+	linkInfo, ok := h.Repo.DeleteLink(chatID, link)
 	if !ok {
 		return shared.LinkInfo{}, ErrLinkNotExists
 	}

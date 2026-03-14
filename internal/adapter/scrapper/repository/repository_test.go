@@ -24,7 +24,7 @@ func TestLinkRepositoryChatExists(t *testing.T) {
 		{
 			name:     "chat does not exist",
 			chatID:   2,
-			prepare:  func(r *LinkRepository) {},
+			prepare:  func(_ *LinkRepository) {},
 			expected: false,
 		},
 	}
@@ -347,7 +347,7 @@ func TestLinkRepositoryGetChatIdsByLink(t *testing.T) {
 			r := NewLinkRepository()
 			tt.prepare(r)
 
-			result := r.GetChatIdsByLink(target)
+			result := r.GetChatIDsByLink(target)
 
 			if !reflect.DeepEqual(result, tt.expected) {
 				t.Fatalf("expected %v, got %v", tt.expected, result)

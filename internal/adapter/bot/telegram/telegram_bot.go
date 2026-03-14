@@ -3,6 +3,7 @@ package telegram
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"sync"
 
@@ -24,19 +25,19 @@ type BotHandler interface {
 	HandleUpdate(update tgbotapi.Update)
 }
 
-type TelegramAPI interface {
+type TgAPI interface {
 	GetUpdatesChan(config tgbotapi.UpdateConfig) tgbotapi.UpdatesChannel
 	Send(c tgbotapi.Chattable) (tgbotapi.Message, error)
 	Request(c tgbotapi.Chattable) (*tgbotapi.APIResponse, error)
 }
 
-type TelegramBot struct {
-	Bot        TelegramAPI
+type Bot struct {
+	BotAPI     TgAPI
 	Handler    BotHandler
 	BaseLogger *slog.Logger
 }
 
-func (t TelegramBot) StartMainLoop(ctx context.Context, wg *sync.WaitGroup) {
+func (t Bot) StartMainLoop(ctx context.Context, wg *sync.WaitGroup) {
 	if err := t.setupBotCommands(); err != nil {
 		t.BaseLogger.Error("error loading commands", slog.String("error", err.Error()))
 	} else {
@@ -45,7 +46,7 @@ func (t TelegramBot) StartMainLoop(ctx context.Context, wg *sync.WaitGroup) {
 
 	u := tgbotapi.NewUpdate(updateOffset)
 	u.Timeout = updateTimeout
-	updates := t.Bot.GetUpdatesChan(u)
+	updates := t.BotAPI.GetUpdatesChan(u)
 
 	for range telegramWorkersNum {
 		wg.Go(func() {
@@ -54,7 +55,16 @@ func (t TelegramBot) StartMainLoop(ctx context.Context, wg *sync.WaitGroup) {
 	}
 }
 
-func (t TelegramBot) telegramWorker(ctx context.Context, updateChan tgbotapi.UpdatesChannel) {
+func (t Bot) SendMessage(chatID int64, message string) error {
+	msg := tgbotapi.NewMessage(chatID, message)
+	if _, err := t.BotAPI.Send(msg); err != nil {
+		t.BaseLogger.Error("message send error", slog.String("err", err.Error()))
+		return fmt.Errorf("error sending message: %w", err)
+	}
+	return nil
+}
+
+func (t Bot) telegramWorker(ctx context.Context, updateChan tgbotapi.UpdatesChannel) {
 	for {
 		select {
 		case update, ok := <-updateChan:
@@ -68,26 +78,17 @@ func (t TelegramBot) telegramWorker(ctx context.Context, updateChan tgbotapi.Upd
 	}
 }
 
-func (t TelegramBot) SendMessage(chatID int64, message string) error {
-	msg := tgbotapi.NewMessage(chatID, message)
-	if _, err := t.Bot.Send(msg); err != nil {
-		t.BaseLogger.Error("message send error", slog.String("err", err.Error()))
-		return err
-	}
-	return nil
-}
-
-func (t TelegramBot) setupBotCommands() error {
+func (t Bot) setupBotCommands() error {
 	commands := []tgbotapi.BotCommand{
-		{"start", startCommand},
-		{"help", helpCommand},
-		{"track", trackCommand},
-		{"untrack", untrackCommand},
-		{"list", listCommand},
+		{Command: "start", Description: startCommand},
+		{Command: "help", Description: helpCommand},
+		{Command: "track", Description: trackCommand},
+		{Command: "untrack", Description: untrackCommand},
+		{Command: "list", Description: listCommand},
 	}
 	conf := tgbotapi.NewSetMyCommands(commands...)
-	if _, err := t.Bot.Request(conf); err != nil {
-		return err
+	if _, err := t.BotAPI.Request(conf); err != nil {
+		return fmt.Errorf("error setting up bot commands: %w", err)
 	}
 	return nil
 }

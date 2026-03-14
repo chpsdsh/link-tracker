@@ -28,20 +28,20 @@ func TestParseConfig(t *testing.T) {
 			token:         "",
 			scrapperAddr:  "http://localhost:8080",
 			expectedCfg:   Config{},
-			expectedError: NoTelegramTokenError,
+			expectedError: ErrNoTelegramToken,
 		},
 		{
 			name:          "missing scrapper address",
 			token:         "telegram_token",
 			scrapperAddr:  "",
 			expectedCfg:   Config{},
-			expectedError: NoScrapperAddressError,
+			expectedError: ErrNoScrapperAddress,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Setenv(telegramApiKey, tt.token)
+			t.Setenv(telegramAPIKey, tt.token)
 			t.Setenv(scrapperServerAddress, tt.scrapperAddr)
 
 			cfg, err := ParseConfig()
