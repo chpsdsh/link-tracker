@@ -10,8 +10,8 @@ import (
 
 	"github.com/go-co-op/gocron/v2"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/scrapper/handler"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/pkg"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/scrapper"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/shared"
 )
 
 var (
@@ -39,7 +39,7 @@ const (
 
 type NetworkClient interface {
 	DoGithubRequest(url string) (scrapper.GitHubUpdate, error)
-	SendLinkUpdate(update shared.LinkUpdate) error
+	SendLinkUpdate(update pkg.LinkUpdate) error
 	DoStackOverflowRequest(url string) (scrapper.StackOverflowUpdate, error)
 }
 
@@ -121,12 +121,12 @@ func (r LinksRequester) HandleStackOverflowLinks() {
 	}
 }
 
-func (r LinksRequester) sendUpdate(updateTime time.Time, linkInfo shared.LinkInfo) {
+func (r LinksRequester) sendUpdate(updateTime time.Time, linkInfo pkg.LinkInfo) {
 	if updateTime.After(linkInfo.LastUpdateTime) {
 		r.Repo.UpdateLinksTime(updateTime, linkInfo)
 
 		chatIDs := r.Repo.GetChatIDsByLink(linkInfo.Link)
-		update := shared.LinkUpdate{Description: "Ссылка обновлена", TgChatIDs: chatIDs, URL: linkInfo.Link}
+		update := pkg.LinkUpdate{Description: "Ссылка обновлена", TgChatIDs: chatIDs, URL: linkInfo.Link}
 
 		err := r.Client.SendLinkUpdate(update)
 		if err != nil {

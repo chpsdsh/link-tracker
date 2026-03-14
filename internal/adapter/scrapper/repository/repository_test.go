@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/shared"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/pkg"
 )
 
 func TestLinkRepositoryChatExists(t *testing.T) {
@@ -83,7 +83,7 @@ func TestLinkRepositoryGetLinks(t *testing.T) {
 		name     string
 		chatID   int64
 		prepare  func(r *LinkRepository)
-		expected []shared.LinkInfo
+		expected []pkg.LinkInfo
 	}{
 		{
 			name:   "get empty links",
@@ -91,17 +91,17 @@ func TestLinkRepositoryGetLinks(t *testing.T) {
 			prepare: func(r *LinkRepository) {
 				r.AddChat(1)
 			},
-			expected: []shared.LinkInfo{},
+			expected: []pkg.LinkInfo{},
 		},
 		{
 			name:   "get links",
 			chatID: 2,
 			prepare: func(r *LinkRepository) {
 				r.AddChat(2)
-				r.AddLink(2, shared.LinkInfo{Link: "https://github.com/golang/go", Tags: []string{"work"}, LastUpdateTime: now})
-				r.AddLink(2, shared.LinkInfo{Link: "https://stackoverflow.com/questions/1/test", Tags: []string{"study"}, LastUpdateTime: now})
+				r.AddLink(2, pkg.LinkInfo{Link: "https://github.com/golang/go", Tags: []string{"work"}, LastUpdateTime: now})
+				r.AddLink(2, pkg.LinkInfo{Link: "https://stackoverflow.com/questions/1/test", Tags: []string{"study"}, LastUpdateTime: now})
 			},
-			expected: []shared.LinkInfo{
+			expected: []pkg.LinkInfo{
 				{Link: "https://github.com/golang/go", Tags: []string{"work"}, LastUpdateTime: now},
 				{Link: "https://stackoverflow.com/questions/1/test", Tags: []string{"study"}, LastUpdateTime: now},
 			},
@@ -128,22 +128,22 @@ func TestLinkRepositoryAddLink(t *testing.T) {
 	tests := []struct {
 		name     string
 		chatID   int64
-		link     shared.LinkInfo
-		expected []shared.LinkInfo
+		link     pkg.LinkInfo
+		expected []pkg.LinkInfo
 	}{
 		{
 			name:   "add one link",
 			chatID: 1,
-			link:   shared.LinkInfo{Link: "https://github.com/golang/go", Tags: []string{"work"}, LastUpdateTime: now},
-			expected: []shared.LinkInfo{
+			link:   pkg.LinkInfo{Link: "https://github.com/golang/go", Tags: []string{"work"}, LastUpdateTime: now},
+			expected: []pkg.LinkInfo{
 				{Link: "https://github.com/golang/go", Tags: []string{"work"}, LastUpdateTime: now},
 			},
 		},
 		{
 			name:   "add second link",
 			chatID: 2,
-			link:   shared.LinkInfo{Link: "https://stackoverflow.com/questions/1/test", Tags: []string{"study"}, LastUpdateTime: now},
-			expected: []shared.LinkInfo{
+			link:   pkg.LinkInfo{Link: "https://stackoverflow.com/questions/1/test", Tags: []string{"study"}, LastUpdateTime: now},
+			expected: []pkg.LinkInfo{
 				{Link: "https://github.com/golang/go", Tags: []string{"repo"}, LastUpdateTime: now},
 				{Link: "https://stackoverflow.com/questions/1/test", Tags: []string{"study"}, LastUpdateTime: now},
 			},
@@ -156,7 +156,7 @@ func TestLinkRepositoryAddLink(t *testing.T) {
 			r.AddChat(tt.chatID)
 
 			if tt.name == "add second link" {
-				r.AddLink(tt.chatID, shared.LinkInfo{Link: "https://github.com/golang/go", Tags: []string{"repo"}, LastUpdateTime: now})
+				r.AddLink(tt.chatID, pkg.LinkInfo{Link: "https://github.com/golang/go", Tags: []string{"repo"}, LastUpdateTime: now})
 			}
 
 			r.AddLink(tt.chatID, tt.link)
@@ -173,29 +173,29 @@ func TestLinkRepositoryAddLink(t *testing.T) {
 func TestLinkRepositoryDeleteLink(t *testing.T) {
 	now := time.Now()
 
-	first := shared.LinkInfo{Link: "https://github.com/golang/go", Tags: []string{"work"}, LastUpdateTime: now}
-	second := shared.LinkInfo{Link: "https://stackoverflow.com/questions/1/test", Tags: []string{"study"}, LastUpdateTime: now}
+	first := pkg.LinkInfo{Link: "https://github.com/golang/go", Tags: []string{"work"}, LastUpdateTime: now}
+	second := pkg.LinkInfo{Link: "https://stackoverflow.com/questions/1/test", Tags: []string{"study"}, LastUpdateTime: now}
 
 	tests := []struct {
 		name         string
 		linkToDelete string
-		expectedLink shared.LinkInfo
+		expectedLink pkg.LinkInfo
 		expectedOK   bool
-		expectedRest []shared.LinkInfo
+		expectedRest []pkg.LinkInfo
 	}{
 		{
 			name:         "delete existing link",
 			linkToDelete: first.Link,
 			expectedLink: first,
 			expectedOK:   true,
-			expectedRest: []shared.LinkInfo{second},
+			expectedRest: []pkg.LinkInfo{second},
 		},
 		{
 			name:         "delete non existing link",
 			linkToDelete: "https://example.com",
-			expectedLink: shared.LinkInfo{},
+			expectedLink: pkg.LinkInfo{},
 			expectedOK:   false,
-			expectedRest: []shared.LinkInfo{first, second},
+			expectedRest: []pkg.LinkInfo{first, second},
 		},
 	}
 
@@ -256,20 +256,20 @@ func TestLinkRepositoryDeleteChat(t *testing.T) {
 func TestLinkRepositoryGetAllLinks(t *testing.T) {
 	now := time.Now()
 
-	link1 := shared.LinkInfo{Link: "https://github.com/golang/go", Tags: []string{"work"}, LastUpdateTime: now}
-	link2 := shared.LinkInfo{Link: "https://stackoverflow.com/questions/1/test", Tags: []string{"study"}, LastUpdateTime: now}
+	link1 := pkg.LinkInfo{Link: "https://github.com/golang/go", Tags: []string{"work"}, LastUpdateTime: now}
+	link2 := pkg.LinkInfo{Link: "https://stackoverflow.com/questions/1/test", Tags: []string{"study"}, LastUpdateTime: now}
 
 	tests := []struct {
 		name     string
 		prepare  func(r *LinkRepository)
-		expected []shared.LinkInfo
+		expected []pkg.LinkInfo
 	}{
 		{
 			name: "no links",
 			prepare: func(r *LinkRepository) {
 				r.AddChat(1)
 			},
-			expected: []shared.LinkInfo{},
+			expected: []pkg.LinkInfo{},
 		},
 		{
 			name: "links from multiple chats",
@@ -279,7 +279,7 @@ func TestLinkRepositoryGetAllLinks(t *testing.T) {
 				r.AddLink(1, link1)
 				r.AddLink(2, link2)
 			},
-			expected: []shared.LinkInfo{link1, link2},
+			expected: []pkg.LinkInfo{link1, link2},
 		},
 	}
 
@@ -324,7 +324,7 @@ func TestLinkRepositoryGetChatIdsByLink(t *testing.T) {
 			name: "link not found",
 			prepare: func(r *LinkRepository) {
 				r.AddChat(1)
-				r.AddLink(1, shared.LinkInfo{Link: "https://example.com", LastUpdateTime: now})
+				r.AddLink(1, pkg.LinkInfo{Link: "https://example.com", LastUpdateTime: now})
 			},
 			expected: []int64{},
 		},
@@ -334,9 +334,9 @@ func TestLinkRepositoryGetChatIdsByLink(t *testing.T) {
 				r.AddChat(1)
 				r.AddChat(2)
 				r.AddChat(3)
-				r.AddLink(1, shared.LinkInfo{Link: target, LastUpdateTime: now})
-				r.AddLink(2, shared.LinkInfo{Link: "https://example.com", LastUpdateTime: now})
-				r.AddLink(3, shared.LinkInfo{Link: target, LastUpdateTime: now})
+				r.AddLink(1, pkg.LinkInfo{Link: target, LastUpdateTime: now})
+				r.AddLink(2, pkg.LinkInfo{Link: "https://example.com", LastUpdateTime: now})
+				r.AddLink(3, pkg.LinkInfo{Link: target, LastUpdateTime: now})
 			},
 			expected: []int64{1, 3},
 		},
@@ -364,7 +364,7 @@ func TestLinkRepositoryUpdateLinksTime(t *testing.T) {
 		name        string
 		linkToTrack string
 		prepare     func(r *LinkRepository)
-		expected    map[int64][]shared.LinkInfo
+		expected    map[int64][]pkg.LinkInfo
 	}{
 		{
 			name:        "update matching links in multiple chats",
@@ -372,11 +372,11 @@ func TestLinkRepositoryUpdateLinksTime(t *testing.T) {
 			prepare: func(r *LinkRepository) {
 				r.AddChat(1)
 				r.AddChat(2)
-				r.AddLink(1, shared.LinkInfo{Link: "https://github.com/golang/go", Tags: []string{"work"}, LastUpdateTime: oldTime})
-				r.AddLink(1, shared.LinkInfo{Link: "https://example.com", Tags: []string{"other"}, LastUpdateTime: oldTime})
-				r.AddLink(2, shared.LinkInfo{Link: "https://github.com/golang/go", Tags: []string{"repo"}, LastUpdateTime: oldTime})
+				r.AddLink(1, pkg.LinkInfo{Link: "https://github.com/golang/go", Tags: []string{"work"}, LastUpdateTime: oldTime})
+				r.AddLink(1, pkg.LinkInfo{Link: "https://example.com", Tags: []string{"other"}, LastUpdateTime: oldTime})
+				r.AddLink(2, pkg.LinkInfo{Link: "https://github.com/golang/go", Tags: []string{"repo"}, LastUpdateTime: oldTime})
 			},
-			expected: map[int64][]shared.LinkInfo{
+			expected: map[int64][]pkg.LinkInfo{
 				1: {
 					{Link: "https://github.com/golang/go", Tags: []string{"work"}, LastUpdateTime: newTime},
 					{Link: "https://example.com", Tags: []string{"other"}, LastUpdateTime: oldTime},
@@ -391,9 +391,9 @@ func TestLinkRepositoryUpdateLinksTime(t *testing.T) {
 			linkToTrack: "https://unknown.com",
 			prepare: func(r *LinkRepository) {
 				r.AddChat(1)
-				r.AddLink(1, shared.LinkInfo{Link: "https://github.com/golang/go", Tags: []string{"work"}, LastUpdateTime: oldTime})
+				r.AddLink(1, pkg.LinkInfo{Link: "https://github.com/golang/go", Tags: []string{"work"}, LastUpdateTime: oldTime})
 			},
-			expected: map[int64][]shared.LinkInfo{
+			expected: map[int64][]pkg.LinkInfo{
 				1: {
 					{Link: "https://github.com/golang/go", Tags: []string{"work"}, LastUpdateTime: oldTime},
 				},
@@ -406,7 +406,7 @@ func TestLinkRepositoryUpdateLinksTime(t *testing.T) {
 			r := NewLinkRepository()
 			tt.prepare(r)
 
-			r.UpdateLinksTime(newTime, shared.LinkInfo{Link: tt.linkToTrack})
+			r.UpdateLinksTime(newTime, pkg.LinkInfo{Link: tt.linkToTrack})
 
 			for chatID, expectedLinks := range tt.expected {
 				result := r.GetLinks(chatID)

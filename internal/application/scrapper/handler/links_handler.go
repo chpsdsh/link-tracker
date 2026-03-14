@@ -7,7 +7,7 @@ import (
 	"net/url"
 	"time"
 
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/shared"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/pkg"
 )
 
 var (
@@ -20,14 +20,14 @@ var (
 
 type Repository interface {
 	ChatExists(chatID int64) bool
-	GetLinks(chatID int64) []shared.LinkInfo
-	AddLink(chatID int64, link shared.LinkInfo)
-	DeleteLink(chatID int64, link string) (shared.LinkInfo, bool)
+	GetLinks(chatID int64) []pkg.LinkInfo
+	AddLink(chatID int64, link pkg.LinkInfo)
+	DeleteLink(chatID int64, link string) (pkg.LinkInfo, bool)
 	DeleteChat(chatID int64)
 	AddChat(chatID int64)
-	GetAllLinks() []shared.LinkInfo
+	GetAllLinks() []pkg.LinkInfo
 	GetChatIDsByLink(link string) []int64
-	UpdateLinksTime(newTime time.Time, linkToUpdate shared.LinkInfo)
+	UpdateLinksTime(newTime time.Time, linkToUpdate pkg.LinkInfo)
 }
 
 type LinksHandler struct {
@@ -51,7 +51,7 @@ func (h LinksHandler) DeleteChat(chatID int64) error {
 	return nil
 }
 
-func (h LinksHandler) GetLinks(chatID int64) ([]shared.LinkInfo, error) {
+func (h LinksHandler) GetLinks(chatID int64) ([]pkg.LinkInfo, error) {
 	if !h.Repo.ChatExists(chatID) {
 		return nil, ErrChatNotFound
 	}
@@ -59,7 +59,7 @@ func (h LinksHandler) GetLinks(chatID int64) ([]shared.LinkInfo, error) {
 	return links, nil
 }
 
-func (h LinksHandler) AddLink(chatID int64, linkRequest shared.AddLinkRequest) error {
+func (h LinksHandler) AddLink(chatID int64, linkRequest pkg.AddLinkRequest) error {
 	if !h.Repo.ChatExists(chatID) {
 		return ErrChatNotFound
 	}
@@ -75,19 +75,19 @@ func (h LinksHandler) AddLink(chatID int64, linkRequest shared.AddLinkRequest) e
 		}
 	}
 
-	trackedLink := shared.LinkInfo{Link: link, Tags: linkRequest.Tags, LastUpdateTime: time.Now()}
+	trackedLink := pkg.LinkInfo{Link: link, Tags: linkRequest.Tags, LastUpdateTime: time.Now()}
 	h.Repo.AddLink(chatID, trackedLink)
 
 	return nil
 }
 
-func (h LinksHandler) DeleteLink(chatID int64, link string) (shared.LinkInfo, error) {
+func (h LinksHandler) DeleteLink(chatID int64, link string) (pkg.LinkInfo, error) {
 	if !h.Repo.ChatExists(chatID) {
-		return shared.LinkInfo{}, ErrChatNotFound
+		return pkg.LinkInfo{}, ErrChatNotFound
 	}
 	linkInfo, ok := h.Repo.DeleteLink(chatID, link)
 	if !ok {
-		return shared.LinkInfo{}, ErrLinkNotExists
+		return pkg.LinkInfo{}, ErrLinkNotExists
 	}
 	return linkInfo, nil
 }

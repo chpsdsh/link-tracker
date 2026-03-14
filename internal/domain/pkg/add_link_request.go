@@ -1,4 +1,4 @@
-package shared
+package pkg
 
 type AddLinkRequest struct {
 	Filters []string `json:"filters,omitempty"`

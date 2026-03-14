@@ -14,7 +14,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/mocks"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/scrapper/handler"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/shared"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/pkg"
 )
 
 func TestScrapperServerPostTgChatId(t *testing.T) {
@@ -131,7 +131,7 @@ func TestScrapperServerGetLinks(t *testing.T) {
 	tests := []struct {
 		name           string
 		chatID         int64
-		handlerLinks   []shared.LinkInfo
+		handlerLinks   []pkg.LinkInfo
 		handlerErr     error
 		expectedStatus int
 		expectedSize   int32
@@ -139,7 +139,7 @@ func TestScrapperServerGetLinks(t *testing.T) {
 		{
 			name:   "success",
 			chatID: 1,
-			handlerLinks: []shared.LinkInfo{
+			handlerLinks: []pkg.LinkInfo{
 				{Link: "https://github.com/golang/go", Tags: []string{"work"}},
 				{Link: "https://stackoverflow.com/questions/1/test", Tags: []string{"study"}},
 			},
@@ -207,7 +207,7 @@ func TestScrapperServerPostLinks(t *testing.T) {
 			body:   `{"link":"https://github.com/golang/go","tags":["work"],"filters":["f1"]}`,
 			setupMock: func(m *mocks.MockScrapperHandler) {
 				m.EXPECT().
-					AddLink(int64(1), shared.AddLinkRequest{
+					AddLink(int64(1), pkg.AddLinkRequest{
 						Link: "https://github.com/golang/go",
 						Tags: []string{"work"},
 					}).
@@ -229,7 +229,7 @@ func TestScrapperServerPostLinks(t *testing.T) {
 			body:   `{"link":"bad","tags":["work"],"filters":["f1"]}`,
 			setupMock: func(m *mocks.MockScrapperHandler) {
 				m.EXPECT().
-					AddLink(int64(1), shared.AddLinkRequest{
+					AddLink(int64(1), pkg.AddLinkRequest{
 						Link: "bad",
 						Tags: []string{"work"},
 					}).
@@ -243,7 +243,7 @@ func TestScrapperServerPostLinks(t *testing.T) {
 			body:   `{"link":"https://github.com/golang/go","tags":["work"],"filters":["f1"]}`,
 			setupMock: func(m *mocks.MockScrapperHandler) {
 				m.EXPECT().
-					AddLink(int64(1), shared.AddLinkRequest{
+					AddLink(int64(1), pkg.AddLinkRequest{
 						Link: "https://github.com/golang/go",
 						Tags: []string{"work"},
 					}).
@@ -257,7 +257,7 @@ func TestScrapperServerPostLinks(t *testing.T) {
 			body:   `{"link":"https://github.com/golang/go","tags":["work"],"filters":["f1"]}`,
 			setupMock: func(m *mocks.MockScrapperHandler) {
 				m.EXPECT().
-					AddLink(int64(1), shared.AddLinkRequest{
+					AddLink(int64(1), pkg.AddLinkRequest{
 						Link: "https://github.com/golang/go",
 						Tags: []string{"work"},
 					}).
@@ -307,7 +307,7 @@ func TestScrapperServerDeleteLinks(t *testing.T) {
 			setupMock: func(m *mocks.MockScrapperHandler) {
 				m.EXPECT().
 					DeleteLink(int64(1), "https://github.com/golang/go").
-					Return(shared.LinkInfo{
+					Return(pkg.LinkInfo{
 						Link: "https://github.com/golang/go",
 						Tags: []string{"work"},
 					}, nil)
@@ -321,7 +321,7 @@ func TestScrapperServerDeleteLinks(t *testing.T) {
 			setupMock: func(m *mocks.MockScrapperHandler) {
 				m.EXPECT().
 					DeleteLink(int64(1), "https://github.com/golang/go").
-					Return(shared.LinkInfo{}, handler.ErrChatNotFound)
+					Return(pkg.LinkInfo{}, handler.ErrChatNotFound)
 			},
 			expectedStatus: http.StatusNotFound,
 		},
@@ -332,7 +332,7 @@ func TestScrapperServerDeleteLinks(t *testing.T) {
 			setupMock: func(m *mocks.MockScrapperHandler) {
 				m.EXPECT().
 					DeleteLink(int64(1), "https://github.com/golang/go").
-					Return(shared.LinkInfo{}, handler.ErrLinkNotExists)
+					Return(pkg.LinkInfo{}, handler.ErrLinkNotExists)
 			},
 			expectedStatus: http.StatusNotFound,
 		},

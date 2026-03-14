@@ -11,8 +11,8 @@ import (
 
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/config"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/scrapper/scheduler"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/pkg"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/scrapper"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/shared"
 )
 
 var ErrUnmarshallingJSON = errors.New("json unmarshalling error")
@@ -84,7 +84,7 @@ func (c Client) DoStackOverflowRequest(url string) (scrapper.StackOverflowUpdate
 	return stackOverflowUpdate, nil
 }
 
-func (c Client) SendLinkUpdate(update shared.LinkUpdate) error {
+func (c Client) SendLinkUpdate(update pkg.LinkUpdate) error {
 	data, err := json.Marshal(update)
 	if err != nil {
 		return fmt.Errorf("error marshalling JSON: %w", err)

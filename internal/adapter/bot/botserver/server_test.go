@@ -12,7 +12,7 @@ import (
 	"github.com/golang/mock/gomock"
 
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/bot/mocks"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/shared"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/pkg"
 )
 
 func TestUpdatesServerPostUpdates(t *testing.T) {
@@ -32,7 +32,7 @@ func TestUpdatesServerPostUpdates(t *testing.T) {
 			}`,
 			setupMock: func(m *mocks.MockTelegramBotHandler) {
 				m.EXPECT().
-					HandleLinkUpdate(shared.LinkUpdate{
+					HandleLinkUpdate(pkg.LinkUpdate{
 						Description: "link updated",
 						TgChatIDs:   []int64{1, 2},
 						URL:         "https://github.com/golang/go",

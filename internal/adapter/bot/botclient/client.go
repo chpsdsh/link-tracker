@@ -12,7 +12,7 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/bot/config"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/bot/handler"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/bot"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/shared"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/pkg"
 )
 
 const (
@@ -89,7 +89,7 @@ func (c Client) GetLinks(chatID int64) (bot.ListLinksResponse, error) {
 	}
 }
 
-func (c Client) AddLink(chatID int64, linkRequest shared.AddLinkRequest) (bot.LinkResponse, error) {
+func (c Client) AddLink(chatID int64, linkRequest pkg.AddLinkRequest) (bot.LinkResponse, error) {
 	data, err := json.Marshal(linkRequest)
 	if err != nil {
 		return bot.LinkResponse{}, fmt.Errorf("error marshalling JSON: %w", err)

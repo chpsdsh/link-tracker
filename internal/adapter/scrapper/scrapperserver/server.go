@@ -9,7 +9,7 @@ import (
 	"net/http"
 
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/scrapper/handler"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/shared"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/pkg"
 )
 
 const (
@@ -30,9 +30,9 @@ const (
 type ScrapperHandler interface {
 	AddChatID(chatID int64) error
 	DeleteChat(chatID int64) error
-	GetLinks(chatID int64) ([]shared.LinkInfo, error)
-	AddLink(chatID int64, linkRequest shared.AddLinkRequest) error
-	DeleteLink(chatID int64, link string) (shared.LinkInfo, error)
+	GetLinks(chatID int64) ([]pkg.LinkInfo, error)
+	AddLink(chatID int64, linkRequest pkg.AddLinkRequest) error
+	DeleteLink(chatID int64, link string) (pkg.LinkInfo, error)
 }
 
 type ScrapperServer struct {
@@ -130,7 +130,7 @@ func (s ScrapperServer) PostLinks(w http.ResponseWriter, r *http.Request, params
 		return
 	}
 
-	linkErr := s.Handler.AddLink(params.TgChatId, shared.AddLinkRequest{
+	linkErr := s.Handler.AddLink(params.TgChatId, pkg.AddLinkRequest{
 		Link: *linkRequest.Link,
 		Tags: *linkRequest.Tags,
 	})

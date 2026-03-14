@@ -5,16 +5,16 @@ import (
 	"sync"
 	"time"
 
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/shared"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/pkg"
 )
 
 type LinkRepository struct {
-	linkStorage map[int64][]shared.LinkInfo
+	linkStorage map[int64][]pkg.LinkInfo
 	mu          sync.RWMutex
 }
 
 func NewLinkRepository() *LinkRepository {
-	return &LinkRepository{linkStorage: make(map[int64][]shared.LinkInfo), mu: sync.RWMutex{}}
+	return &LinkRepository{linkStorage: make(map[int64][]pkg.LinkInfo), mu: sync.RWMutex{}}
 }
 
 func (r *LinkRepository) ChatExists(chatID int64) bool {
@@ -27,22 +27,22 @@ func (r *LinkRepository) ChatExists(chatID int64) bool {
 func (r *LinkRepository) AddChat(chatID int64) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.linkStorage[chatID] = []shared.LinkInfo{}
+	r.linkStorage[chatID] = []pkg.LinkInfo{}
 }
 
-func (r *LinkRepository) GetLinks(chatID int64) []shared.LinkInfo {
+func (r *LinkRepository) GetLinks(chatID int64) []pkg.LinkInfo {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	return r.linkStorage[chatID]
 }
 
-func (r *LinkRepository) AddLink(chatID int64, link shared.LinkInfo) {
+func (r *LinkRepository) AddLink(chatID int64, link pkg.LinkInfo) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.linkStorage[chatID] = append(r.linkStorage[chatID], link)
 }
 
-func (r *LinkRepository) DeleteLink(chatID int64, link string) (shared.LinkInfo, bool) {
+func (r *LinkRepository) DeleteLink(chatID int64, link string) (pkg.LinkInfo, bool) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	for i, l := range r.linkStorage[chatID] {
@@ -51,7 +51,7 @@ func (r *LinkRepository) DeleteLink(chatID int64, link string) (shared.LinkInfo,
 			return l, true
 		}
 	}
-	return shared.LinkInfo{}, false
+	return pkg.LinkInfo{}, false
 }
 
 func (r *LinkRepository) DeleteChat(chatID int64) {
@@ -60,10 +60,10 @@ func (r *LinkRepository) DeleteChat(chatID int64) {
 	delete(r.linkStorage, chatID)
 }
 
-func (r *LinkRepository) GetAllLinks() []shared.LinkInfo {
+func (r *LinkRepository) GetAllLinks() []pkg.LinkInfo {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	links := make([]shared.LinkInfo, 0)
+	links := make([]pkg.LinkInfo, 0)
 	for _, l := range r.linkStorage {
 		links = append(links, l...)
 	}
@@ -87,7 +87,7 @@ func (r *LinkRepository) GetChatIDsByLink(link string) []int64 {
 	return ids
 }
 
-func (r *LinkRepository) UpdateLinksTime(newTime time.Time, linkToUpdate shared.LinkInfo) {
+func (r *LinkRepository) UpdateLinksTime(newTime time.Time, linkToUpdate pkg.LinkInfo) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	for _, chatLinks := range r.linkStorage {

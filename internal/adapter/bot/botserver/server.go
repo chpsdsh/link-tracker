@@ -7,7 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/shared"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/pkg"
 )
 
 const (
@@ -17,7 +17,7 @@ const (
 )
 
 type TelegramBotHandler interface {
-	HandleLinkUpdate(linkUpdate shared.LinkUpdate)
+	HandleLinkUpdate(linkUpdate pkg.LinkUpdate)
 }
 
 type UpdatesServer struct {
@@ -42,7 +42,7 @@ func (u *UpdatesServer) PostUpdates(w http.ResponseWriter, r *http.Request) {
 	}
 
 	u.BaseLogger.Info("response ", slog.Any("update", linkUpdate))
-	u.Handler.HandleLinkUpdate(shared.LinkUpdate{Description: *linkUpdate.Description,
+	u.Handler.HandleLinkUpdate(pkg.LinkUpdate{Description: *linkUpdate.Description,
 		TgChatIDs: *linkUpdate.TgChatIds, URL: *linkUpdate.Url})
 
 	w.WriteHeader(http.StatusOK)

@@ -10,7 +10,7 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/bot/config"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/bot/handler"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/bot"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/shared"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/pkg"
 )
 
 func TestClientRegisterChat(t *testing.T) {
@@ -213,7 +213,7 @@ func TestClientGetLinks(t *testing.T) {
 }
 
 func TestClientAddLink(t *testing.T) {
-	linkReq := shared.AddLinkRequest{
+	linkReq := pkg.AddLinkRequest{
 		Link: "https://github.com/golang/go",
 		Tags: []string{"work"},
 	}
@@ -279,7 +279,7 @@ func TestClientAddLink(t *testing.T) {
 	}
 }
 
-func assertAddLinkRequest(t *testing.T, r *http.Request, expected shared.AddLinkRequest) {
+func assertAddLinkRequest(t *testing.T, r *http.Request, expected pkg.AddLinkRequest) {
 	t.Helper()
 
 	if r.Method != http.MethodPost {
@@ -295,7 +295,7 @@ func assertAddLinkRequest(t *testing.T, r *http.Request, expected shared.AddLink
 		t.Fatalf("expected header %s=%s, got %s", contentTypeKey, typeApplicationJSON, r.Header.Get(contentTypeKey))
 	}
 
-	var reqBody shared.AddLinkRequest
+	var reqBody pkg.AddLinkRequest
 	if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
 		t.Fatal(err)
 	}

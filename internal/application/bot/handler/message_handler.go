@@ -10,7 +10,7 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/bot/statestorage"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/bot"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/shared"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/pkg"
 )
 
 var (
@@ -61,7 +61,7 @@ type StateStorage interface {
 type NetworkClient interface {
 	RegisterChat(chatID int64) error
 	GetLinks(chatID int64) (bot.ListLinksResponse, error)
-	AddLink(chatID int64, linkRequest shared.AddLinkRequest) (bot.LinkResponse, error)
+	AddLink(chatID int64, linkRequest pkg.AddLinkRequest) (bot.LinkResponse, error)
 	RemoveLink(chatID int64, removeRequest bot.RemoveLinkRequest) (bot.LinkResponse, error)
 }
 
@@ -80,7 +80,7 @@ func (h TelegramHandler) HandleUpdate(update tgbotapi.Update) {
 	}
 }
 
-func (h TelegramHandler) HandleLinkUpdate(linkUpdate shared.LinkUpdate) {
+func (h TelegramHandler) HandleLinkUpdate(linkUpdate pkg.LinkUpdate) {
 	for _, id := range linkUpdate.TgChatIDs {
 		if err := h.MsgSender.SendMessage(id, linkUpdate.Description+" "+linkUpdate.URL); err != nil {
 			h.BaseLogger.Error("error while sending message", slog.String("error", err.Error()))
@@ -223,7 +223,7 @@ func (h TelegramHandler) handleUntrack(update tgbotapi.Update) string {
 func (h TelegramHandler) handleTrack(update tgbotapi.Update) string {
 	var text string
 	tags := parseTags(update.Message.Text)
-	linkResp, err := h.Client.AddLink(update.Message.Chat.ID, shared.AddLinkRequest{Link: h.Session.GetLink(update.Message.Chat.ID), Tags: tags})
+	linkResp, err := h.Client.AddLink(update.Message.Chat.ID, pkg.AddLinkRequest{Link: h.Session.GetLink(update.Message.Chat.ID), Tags: tags})
 	switch {
 	case errors.Is(err, ErrIncorrectRequestParameters):
 		text = incorrectRequestParameters

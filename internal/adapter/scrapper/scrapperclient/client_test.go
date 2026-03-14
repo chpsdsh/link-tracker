@@ -10,7 +10,7 @@ import (
 
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/config"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/scrapper/scheduler"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/shared"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/pkg"
 )
 
 func TestDoGithubRequestSuccess(t *testing.T) {
@@ -131,7 +131,7 @@ func TestDoStackOverflowRequestInvalidJSON(t *testing.T) {
 
 func TestSendLinkUpdateSuccess(t *testing.T) {
 
-	update := shared.LinkUpdate{
+	update := pkg.LinkUpdate{
 		Description: "link updated",
 		TgChatIDs:   []int64{1, 2},
 		URL:         "https://github.com/golang/go",
@@ -152,7 +152,7 @@ func TestSendLinkUpdateSuccess(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		var received shared.LinkUpdate
+		var received pkg.LinkUpdate
 		if err = json.Unmarshal(body, &received); err != nil {
 			t.Fatal(err)
 		}
@@ -178,7 +178,7 @@ func TestSendLinkUpdateSuccess(t *testing.T) {
 }
 
 func TestSendLinkUpdateBadStatus(t *testing.T) {
-	update := shared.LinkUpdate{
+	update := pkg.LinkUpdate{
 		Description: "link updated",
 		TgChatIDs:   []int64{1},
 		URL:         "https://github.com/golang/go",

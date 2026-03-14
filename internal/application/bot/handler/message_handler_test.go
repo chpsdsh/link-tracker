@@ -12,7 +12,7 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/bot/mocks"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/bot/statestorage"
 	botdomain "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/bot"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/shared"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/pkg"
 )
 
 func TestTelegramHandlerHandleCommandStartSuccess(t *testing.T) {
@@ -620,7 +620,7 @@ func TestTelegramHandlerHandleTrack(t *testing.T) {
 		addResp     botdomain.LinkResponse
 		addErr      error
 		expected    string
-		expectedReq shared.AddLinkRequest
+		expectedReq pkg.AddLinkRequest
 	}{
 		{
 			name:       "success",
@@ -633,7 +633,7 @@ func TestTelegramHandlerHandleTrack(t *testing.T) {
 			addErr: nil,
 			expected: trackConfirmMessage + " " +
 				"https://github.com/golang/go" + " " + "work,bug",
-			expectedReq: shared.AddLinkRequest{
+			expectedReq: pkg.AddLinkRequest{
 				Link: "https://github.com/golang/go",
 				Tags: []string{"work", "bug"},
 			},
@@ -644,7 +644,7 @@ func TestTelegramHandlerHandleTrack(t *testing.T) {
 			storedLink: "https://github.com/golang/go",
 			addErr:     ErrIncorrectRequestParameters,
 			expected:   incorrectRequestParameters,
-			expectedReq: shared.AddLinkRequest{
+			expectedReq: pkg.AddLinkRequest{
 				Link: "https://github.com/golang/go",
 				Tags: []string{"work", "bug"},
 			},
@@ -655,7 +655,7 @@ func TestTelegramHandlerHandleTrack(t *testing.T) {
 			storedLink: "https://github.com/golang/go",
 			addErr:     ErrChatNotFound,
 			expected:   chatNotFond,
-			expectedReq: shared.AddLinkRequest{
+			expectedReq: pkg.AddLinkRequest{
 				Link: "https://github.com/golang/go",
 				Tags: []string{"work", "bug"},
 			},
@@ -666,7 +666,7 @@ func TestTelegramHandlerHandleTrack(t *testing.T) {
 			storedLink: "https://github.com/golang/go",
 			addErr:     ErrLinkExists,
 			expected:   isAlreadyTracked,
-			expectedReq: shared.AddLinkRequest{
+			expectedReq: pkg.AddLinkRequest{
 				Link: "https://github.com/golang/go",
 				Tags: []string{"work", "bug"},
 			},
@@ -682,7 +682,7 @@ func TestTelegramHandlerHandleTrack(t *testing.T) {
 			addErr: nil,
 			expected: trackConfirmMessage + " " +
 				"https://github.com/golang/go" + " " + "",
-			expectedReq: shared.AddLinkRequest{
+			expectedReq: pkg.AddLinkRequest{
 				Link: "https://github.com/golang/go",
 				Tags: []string{""},
 			},
@@ -893,7 +893,7 @@ func TestTelegramHandlerHandleLinkUpdate(t *testing.T) {
 		BaseLogger: slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}
 
-	update := shared.LinkUpdate{
+	update := pkg.LinkUpdate{
 		Description: "Ссылка обновлена",
 		URL:         "https://github.com/golang/go",
 		TgChatIDs:   []int64{1, 2, 3},

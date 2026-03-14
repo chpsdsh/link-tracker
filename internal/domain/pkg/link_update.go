@@ -1,4 +1,4 @@
-package shared
+package pkg
 
 type LinkUpdate struct {
 	Description string  `json:"description,omitempty"`

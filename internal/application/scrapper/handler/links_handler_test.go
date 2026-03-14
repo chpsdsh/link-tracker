@@ -10,7 +10,7 @@ import (
 	"github.com/golang/mock/gomock"
 
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/scrapper/mocks"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/shared"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/pkg"
 )
 
 func TestLinksHandlerAddChatId(t *testing.T) {
@@ -122,7 +122,7 @@ func TestLinksHandlerDeleteChat(t *testing.T) {
 }
 
 func TestLinksHandlerGetLinks(t *testing.T) {
-	expectedLinks := []shared.LinkInfo{
+	expectedLinks := []pkg.LinkInfo{
 		{Link: "https://github.com/golang/go", Tags: []string{"work"}},
 		{Link: "https://stackoverflow.com/questions/1/test", Tags: []string{"study"}},
 	}
@@ -131,7 +131,7 @@ func TestLinksHandlerGetLinks(t *testing.T) {
 		name         string
 		chatID       int64
 		chatExists   bool
-		repoLinks    []shared.LinkInfo
+		repoLinks    []pkg.LinkInfo
 		expectedErr  error
 		expectedSize int
 	}{
@@ -193,8 +193,8 @@ func TestLinksHandlerAddLink(t *testing.T) {
 		name          string
 		chatID        int64
 		chatExists    bool
-		request       shared.AddLinkRequest
-		existingLinks []shared.LinkInfo
+		request       pkg.AddLinkRequest
+		existingLinks []pkg.LinkInfo
 		expectedErr   error
 		expectAdd     bool
 	}{
@@ -202,7 +202,7 @@ func TestLinksHandlerAddLink(t *testing.T) {
 			name:       "chat not found",
 			chatID:     1,
 			chatExists: false,
-			request: shared.AddLinkRequest{
+			request: pkg.AddLinkRequest{
 				Link: "https://github.com/golang/go",
 				Tags: []string{"work"},
 			},
@@ -213,7 +213,7 @@ func TestLinksHandlerAddLink(t *testing.T) {
 			name:       "incorrect request parameters",
 			chatID:     2,
 			chatExists: true,
-			request: shared.AddLinkRequest{
+			request: pkg.AddLinkRequest{
 				Link: "://bad-url",
 				Tags: []string{"work"},
 			},
@@ -224,11 +224,11 @@ func TestLinksHandlerAddLink(t *testing.T) {
 			name:       "link already exists",
 			chatID:     3,
 			chatExists: true,
-			request: shared.AddLinkRequest{
+			request: pkg.AddLinkRequest{
 				Link: "https://github.com/golang/go",
 				Tags: []string{"work"},
 			},
-			existingLinks: []shared.LinkInfo{
+			existingLinks: []pkg.LinkInfo{
 				{Link: "https://github.com/golang/go", Tags: []string{"old"}},
 			},
 			expectedErr: ErrLinkExists,
@@ -238,11 +238,11 @@ func TestLinksHandlerAddLink(t *testing.T) {
 			name:       "link added successfully",
 			chatID:     4,
 			chatExists: true,
-			request: shared.AddLinkRequest{
+			request: pkg.AddLinkRequest{
 				Link: "https://github.com/golang/go",
 				Tags: []string{"work", "repo"},
 			},
-			existingLinks: []shared.LinkInfo{
+			existingLinks: []pkg.LinkInfo{
 				{Link: "https://stackoverflow.com/questions/1/test", Tags: []string{"study"}},
 			},
 			expectedErr: nil,
@@ -294,7 +294,7 @@ func expectGetLinksIfNeeded(
 	chatID int64,
 	chatExists bool,
 	expectedErr error,
-	existingLinks []shared.LinkInfo,
+	existingLinks []pkg.LinkInfo,
 ) {
 	if !chatExists || errors.Is(expectedErr, ErrIncorrectRequestParameters) {
 		return
@@ -309,7 +309,7 @@ func expectAddLinkIfNeeded(
 	t *testing.T,
 	mockRepo *mocks.MockRepository,
 	chatID int64,
-	request shared.AddLinkRequest,
+	request pkg.AddLinkRequest,
 	expectAdd bool,
 ) {
 	t.Helper()
@@ -320,12 +320,12 @@ func expectAddLinkIfNeeded(
 
 	mockRepo.EXPECT().
 		AddLink(chatID, gomock.Any()).
-		DoAndReturn(func(_ int64, link shared.LinkInfo) {
+		DoAndReturn(func(_ int64, link pkg.LinkInfo) {
 			assertAddedLink(t, link, request)
 		})
 }
 
-func assertAddedLink(t *testing.T, got shared.LinkInfo, expected shared.AddLinkRequest) {
+func assertAddedLink(t *testing.T, got pkg.LinkInfo, expected pkg.AddLinkRequest) {
 	t.Helper()
 
 	if got.Link != expected.Link {
@@ -348,7 +348,7 @@ func assertAddedLink(t *testing.T, got shared.LinkInfo, expected shared.AddLinkR
 }
 
 func TestLinksHandlerDeleteLink(t *testing.T) {
-	deletedLink := shared.LinkInfo{
+	deletedLink := pkg.LinkInfo{
 		Link: "https://github.com/golang/go",
 		Tags: []string{"work"},
 	}
@@ -358,10 +358,10 @@ func TestLinksHandlerDeleteLink(t *testing.T) {
 		chatID       int64
 		link         string
 		chatExists   bool
-		deleteResult shared.LinkInfo
+		deleteResult pkg.LinkInfo
 		deleteOK     bool
 		expectedErr  error
-		expectedLink shared.LinkInfo
+		expectedLink pkg.LinkInfo
 		expectDelete bool
 	}{
 		{
@@ -370,7 +370,7 @@ func TestLinksHandlerDeleteLink(t *testing.T) {
 			link:         "https://github.com/golang/go",
 			chatExists:   false,
 			expectedErr:  ErrChatNotFound,
-			expectedLink: shared.LinkInfo{},
+			expectedLink: pkg.LinkInfo{},
 			expectDelete: false,
 		},
 		{
@@ -378,10 +378,10 @@ func TestLinksHandlerDeleteLink(t *testing.T) {
 			chatID:       2,
 			link:         "https://github.com/golang/go",
 			chatExists:   true,
-			deleteResult: shared.LinkInfo{},
+			deleteResult: pkg.LinkInfo{},
 			deleteOK:     false,
 			expectedErr:  ErrLinkNotExists,
-			expectedLink: shared.LinkInfo{},
+			expectedLink: pkg.LinkInfo{},
 			expectDelete: true,
 		},
 		{
