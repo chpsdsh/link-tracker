@@ -3,17 +3,12 @@ package integration
 import (
 	"context"
 
-	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/suite"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/bot/config"
-	scrapperconf "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/config"
 )
 
 const (
-	botEnvFilename        = "../../bot.env"
-	scrapperEnvFilename   = "../../scrapper.env"
 	scrapperImage         = "scrapper-image:latest"
 	botImage              = "bot-image:latest"
 	scrapperPort          = "8081/tcp"
@@ -26,6 +21,11 @@ const (
 	githubAPIKey          = "GITHUB_API_KEY"
 	stackoverflowAPIKey   = "STACKOVERFLOW_API_KEY"
 	botServerAddress      = "BOT_SERVER_ADDRESS"
+	botAPIFlag            = "WITH_TELEGRAM_API"
+	APIToken              = "API_TOKEN"
+	botServerAddr         = "http://bot:8080"
+	scrapperServerAddr    = "http://scrapper:8081"
+	withTelegramAPI       = "false"
 )
 
 type Suite struct {
@@ -37,24 +37,15 @@ type Suite struct {
 }
 
 func (s *Suite) SetupSuite() {
-	err := godotenv.Load(botEnvFilename, scrapperEnvFilename)
-	s.Require().NoError(err)
-
-	botConf, err := config.ParseConfig()
-	s.Require().NoError(err)
-
-	scrapperConf, err := scrapperconf.ParseConfig()
-	s.Require().NoError(err)
-
 	ctx := context.Background()
 
 	scrapperReq := testcontainers.ContainerRequest{
 		Image:        scrapperImage,
 		ExposedPorts: []string{scrapperPort},
 		Env: map[string]string{
-			githubAPIKey:        scrapperConf.GithubToken,
-			stackoverflowAPIKey: scrapperConf.StackoverflowToken,
-			botServerAddress:    scrapperConf.BotServerAddr,
+			githubAPIKey:        APIToken,
+			stackoverflowAPIKey: APIToken,
+			botServerAddress:    botServerAddr,
 		},
 		Networks: []string{networkName},
 		NetworkAliases: map[string][]string{
@@ -67,8 +58,9 @@ func (s *Suite) SetupSuite() {
 		Image:        botImage,
 		ExposedPorts: []string{botPort},
 		Env: map[string]string{
-			telegramAPIKey:        botConf.TelegramToken,
-			scrapperServerAddress: botConf.ScrapperServerAddress,
+			botAPIFlag:            withTelegramAPI,
+			telegramAPIKey:        APIToken,
+			scrapperServerAddress: scrapperServerAddr,
 		},
 		Networks: []string{networkName},
 		NetworkAliases: map[string][]string{

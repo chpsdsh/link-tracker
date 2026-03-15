@@ -156,7 +156,7 @@ func (s *Suite) registerChat(chatID int64) *http.Response {
 
 	resp, err := http.DefaultClient.Do(req)
 	s.Require().NoError(err)
-	println(resp.Status)
+
 	return resp
 }
 

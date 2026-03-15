@@ -20,6 +20,7 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/logger"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/bot/handler"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/bot/statestorage"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/integration"
 )
 
 const (
@@ -42,15 +43,19 @@ func main() {
 		baseLogger.Error("error parsing environment variables", slog.String("err", err.Error()))
 		os.Exit(1)
 	}
-
-	api, err := tgbotapi.NewBotAPI(conf.TelegramToken)
-	if err != nil {
-		baseLogger.Error("failed to initialize telegram bot API", slog.String("err", err.Error()))
-		os.Exit(1)
+	var telegramBot telegram.Bot
+	if conf.WithTelegramAPI {
+		api, errTgAPI := tgbotapi.NewBotAPI(conf.TelegramToken)
+		if errTgAPI != nil {
+			baseLogger.Error("failed to initialize telegram bot API", slog.String("err", errTgAPI.Error()))
+			os.Exit(1)
+		}
+		api.Debug = true
+		telegramBot = telegram.Bot{BotAPI: api, BaseLogger: baseLogger}
+	} else {
+		integrationTgaAPI := integration.NewIntegrationTgAPI()
+		telegramBot = telegram.Bot{BotAPI: integrationTgaAPI, BaseLogger: baseLogger}
 	}
-	api.Debug = true
-
-	telegramBot := telegram.Bot{BotAPI: api, BaseLogger: baseLogger}
 
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
