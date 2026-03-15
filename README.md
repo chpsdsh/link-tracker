@@ -12,6 +12,3 @@
  - GITHUB_API_KEY=token
  - STACKOVERFLOW_API_KEY=token
  - BOT_SERVER_ADDRESS=http://localhost:8080
-3) **Для интеграционных тестов соберите образы**
- - docker build -f scrapper.dockerfile -t scrapper-image .
- - docker build -f bot.dockerfile -t bot-image .

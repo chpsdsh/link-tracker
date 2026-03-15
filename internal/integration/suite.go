@@ -26,7 +26,7 @@ const (
 	botServerAddr         = "http://bot:8080"
 	scrapperServerAddr    = "http://scrapper:8081"
 	withTelegramAPI       = "false"
-	pathToImage           = "../../"
+	pathToDockerfile      = "../../"
 )
 
 type Suite struct {
@@ -42,7 +42,7 @@ func (s *Suite) SetupSuite() {
 
 	scrapperReq := testcontainers.ContainerRequest{
 		FromDockerfile: testcontainers.FromDockerfile{
-			Context:    pathToImage,
+			Context:    pathToDockerfile,
 			Dockerfile: scrapperDockerfile,
 		},
 		ExposedPorts: []string{scrapperPort},
@@ -60,7 +60,7 @@ func (s *Suite) SetupSuite() {
 
 	botReq := testcontainers.ContainerRequest{
 		FromDockerfile: testcontainers.FromDockerfile{
-			Context:    pathToImage,
+			Context:    pathToDockerfile,
 			Dockerfile: botDockerfile,
 		},
 		ExposedPorts: []string{botPort},
