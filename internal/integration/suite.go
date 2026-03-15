@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	scrapperImage         = "scrapper-image:latest"
-	botImage              = "bot-image:latest"
+	scrapperDockerfile    = "scrapper.Dockerfile"
+	botDockerfile         = "bot.Dockerfile"
 	scrapperPort          = "8081/tcp"
 	botPort               = "8080/tcp"
 	scrapperAlias         = "scrapper"
@@ -26,6 +26,7 @@ const (
 	botServerAddr         = "http://bot:8080"
 	scrapperServerAddr    = "http://scrapper:8081"
 	withTelegramAPI       = "false"
+	pathToImage           = "../../"
 )
 
 type Suite struct {
@@ -40,7 +41,10 @@ func (s *Suite) SetupSuite() {
 	ctx := context.Background()
 
 	scrapperReq := testcontainers.ContainerRequest{
-		Image:        scrapperImage,
+		FromDockerfile: testcontainers.FromDockerfile{
+			Context:    pathToImage,
+			Dockerfile: scrapperDockerfile,
+		},
 		ExposedPorts: []string{scrapperPort},
 		Env: map[string]string{
 			githubAPIKey:        APIToken,
@@ -55,7 +59,10 @@ func (s *Suite) SetupSuite() {
 	}
 
 	botReq := testcontainers.ContainerRequest{
-		Image:        botImage,
+		FromDockerfile: testcontainers.FromDockerfile{
+			Context:    pathToImage,
+			Dockerfile: botDockerfile,
+		},
 		ExposedPorts: []string{botPort},
 		Env: map[string]string{
 			botAPIFlag:            withTelegramAPI,
