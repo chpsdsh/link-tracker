@@ -3,6 +3,7 @@ package botserver
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
@@ -38,6 +39,11 @@ func (u *UpdatesServer) PostUpdates(w http.ResponseWriter, r *http.Request) {
 	if err = json.Unmarshal(body, &linkUpdate); err != nil {
 		sendAPIErrorResponse(w, errorUnmarshallingJSON, err)
 		u.BaseLogger.Error(errorUnmarshallingJSON, slog.String("error", err.Error()))
+		return
+	}
+
+	if linkUpdate.Description == nil || linkUpdate.TgChatIds == nil || linkUpdate.Url == nil {
+		sendAPIErrorResponse(w, "missing required fields", errors.New("description, tgChatIds and url are required"))
 		return
 	}
 

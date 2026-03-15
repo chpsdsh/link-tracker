@@ -24,7 +24,7 @@ import (
 
 const (
 	envFilename      = "bot.env"
-	botServerAddr    = "localhost:8080"
+	botServerAddr    = ":8080"
 	shutdownDuration = 10 * time.Second
 	clientTimeout    = 15 * time.Second
 )
