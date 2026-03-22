@@ -12,6 +12,8 @@ import (
 
 	"github.com/go-co-op/gocron/v2"
 	"github.com/joho/godotenv"
+
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/database"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/logger"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/config"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/repository"
@@ -41,6 +43,12 @@ func main() {
 		os.Exit(1)
 	}
 
+	dbConf, err := config.ParsePostgresConfig()
+	if err != nil {
+		baseLogger.Error("error parsing postgres configuration", slog.String("err", err.Error()))
+		os.Exit(1)
+	}
+
 	client := &http.Client{Timeout: clientTimeout}
 
 	sched, err := gocron.NewScheduler()
@@ -51,6 +59,12 @@ func main() {
 
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
+
+	db, err := database.NewDB(dbConf)
+	if err != nil {
+		baseLogger.Error("error connecting to database", slog.String("err", err.Error()))
+		os.Exit(1)
+	}
 
 	repo := repository.NewLinkRepository()
 
@@ -88,5 +102,9 @@ func main() {
 
 	if err = sched.Shutdown(); err != nil {
 		baseLogger.Error("error shutting down scheduler", slog.String("error", err.Error()))
+	}
+
+	if err = db.CloseConnectionPool(); err != nil {
+		baseLogger.Error("error closing connection pool", slog.String("error", err.Error()))
 	}
 }
