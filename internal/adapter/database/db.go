@@ -67,8 +67,8 @@ func NewDB(config config.PostgresConfig) (*DB, error) {
 	return &DB{pool: pool}, nil
 }
 
-func (db *DB) CloseConnectionPool() error {
-	return db.CloseConnectionPool()
+func (db *DB) CloseConnectionPool() {
+	db.pool.Close()
 }
 
 func migrate(cfg *pgx.ConnConfig) error {

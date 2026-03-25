@@ -104,7 +104,5 @@ func main() {
 		baseLogger.Error("error shutting down scheduler", slog.String("error", err.Error()))
 	}
 
-	if err = db.CloseConnectionPool(); err != nil {
-		baseLogger.Error("error closing connection pool", slog.String("error", err.Error()))
-	}
+	db.CloseConnectionPool()
 }
