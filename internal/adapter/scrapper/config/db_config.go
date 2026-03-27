@@ -55,6 +55,6 @@ func ParsePostgresConfig() (PostgresConfig, error) {
 		Port:     pPort,
 		User:     pUser,
 		Password: pPassword,
-		DBName:   pPassword,
+		DBName:   pDB,
 	}, nil
 }

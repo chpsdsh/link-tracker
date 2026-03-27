@@ -2,13 +2,14 @@
 package scrapperserver
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
 	"log/slog"
 	"net/http"
 
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/scrapper/handler"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/scrapper/service"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/pkg"
 )
 
@@ -28,11 +29,11 @@ const (
 )
 
 type ScrapperHandler interface {
-	AddChatID(chatID int64) error
-	DeleteChat(chatID int64) error
-	GetLinks(chatID int64) ([]pkg.LinkInfo, error)
-	AddLink(chatID int64, linkRequest pkg.AddLinkRequest) error
-	DeleteLink(chatID int64, link string) (pkg.LinkInfo, error)
+	AddChatID(ctx context.Context, chatID int64) error
+	DeleteChat(ctx context.Context, chatID int64) error
+	GetLinks(ctx context.Context, chatID int64) ([]pkg.LinkInfo, error)
+	AddLink(ctx context.Context, chatID int64, linkRequest pkg.AddLinkRequest) error
+	DeleteLink(ctx context.Context, chatID int64, link string) (pkg.LinkInfo, error)
 }
 
 type ScrapperServer struct {
@@ -56,10 +57,10 @@ func (s ScrapperServer) DeleteLinks(w http.ResponseWriter, r *http.Request, para
 		return
 	}
 
-	link, deleteLinkErr := s.Handler.DeleteLink(params.TgChatId, *removeRequest.Link)
+	link, deleteLinkErr := s.Handler.DeleteLink(r.Context(), params.TgChatId, *removeRequest.Link)
 
 	switch {
-	case deleteLinkErr == nil:
+	case errors.Is(deleteLinkErr, nil):
 		w.WriteHeader(http.StatusOK)
 		w.Header().Set("Content-Type", "application/json")
 		linkResponse := LinkResponse{Tags: &link.Tags, Url: &link.Link}
@@ -73,18 +74,17 @@ func (s ScrapperServer) DeleteLinks(w http.ResponseWriter, r *http.Request, para
 		if _, errWrite := w.Write(data); errWrite != nil {
 			s.BaseLogger.Error("write response failed", slog.String("error", errWrite.Error()))
 		}
-	case errors.Is(deleteLinkErr, handler.ErrChatNotFound):
+	case errors.Is(deleteLinkErr, service.ErrChatNotFound):
 		s.sendAPIErrorResponse(w, errorChatNotFound, deleteLinkErr, http.StatusNotFound)
 		s.BaseLogger.Error(errorChatNotFound, slog.String("error", deleteLinkErr.Error()))
-	case errors.Is(deleteLinkErr, handler.ErrLinkNotExists):
+	case errors.Is(deleteLinkErr, service.ErrLinkNotExists):
 		s.sendAPIErrorResponse(w, errorLinkNotExists, deleteLinkErr, http.StatusNotFound)
 		s.BaseLogger.Error(errorLinkNotExists, slog.String("error", deleteLinkErr.Error()))
 	}
-
 }
 
-func (s ScrapperServer) GetLinks(w http.ResponseWriter, _ *http.Request, params GetLinksParams) {
-	links, err := s.Handler.GetLinks(params.TgChatId)
+func (s ScrapperServer) GetLinks(w http.ResponseWriter, r *http.Request, params GetLinksParams) {
+	links, err := s.Handler.GetLinks(r.Context(), params.TgChatId)
 	switch {
 	case err == nil:
 		linksResponse := make([]LinkResponse, len(links))
@@ -108,7 +108,7 @@ func (s ScrapperServer) GetLinks(w http.ResponseWriter, _ *http.Request, params 
 		if _, errWrite := w.Write(data); errWrite != nil {
 			s.BaseLogger.Error("write response failed", slog.String("error", errWrite.Error()))
 		}
-	case errors.Is(err, handler.ErrChatNotFound):
+	case errors.Is(err, service.ErrChatNotFound):
 		s.sendAPIErrorResponse(w, errorChatNotFound, err, http.StatusNotFound)
 		s.BaseLogger.Error(errorChatNotFound, slog.String("error", err.Error()))
 	}
@@ -130,7 +130,7 @@ func (s ScrapperServer) PostLinks(w http.ResponseWriter, r *http.Request, params
 		return
 	}
 
-	linkErr := s.Handler.AddLink(params.TgChatId, pkg.AddLinkRequest{
+	linkErr := s.Handler.AddLink(r.Context(), params.TgChatId, pkg.AddLinkRequest{
 		Link: *linkRequest.Link,
 		Tags: *linkRequest.Tags,
 	})
@@ -150,36 +150,36 @@ func (s ScrapperServer) PostLinks(w http.ResponseWriter, r *http.Request, params
 		if _, errWrite := w.Write(data); errWrite != nil {
 			s.BaseLogger.Error("write response failed", slog.String("error", errWrite.Error()))
 		}
-	case errors.Is(linkErr, handler.ErrIncorrectRequestParameters):
+	case errors.Is(linkErr, service.ErrIncorrectRequestParameters):
 		s.sendAPIErrorResponse(w, errorIncorrectRequestParameters, linkErr, http.StatusBadRequest)
 		s.BaseLogger.Error(errorIncorrectRequestParameters, slog.String("error", linkErr.Error()))
-	case errors.Is(linkErr, handler.ErrChatNotFound):
+	case errors.Is(linkErr, service.ErrChatNotFound):
 		s.sendAPIErrorResponse(w, errorChatNotFound, linkErr, http.StatusNotFound)
 		s.BaseLogger.Error(errorChatNotFound, slog.String("error", linkErr.Error()))
-	case errors.Is(linkErr, handler.ErrLinkExists):
+	case errors.Is(linkErr, service.ErrLinkExists):
 		s.sendAPIErrorResponse(w, errorLinkIsAlreadyTracked, linkErr, http.StatusConflict)
 		s.BaseLogger.Error(errorLinkIsAlreadyTracked, slog.String("error", linkErr.Error()))
 	}
 }
 
-func (s ScrapperServer) DeleteTgChatId(w http.ResponseWriter, _ *http.Request, id int64) { //nolint:revive,staticcheck // method name required by oapi-codegen interface
-	chatErr := s.Handler.DeleteChat(id)
+func (s ScrapperServer) DeleteTgChatId(w http.ResponseWriter, r *http.Request, id int64) { //nolint:revive,staticcheck // method name required by oapi-codegen interface
+	chatErr := s.Handler.DeleteChat(r.Context(), id)
 	switch {
 	case chatErr == nil:
 		w.WriteHeader(http.StatusOK)
-	case errors.Is(chatErr, handler.ErrChatNotFound):
+	case errors.Is(chatErr, service.ErrChatNotFound):
 		s.sendAPIErrorResponse(w, errorChatNotFound, chatErr, http.StatusNotFound)
 		s.BaseLogger.Error(errorChatNotFound, slog.String("error", chatErr.Error()))
 	}
 
 }
 
-func (s ScrapperServer) PostTgChatId(w http.ResponseWriter, _ *http.Request, id int64) { //nolint:revive,staticcheck // method name required by oapi-codegen interface
-	chatErr := s.Handler.AddChatID(id)
+func (s ScrapperServer) PostTgChatId(w http.ResponseWriter, r *http.Request, id int64) { //nolint:revive,staticcheck // method name required by oapi-codegen interface
+	chatErr := s.Handler.AddChatID(r.Context(), id)
 	switch {
 	case chatErr == nil:
 		w.WriteHeader(http.StatusOK)
-	case errors.Is(chatErr, handler.ErrChatAlreadyExists):
+	case errors.Is(chatErr, service.ErrChatAlreadyExists):
 		s.sendAPIErrorResponse(w, errorChatAlreadyExists, chatErr, http.StatusConflict)
 		s.BaseLogger.Error(errorChatAlreadyExists, slog.String("error", chatErr.Error()))
 	}

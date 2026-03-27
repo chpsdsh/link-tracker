@@ -8,7 +8,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/database"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/scrapper/handler"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/scrapper/service"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/pkg"
 )
 
@@ -42,9 +42,9 @@ func (r *LinkRepository) AddLink(ctx context.Context, chatID int64, link pkg.Lin
 	`, chatID, linkID)
 	switch {
 	case database.IsForeignKeyViolation(err):
-		return handler.ErrChatNotFound
+		return service.ErrChatNotFound
 	case commandTag.RowsAffected() == 0:
-		return handler.ErrLinkExists
+		return service.ErrLinkExists
 	case err != nil:
 		return fmt.Errorf("error insert link: %w", err)
 	}
@@ -103,16 +103,16 @@ func (r *LinkRepository) DeleteLink(ctx context.Context, chatID int64, url strin
 			where lc.link_id = l.id
 			  and lc.chat_id = $1
 			  and l.url = $2
-			returning l.id, l.url, l.last_update_time
+			returning l.id, l.url, l.updated_at
 		)
 		select 
 			d.url,
-			d.last_update_time,
+			d.updated_at,
 			coalesce(array_agg(t.tag), '{}')
 		from deleted d
 		left join link_tag lt on lt.link_id = d.id
 		left join tags t on t.id = lt.tag_id
-		group by d.id, d.url, d.last_update_time
+		group by d.id, d.url, d.updated_at
 	`, chatID, url).Scan(&li.Link, &li.LastUpdateTime, &tags)
 
 	if err != nil {
@@ -175,13 +175,14 @@ func (r *LinkRepository) GetUserLinks(ctx context.Context, chatID int64) ([]pkg.
 	return links, nil
 }
 
-func (r *LinkRepository) GetAllLinks(ctx context.Context, limit int, offset int) ([]pkg.LinkInfo, error) {
+func (r *LinkRepository) GetAllLinks(ctx context.Context, host string, limit int, offset int) ([]pkg.LinkInfo, error) {
 	q := database.GetQuerier(ctx, r.db)
 	rows, err := q.Query(ctx, `
 	select url, updated_at from links 
+	where url like '%' || $1 || '%'
     order by id
-    limit $1 offset $2
-	`, limit, offset)
+    limit $2 offset $3
+	`, host, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("error query get all links: %w", err)
 	}

@@ -1,4 +1,4 @@
-package handler
+package service
 
 import (
 	"errors"
@@ -44,7 +44,7 @@ func TestLinksHandlerAddChatId(t *testing.T) {
 
 			mockRepo := mocks.NewMockRepository(ctrl)
 
-			h := LinksHandler{
+			h := LinksService{
 				Repo:       mockRepo,
 				BaseLogger: slog.New(slog.NewTextHandler(io.Discard, nil)),
 			}
@@ -98,7 +98,7 @@ func TestLinksHandlerDeleteChat(t *testing.T) {
 
 			mockRepo := mocks.NewMockRepository(ctrl)
 
-			h := LinksHandler{
+			h := LinksService{
 				Repo:       mockRepo,
 				BaseLogger: slog.New(slog.NewTextHandler(io.Discard, nil)),
 			}
@@ -160,7 +160,7 @@ func TestLinksHandlerGetLinks(t *testing.T) {
 
 			mockRepo := mocks.NewMockRepository(ctrl)
 
-			h := LinksHandler{
+			h := LinksService{
 				Repo:       mockRepo,
 				BaseLogger: slog.New(slog.NewTextHandler(io.Discard, nil)),
 			}
@@ -267,7 +267,7 @@ func TestLinksHandlerAddLink(t *testing.T) {
 	}
 }
 
-func newLinksHandlerTest(t *testing.T) (LinksHandler, *mocks.MockRepository) {
+func newLinksHandlerTest(t *testing.T) (LinksService, *mocks.MockRepository) {
 	t.Helper()
 
 	ctrl := gomock.NewController(t)
@@ -275,7 +275,7 @@ func newLinksHandlerTest(t *testing.T) (LinksHandler, *mocks.MockRepository) {
 
 	mockRepo := mocks.NewMockRepository(ctrl)
 
-	h := LinksHandler{
+	h := LinksService{
 		Repo:       mockRepo,
 		BaseLogger: slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}
@@ -404,7 +404,7 @@ func TestLinksHandlerDeleteLink(t *testing.T) {
 
 			mockRepo := mocks.NewMockRepository(ctrl)
 
-			h := LinksHandler{
+			h := LinksService{
 				Repo:       mockRepo,
 				BaseLogger: slog.New(slog.NewTextHandler(io.Discard, nil)),
 			}

@@ -1,5 +1,5 @@
 //go:generate mockgen -source links_handler.go -destination=../mocks/links_handler_mocks.go -package=mocks
-package handler
+package service
 
 import (
 	"context"
@@ -25,7 +25,7 @@ type LinkRepository interface {
 	AddLink(ctx context.Context, chatID int64, link pkg.LinkInfo) error
 	DeleteLink(ctx context.Context, chatID int64, url string) (pkg.LinkInfo, error)
 	GetUserLinks(ctx context.Context, chatID int64) ([]pkg.LinkInfo, error)
-	GetAllLinks(ctx context.Context, limit int, offset int) ([]pkg.LinkInfo, error)
+	GetAllLinks(ctx context.Context, host string, limit int, offset int) ([]pkg.LinkInfo, error)
 	UpdateLinksTime(ctx context.Context, newTime time.Time, url string) error
 	GetChatIDsByLink(ctx context.Context, link string) ([]int64, error)
 	LinkExists(ctx context.Context, url string) (bool, error)
@@ -41,14 +41,14 @@ type Transactor interface {
 	WithTransaction(ctx context.Context, txFunc func(ctx context.Context) error) error
 }
 
-type LinksHandler struct {
+type LinksService struct {
 	LinkRepo   LinkRepository
 	ChatsRepo  ChatRepository
 	Transactor Transactor
 	BaseLogger *slog.Logger
 }
 
-func (h LinksHandler) AddChatID(ctx context.Context, chatID int64) error {
+func (h LinksService) AddChatID(ctx context.Context, chatID int64) error {
 	return h.Transactor.WithTransaction(ctx, func(ctx context.Context) error {
 		ctx, cancel := context.WithTimeout(ctx, requestTimeout)
 		defer cancel()
@@ -69,7 +69,7 @@ func (h LinksHandler) AddChatID(ctx context.Context, chatID int64) error {
 	})
 }
 
-func (h LinksHandler) DeleteChat(ctx context.Context, chatID int64) error {
+func (h LinksService) DeleteChat(ctx context.Context, chatID int64) error {
 	if err := h.ChatsRepo.DeleteChat(ctx, chatID); err != nil {
 		return fmt.Errorf("error deleting chat %w", err)
 	}
@@ -77,7 +77,7 @@ func (h LinksHandler) DeleteChat(ctx context.Context, chatID int64) error {
 
 }
 
-func (h LinksHandler) GetLinks(ctx context.Context, chatID int64) ([]pkg.LinkInfo, error) {
+func (h LinksService) GetLinks(ctx context.Context, chatID int64) ([]pkg.LinkInfo, error) {
 	ctx, cancel := context.WithTimeout(ctx, requestTimeout)
 	defer cancel()
 	exists, err := h.ChatsRepo.ChatExists(ctx, chatID)
@@ -96,7 +96,7 @@ func (h LinksHandler) GetLinks(ctx context.Context, chatID int64) ([]pkg.LinkInf
 	return links, nil
 }
 
-func (h LinksHandler) AddLink(ctx context.Context, chatID int64, linkRequest pkg.AddLinkRequest) error {
+func (h LinksService) AddLink(ctx context.Context, chatID int64, linkRequest pkg.AddLinkRequest) error {
 	return h.Transactor.WithTransaction(ctx, func(ctx context.Context) error {
 		ctx, cancel := context.WithTimeout(ctx, requestTimeout)
 		defer cancel()
@@ -109,7 +109,7 @@ func (h LinksHandler) AddLink(ctx context.Context, chatID int64, linkRequest pkg
 
 }
 
-func (h LinksHandler) DeleteLink(ctx context.Context, chatID int64, link string) (pkg.LinkInfo, error) {
+func (h LinksService) DeleteLink(ctx context.Context, chatID int64, link string) (pkg.LinkInfo, error) {
 	ctx, cancel := context.WithTimeout(ctx, requestTimeout)
 	defer cancel()
 	exists, err := h.ChatsRepo.ChatExists(ctx, chatID)
@@ -130,7 +130,8 @@ func (h LinksHandler) DeleteLink(ctx context.Context, chatID int64, link string)
 
 	linkInfo, err := h.LinkRepo.DeleteLink(ctx, chatID, link)
 	if err != nil {
-		return pkg.LinkInfo{}, ErrLinkNotExists
+		slog.Error("error deleting link ", slog.String("error", err.Error()))
+		return pkg.LinkInfo{}, err
 	}
 	return linkInfo, nil
 }

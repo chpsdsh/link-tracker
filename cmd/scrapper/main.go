@@ -19,8 +19,8 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/repository/sqlrepo"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/scrapperclient"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/scrapperserver"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/scrapper/handler"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/scrapper/scheduler"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/scrapper/service"
 )
 
 const (
@@ -78,9 +78,10 @@ func main() {
 
 	linksScheduler.StartLinkRequester()
 
-	scrapperHandler := handler.LinksHandler{
+	scrapperHandler := service.LinksService{
 		LinkRepo:   linkRepo,
 		ChatsRepo:  chatRepo,
+		Transactor: db,
 		BaseLogger: baseLogger,
 	}
 

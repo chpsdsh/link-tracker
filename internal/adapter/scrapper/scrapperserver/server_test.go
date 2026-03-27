@@ -13,7 +13,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/mocks"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/scrapper/handler"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/scrapper/service"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/pkg"
 )
 
@@ -34,7 +34,7 @@ func TestScrapperServerPostTgChatId(t *testing.T) {
 		{
 			name:           "chat already exists",
 			id:             10,
-			handlerErr:     handler.ErrChatAlreadyExists,
+			handlerErr:     service.ErrChatAlreadyExists,
 			expectedStatus: http.StatusConflict,
 			expectedCode:   badRequest,
 		},
@@ -94,7 +94,7 @@ func TestScrapperServerDeleteTgChatId(t *testing.T) {
 		{
 			name:           "chat not found",
 			id:             15,
-			handlerErr:     handler.ErrChatNotFound,
+			handlerErr:     service.ErrChatNotFound,
 			expectedStatus: http.StatusNotFound,
 		},
 	}
@@ -150,7 +150,7 @@ func TestScrapperServerGetLinks(t *testing.T) {
 		{
 			name:           "chat not found",
 			chatID:         1,
-			handlerErr:     handler.ErrChatNotFound,
+			handlerErr:     service.ErrChatNotFound,
 			expectedStatus: http.StatusNotFound,
 		},
 	}
@@ -233,7 +233,7 @@ func TestScrapperServerPostLinks(t *testing.T) {
 						Link: "bad",
 						Tags: []string{"work"},
 					}).
-					Return(handler.ErrIncorrectRequestParameters)
+					Return(service.ErrIncorrectRequestParameters)
 			},
 			expectedStatus: http.StatusBadRequest,
 		},
@@ -247,7 +247,7 @@ func TestScrapperServerPostLinks(t *testing.T) {
 						Link: "https://github.com/golang/go",
 						Tags: []string{"work"},
 					}).
-					Return(handler.ErrChatNotFound)
+					Return(service.ErrChatNotFound)
 			},
 			expectedStatus: http.StatusNotFound,
 		},
@@ -261,7 +261,7 @@ func TestScrapperServerPostLinks(t *testing.T) {
 						Link: "https://github.com/golang/go",
 						Tags: []string{"work"},
 					}).
-					Return(handler.ErrLinkExists)
+					Return(service.ErrLinkExists)
 			},
 			expectedStatus: http.StatusConflict,
 		},
@@ -321,7 +321,7 @@ func TestScrapperServerDeleteLinks(t *testing.T) {
 			setupMock: func(m *mocks.MockScrapperHandler) {
 				m.EXPECT().
 					DeleteLink(int64(1), "https://github.com/golang/go").
-					Return(pkg.LinkInfo{}, handler.ErrChatNotFound)
+					Return(pkg.LinkInfo{}, service.ErrChatNotFound)
 			},
 			expectedStatus: http.StatusNotFound,
 		},
@@ -332,7 +332,7 @@ func TestScrapperServerDeleteLinks(t *testing.T) {
 			setupMock: func(m *mocks.MockScrapperHandler) {
 				m.EXPECT().
 					DeleteLink(int64(1), "https://github.com/golang/go").
-					Return(pkg.LinkInfo{}, handler.ErrLinkNotExists)
+					Return(pkg.LinkInfo{}, service.ErrLinkNotExists)
 			},
 			expectedStatus: http.StatusNotFound,
 		},

@@ -7,7 +7,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/database"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/scrapper/handler"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/scrapper/service"
 )
 
 type ChatRepository struct {
@@ -39,7 +39,7 @@ func (r *ChatRepository) AddChat(ctx context.Context, chatID int64) error {
 
 	switch {
 	case database.IsUniqueViolation(err):
-		return handler.ErrChatAlreadyExists
+		return service.ErrChatAlreadyExists
 	case err != nil:
 		return fmt.Errorf("error adding chat: %w", err)
 	}
@@ -56,7 +56,7 @@ func (r *ChatRepository) DeleteChat(ctx context.Context, chatID int64) error {
 	}
 
 	if commandTag.RowsAffected() == 0 {
-		return handler.ErrChatNotFound
+		return service.ErrChatNotFound
 	}
 
 	return nil

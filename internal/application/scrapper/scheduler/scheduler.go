@@ -2,6 +2,7 @@
 package scheduler
 
 import (
+	"context"
 	"errors"
 	"log/slog"
 	"net/url"
@@ -9,7 +10,8 @@ import (
 	"time"
 
 	"github.com/go-co-op/gocron/v2"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/scrapper/handler"
+
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/scrapper/service"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/pkg"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/scrapper"
 )
@@ -25,6 +27,7 @@ var (
 )
 
 const (
+	linksHandleDuration       = time.Second * 10
 	linkTrackInterval         = time.Second * 10
 	gitHubHost                = "github.com"
 	gitHubIssues              = "issues"
@@ -35,6 +38,7 @@ const (
 	gitHubIssueURLParts       = 4
 	gitHubPullRequestURLParts = 4
 	minStackOverflowURLParts  = 2
+	linksRequestLimit         = 5
 )
 
 type NetworkClient interface {
@@ -46,7 +50,7 @@ type NetworkClient interface {
 type LinksRequester struct {
 	Client     NetworkClient
 	Scheduler  gocron.Scheduler
-	Repo       handler.LinkRepository
+	Repo       service.LinkRepository
 	BaseLogger *slog.Logger
 }
 
@@ -79,57 +83,94 @@ func (r LinksRequester) StartLinkRequester() {
 }
 
 func (r LinksRequester) HandleGithubLinks() {
-	links := r.Repo.GetAllLinks()
-	for _, l := range links {
-		link, err := ParseGithubLink(l.Link)
+	offset := 0
+	for {
+		ctx, cancel := context.WithTimeout(context.Background(), linksHandleDuration)
+		links, err := r.Repo.GetAllLinks(ctx, gitHubHost, linksRequestLimit, offset)
+		cancel()
 		if err != nil {
-			continue
+			r.BaseLogger.Error("error getting github links", slog.String("error", err.Error()))
+			return
 		}
 
-		gitUpdate, err := r.Client.DoGithubRequest(link.ConvertToURL())
-		if err != nil {
-			r.BaseLogger.Error("error during github quarry", slog.String("error", err.Error()))
-			continue
+		if len(links) == 0 {
+			break
 		}
 
-		updateTime, err := time.Parse(time.RFC3339, gitUpdate.UpdatedAt)
-		if err != nil {
-			r.BaseLogger.Error("error during update", slog.String("error", err.Error()))
-			continue
-		}
+		for _, l := range links {
+			link, parseErr := ParseGithubLink(l.Link)
+			if parseErr != nil {
+				continue
+			}
 
-		r.sendUpdate(updateTime, l)
+			gitUpdate, sendErr := r.Client.DoGithubRequest(link.ConvertToURL())
+			if sendErr != nil {
+				r.BaseLogger.Error("error during github query", slog.String("error", sendErr.Error()))
+				continue
+			}
+			
+			updateTime, parseErr := time.Parse(time.RFC3339, gitUpdate.UpdatedAt)
+			if parseErr != nil {
+				r.BaseLogger.Error("error during update", slog.String("error", parseErr.Error()))
+				continue
+			}
+
+			r.sendUpdate(ctx, updateTime, l)
+		}
+		offset += linksRequestLimit
 	}
+
 }
 
 func (r LinksRequester) HandleStackOverflowLinks() {
-	links := r.Repo.GetAllLinks()
-	for _, l := range links {
-		link, err := ParseStackOverflowLink(l.Link)
+	offset := 0
+	for {
+		ctx, cancel := context.WithTimeout(context.Background(), linksHandleDuration)
+		links, err := r.Repo.GetAllLinks(ctx, stackOverflowHost, linksRequestLimit, offset)
+		cancel()
 		if err != nil {
-			continue
-		}
-		stackUpdate, err := r.Client.DoStackOverflowRequest(link.ConvertToURL())
-		if err != nil {
-			r.BaseLogger.Error("error during stack overflow", slog.String("error", err.Error()))
-			continue
+			r.BaseLogger.Error("error getting github links", slog.String("error", err.Error()))
+			return
 		}
 
-		updateTime := time.Unix(stackUpdate.Items[0].LastActivityDate, 0).UTC()
+		if len(links) == 0 {
+			break
+		}
+		for _, l := range links {
+			link, parseErr := ParseStackOverflowLink(l.Link)
+			if parseErr != nil {
+				continue
+			}
+			stackUpdate, sendErr := r.Client.DoStackOverflowRequest(link.ConvertToURL())
+			if sendErr != nil {
+				r.BaseLogger.Error("error during stack overflow", slog.String("error", sendErr.Error()))
+				continue
+			}
 
-		r.sendUpdate(updateTime, l)
+			updateTime := time.Unix(stackUpdate.Items[0].LastActivityDate, 0).UTC()
+
+			r.sendUpdate(ctx, updateTime, l)
+		}
+		offset += linksRequestLimit
 	}
 }
 
-func (r LinksRequester) sendUpdate(updateTime time.Time, linkInfo pkg.LinkInfo) {
+func (r LinksRequester) sendUpdate(ctx context.Context, updateTime time.Time, linkInfo pkg.LinkInfo) {
 	if updateTime.After(linkInfo.LastUpdateTime) {
-		r.Repo.UpdateLinksTime(updateTime, linkInfo)
+		if err := r.Repo.UpdateLinksTime(ctx, updateTime, linkInfo.Link); err != nil {
+			r.BaseLogger.Error("error updating links", slog.String("error", err.Error()))
+			return
+		}
 
-		chatIDs := r.Repo.GetChatIDsByLink(linkInfo.Link)
+		chatIDs, err := r.Repo.GetChatIDsByLink(ctx, linkInfo.Link)
+		if err != nil {
+			r.BaseLogger.Error("error getting chatIDs", slog.String("error", err.Error()))
+			return
+		}
+
 		update := pkg.LinkUpdate{Description: "Ссылка обновлена", TgChatIDs: chatIDs, URL: linkInfo.Link}
 
-		err := r.Client.SendLinkUpdate(update)
-		if err != nil {
+		if err = r.Client.SendLinkUpdate(update); err != nil {
 			r.BaseLogger.Error("error sending link update", slog.String("error", err.Error()))
 			return
 		}
