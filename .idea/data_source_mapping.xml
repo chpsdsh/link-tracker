@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="DataSourcePerFileMappings">
+    <file url="file://$PROJECT_DIR$/.idea/queries/Query_1.sql" value="f1ab6b8a-1505-4f03-8ca8-2b483515e1ab" />
+    <file url="file://$PROJECT_DIR$/.idea/queries/Query_2.sql" value="f1ab6b8a-1505-4f03-8ca8-2b483515e1ab" />
+    <file url="file://$PROJECT_DIR$/internal/adapter/database/migrations/20260322144835_link_tracker_migrations.sql" value="f1ab6b8a-1505-4f03-8ca8-2b483515e1ab" />
+    <file url="file://$PROJECT_DIR$/internal/adapter/scrapper/repository/sqlrepo/link_repository.go" value="f1ab6b8a-1505-4f03-8ca8-2b483515e1ab" />
+  </component>
+</project>

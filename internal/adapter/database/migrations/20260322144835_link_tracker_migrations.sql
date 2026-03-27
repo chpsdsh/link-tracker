@@ -7,8 +7,9 @@ create table chats
 
 create table links
 (
-    id  bigserial primary key,
-    url text unique not null
+    id         bigserial primary key,
+    url        text unique not null,
+    updated_at timestamptz default now()
 );
 
 create table tags
@@ -27,11 +28,20 @@ create table link_chat
 create table link_tag
 (
     link_id bigint references links (id) on delete cascade,
-    tag_id bigint references tags(id) on delete cascade,
+    tag_id  bigint references tags (id) on delete cascade,
     primary key (link_id, tag_id)
 );
+
+create index idx_link_chat_chat_id on link_chat (chat_id);
+
+create index idx_link_chat_link_id on link_chat (link_id);
+
+create index idx_link_tag_link_id on link_tag (link_id);
+
+create index idx_link_tag_tag_id on link_tag (tag_id);
+
 -- +goose StatementEnd
-    
+
 -- +goose Down
 drop table link_tag;
 drop table link_chat;

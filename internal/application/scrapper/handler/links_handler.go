@@ -2,9 +2,10 @@
 package handler
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"log/slog"
-	"net/url"
 	"time"
 
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/pkg"
@@ -18,75 +19,117 @@ var (
 	ErrLinkNotExists              = errors.New("link not exists")
 )
 
-type Repository interface {
-	ChatExists(chatID int64) bool
-	GetLinks(chatID int64) []pkg.LinkInfo
-	AddLink(chatID int64, link pkg.LinkInfo)
-	DeleteLink(chatID int64, link string) (pkg.LinkInfo, bool)
-	DeleteChat(chatID int64)
-	AddChat(chatID int64)
-	GetAllLinks() []pkg.LinkInfo
-	GetChatIDsByLink(link string) []int64
-	UpdateLinksTime(newTime time.Time, linkToUpdate pkg.LinkInfo)
+const requestTimeout = 5 * time.Second
+
+type LinkRepository interface {
+	AddLink(ctx context.Context, chatID int64, link pkg.LinkInfo) error
+	DeleteLink(ctx context.Context, chatID int64, url string) (pkg.LinkInfo, error)
+	GetUserLinks(ctx context.Context, chatID int64) ([]pkg.LinkInfo, error)
+	GetAllLinks(ctx context.Context, limit int, offset int) ([]pkg.LinkInfo, error)
+	UpdateLinksTime(ctx context.Context, newTime time.Time, url string) error
+	GetChatIDsByLink(ctx context.Context, link string) ([]int64, error)
+	LinkExists(ctx context.Context, url string) (bool, error)
+}
+
+type ChatRepository interface {
+	ChatExists(ctx context.Context, chatID int64) (bool, error)
+	AddChat(ctx context.Context, chatID int64) error
+	DeleteChat(ctx context.Context, chatID int64) error
+}
+
+type Transactor interface {
+	WithTransaction(ctx context.Context, txFunc func(ctx context.Context) error) error
 }
 
 type LinksHandler struct {
-	Repo       Repository
+	LinkRepo   LinkRepository
+	ChatsRepo  ChatRepository
+	Transactor Transactor
 	BaseLogger *slog.Logger
 }
 
-func (h LinksHandler) AddChatID(chatID int64) error {
-	if h.Repo.ChatExists(chatID) {
-		return ErrChatAlreadyExists
-	}
-	h.Repo.AddChat(chatID)
-	return nil
+func (h LinksHandler) AddChatID(ctx context.Context, chatID int64) error {
+	return h.Transactor.WithTransaction(ctx, func(ctx context.Context) error {
+		ctx, cancel := context.WithTimeout(ctx, requestTimeout)
+		defer cancel()
+
+		exists, err := h.ChatsRepo.ChatExists(ctx, chatID)
+		if err != nil {
+			return fmt.Errorf("error checking chat existence %w", err)
+		}
+
+		if exists {
+			return ErrChatAlreadyExists
+		}
+
+		if err = h.ChatsRepo.AddChat(ctx, chatID); err != nil {
+			return fmt.Errorf("error adding chat %w", err)
+		}
+		return nil
+	})
 }
 
-func (h LinksHandler) DeleteChat(chatID int64) error {
-	if !h.Repo.ChatExists(chatID) {
-		return ErrChatNotFound
+func (h LinksHandler) DeleteChat(ctx context.Context, chatID int64) error {
+	if err := h.ChatsRepo.DeleteChat(ctx, chatID); err != nil {
+		return fmt.Errorf("error deleting chat %w", err)
 	}
-	h.Repo.DeleteChat(chatID)
 	return nil
+
 }
 
-func (h LinksHandler) GetLinks(chatID int64) ([]pkg.LinkInfo, error) {
-	if !h.Repo.ChatExists(chatID) {
+func (h LinksHandler) GetLinks(ctx context.Context, chatID int64) ([]pkg.LinkInfo, error) {
+	ctx, cancel := context.WithTimeout(ctx, requestTimeout)
+	defer cancel()
+	exists, err := h.ChatsRepo.ChatExists(ctx, chatID)
+	if err != nil {
+		return nil, fmt.Errorf("error checking chat existence %w", err)
+	}
+	if !exists {
 		return nil, ErrChatNotFound
 	}
-	links := h.Repo.GetLinks(chatID)
+
+	links, err := h.LinkRepo.GetUserLinks(ctx, chatID)
+	if err != nil {
+		return nil, fmt.Errorf("error getting user links %w", err)
+	}
+
 	return links, nil
 }
 
-func (h LinksHandler) AddLink(chatID int64, linkRequest pkg.AddLinkRequest) error {
-	if !h.Repo.ChatExists(chatID) {
-		return ErrChatNotFound
-	}
-	link := linkRequest.Link
-	if _, err := url.Parse(linkRequest.Link); err != nil {
-		return ErrIncorrectRequestParameters
-	}
-
-	links := h.Repo.GetLinks(chatID)
-	for _, l := range links {
-		if l.Link == link {
-			return ErrLinkExists
+func (h LinksHandler) AddLink(ctx context.Context, chatID int64, linkRequest pkg.AddLinkRequest) error {
+	return h.Transactor.WithTransaction(ctx, func(ctx context.Context) error {
+		ctx, cancel := context.WithTimeout(ctx, requestTimeout)
+		defer cancel()
+		trackedLink := pkg.LinkInfo{Link: linkRequest.Link, Tags: linkRequest.Tags}
+		if err := h.LinkRepo.AddLink(ctx, chatID, trackedLink); err != nil {
+			return fmt.Errorf("error adding link %w", err)
 		}
-	}
+		return nil
+	})
 
-	trackedLink := pkg.LinkInfo{Link: link, Tags: linkRequest.Tags, LastUpdateTime: time.Now()}
-	h.Repo.AddLink(chatID, trackedLink)
-
-	return nil
 }
 
-func (h LinksHandler) DeleteLink(chatID int64, link string) (pkg.LinkInfo, error) {
-	if !h.Repo.ChatExists(chatID) {
+func (h LinksHandler) DeleteLink(ctx context.Context, chatID int64, link string) (pkg.LinkInfo, error) {
+	ctx, cancel := context.WithTimeout(ctx, requestTimeout)
+	defer cancel()
+	exists, err := h.ChatsRepo.ChatExists(ctx, chatID)
+	if err != nil {
+		return pkg.LinkInfo{}, fmt.Errorf("error checking chat existence %w", err)
+	}
+	if !exists {
 		return pkg.LinkInfo{}, ErrChatNotFound
 	}
-	linkInfo, ok := h.Repo.DeleteLink(chatID, link)
-	if !ok {
+
+	exists, err = h.LinkRepo.LinkExists(ctx, link)
+	if err != nil {
+		return pkg.LinkInfo{}, fmt.Errorf("error checking link %w", err)
+	}
+	if !exists {
+		return pkg.LinkInfo{}, ErrLinkNotExists
+	}
+
+	linkInfo, err := h.LinkRepo.DeleteLink(ctx, chatID, link)
+	if err != nil {
 		return pkg.LinkInfo{}, ErrLinkNotExists
 	}
 	return linkInfo, nil

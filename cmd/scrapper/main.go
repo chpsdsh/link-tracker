@@ -16,7 +16,7 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/database"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/logger"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/config"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/repository"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/repository/sqlrepo"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/scrapperclient"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/scrapperserver"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/scrapper/handler"
@@ -66,18 +66,21 @@ func main() {
 		os.Exit(1)
 	}
 
-	repo := repository.NewLinkRepository()
+	linkRepo := sqlrepo.NewLinkRepository(db.GetDBPool())
+	chatRepo := sqlrepo.NewChatRepository(db.GetDBPool())
 
 	linksScheduler := scheduler.LinksRequester{
 		Client:     scrapperclient.Client{Client: client, Config: conf},
 		Scheduler:  sched,
-		Repo:       repo,
+		Repo:       linkRepo,
 		BaseLogger: baseLogger,
 	}
 
 	linksScheduler.StartLinkRequester()
 
-	scrapperHandler := handler.LinksHandler{Repo: repo,
+	scrapperHandler := handler.LinksHandler{
+		LinkRepo:   linkRepo,
+		ChatsRepo:  chatRepo,
 		BaseLogger: baseLogger,
 	}
 

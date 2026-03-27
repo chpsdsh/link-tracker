@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
@@ -27,14 +28,39 @@ const (
 var (
 	ErrCreatingDatabaseFromUrl = errors.New("migrating database error")
 	ErrMigrating               = errors.New("migrating database error")
-	ErrCreatingConnectionPool  = errors.New("creating connection pool error")
+	ErrCreatingConnectionPool  = errors.New("creating connection db error")
 )
+
+type Querier interface {
+	SendBatch(ctx context.Context, b *pgx.Batch) pgx.BatchResults
+	Exec(ctx context.Context, sql string, arguments ...any) (commandTag pgconn.CommandTag, err error)
+	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+}
+
+type txKey struct{}
+
+func injectTx(ctx context.Context, tx pgx.Tx) context.Context {
+	return context.WithValue(ctx, txKey{}, tx)
+}
+
+func GetQuerier(ctx context.Context, defaultQuerier Querier) Querier {
+	if tx, ok := ctx.Value(txKey{}).(pgx.Tx); ok {
+		return tx
+	}
+
+	return defaultQuerier
+}
 
 //go:embed migrations/*.sql
 var embedMigrations embed.FS
 
 type DB struct {
-	pool *pgxpool.Pool
+	db *pgxpool.Pool
+}
+
+func (db *DB) GetDBPool() *pgxpool.Pool {
+	return db.db
 }
 
 func NewDB(config config.PostgresConfig) (*DB, error) {
@@ -64,11 +90,31 @@ func NewDB(config config.PostgresConfig) (*DB, error) {
 		return nil, errors.Join(err, ErrCreatingConnectionPool)
 	}
 
-	return &DB{pool: pool}, nil
+	return &DB{db: pool}, nil
 }
 
 func (db *DB) CloseConnectionPool() {
-	db.pool.Close()
+	db.db.Close()
+}
+
+func (db *DB) WithTransaction(ctx context.Context, txFunc func(ctx context.Context) error) error {
+	tx, err := db.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin transaction: %w", err)
+	}
+
+	defer func() {
+		if err != nil {
+			err = errors.Join(err, tx.Rollback(ctx))
+		}
+	}()
+
+	err = txFunc(injectTx(ctx, tx))
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit(ctx)
 }
 
 func migrate(cfg *pgx.ConnConfig) error {
@@ -95,4 +141,20 @@ func createDataBaseUrlFromConfig(cfg config.PostgresConfig) string {
 		cfg.Port,
 		cfg.DBName,
 	)
+}
+
+func IsUniqueViolation(err error) bool {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		return pgErr.Code == "23505"
+	}
+	return false
+}
+
+func IsForeignKeyViolation(err error) bool {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		return pgErr.Code == "23503"
+	}
+	return false
 }

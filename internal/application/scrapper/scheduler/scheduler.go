@@ -46,7 +46,7 @@ type NetworkClient interface {
 type LinksRequester struct {
 	Client     NetworkClient
 	Scheduler  gocron.Scheduler
-	Repo       handler.Repository
+	Repo       handler.LinkRepository
 	BaseLogger *slog.Logger
 }
 
