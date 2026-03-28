@@ -16,7 +16,7 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/database"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/logger"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/config"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/repository/sqlrepo"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/repository"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/scrapperclient"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/scrapperserver"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/scrapper/scheduler"
@@ -66,8 +66,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	linkRepo := sqlrepo.NewLinkRepository(db.GetDBPool())
-	chatRepo := sqlrepo.NewChatRepository(db.GetDBPool())
+	chatRepo, linkRepo, err := repository.CreateRepositories(db.GetDBPool(), conf.AssetType)
+	if err != nil {
+		baseLogger.Error("error creating repository", slog.String("err", err.Error()))
+		os.Exit(1)
+	}
 
 	linksScheduler := scheduler.LinksRequester{
 		Client:     scrapperclient.Client{Client: client, Config: conf},

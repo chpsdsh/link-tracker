@@ -9,8 +9,8 @@ import (
 	"log/slog"
 	"net/http"
 
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/scrapper/service"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/pkg"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/scrapper"
 )
 
 const (
@@ -74,10 +74,10 @@ func (s ScrapperServer) DeleteLinks(w http.ResponseWriter, r *http.Request, para
 		if _, errWrite := w.Write(data); errWrite != nil {
 			s.BaseLogger.Error("write response failed", slog.String("error", errWrite.Error()))
 		}
-	case errors.Is(deleteLinkErr, service.ErrChatNotFound):
+	case errors.Is(deleteLinkErr, scrapper.ErrChatNotFound):
 		s.sendAPIErrorResponse(w, errorChatNotFound, deleteLinkErr, http.StatusNotFound)
 		s.BaseLogger.Error(errorChatNotFound, slog.String("error", deleteLinkErr.Error()))
-	case errors.Is(deleteLinkErr, service.ErrLinkNotExists):
+	case errors.Is(deleteLinkErr, scrapper.ErrLinkNotExists):
 		s.sendAPIErrorResponse(w, errorLinkNotExists, deleteLinkErr, http.StatusNotFound)
 		s.BaseLogger.Error(errorLinkNotExists, slog.String("error", deleteLinkErr.Error()))
 	}
@@ -108,7 +108,7 @@ func (s ScrapperServer) GetLinks(w http.ResponseWriter, r *http.Request, params 
 		if _, errWrite := w.Write(data); errWrite != nil {
 			s.BaseLogger.Error("write response failed", slog.String("error", errWrite.Error()))
 		}
-	case errors.Is(err, service.ErrChatNotFound):
+	case errors.Is(err, scrapper.ErrChatNotFound):
 		s.sendAPIErrorResponse(w, errorChatNotFound, err, http.StatusNotFound)
 		s.BaseLogger.Error(errorChatNotFound, slog.String("error", err.Error()))
 	}
@@ -150,13 +150,13 @@ func (s ScrapperServer) PostLinks(w http.ResponseWriter, r *http.Request, params
 		if _, errWrite := w.Write(data); errWrite != nil {
 			s.BaseLogger.Error("write response failed", slog.String("error", errWrite.Error()))
 		}
-	case errors.Is(linkErr, service.ErrIncorrectRequestParameters):
+	case errors.Is(linkErr, scrapper.ErrIncorrectRequestParameters):
 		s.sendAPIErrorResponse(w, errorIncorrectRequestParameters, linkErr, http.StatusBadRequest)
 		s.BaseLogger.Error(errorIncorrectRequestParameters, slog.String("error", linkErr.Error()))
-	case errors.Is(linkErr, service.ErrChatNotFound):
+	case errors.Is(linkErr, scrapper.ErrChatNotFound):
 		s.sendAPIErrorResponse(w, errorChatNotFound, linkErr, http.StatusNotFound)
 		s.BaseLogger.Error(errorChatNotFound, slog.String("error", linkErr.Error()))
-	case errors.Is(linkErr, service.ErrLinkExists):
+	case errors.Is(linkErr, scrapper.ErrLinkExists):
 		s.sendAPIErrorResponse(w, errorLinkIsAlreadyTracked, linkErr, http.StatusConflict)
 		s.BaseLogger.Error(errorLinkIsAlreadyTracked, slog.String("error", linkErr.Error()))
 	}
@@ -167,7 +167,7 @@ func (s ScrapperServer) DeleteTgChatId(w http.ResponseWriter, r *http.Request, i
 	switch {
 	case chatErr == nil:
 		w.WriteHeader(http.StatusOK)
-	case errors.Is(chatErr, service.ErrChatNotFound):
+	case errors.Is(chatErr, scrapper.ErrChatNotFound):
 		s.sendAPIErrorResponse(w, errorChatNotFound, chatErr, http.StatusNotFound)
 		s.BaseLogger.Error(errorChatNotFound, slog.String("error", chatErr.Error()))
 	}
@@ -179,7 +179,7 @@ func (s ScrapperServer) PostTgChatId(w http.ResponseWriter, r *http.Request, id 
 	switch {
 	case chatErr == nil:
 		w.WriteHeader(http.StatusOK)
-	case errors.Is(chatErr, service.ErrChatAlreadyExists):
+	case errors.Is(chatErr, scrapper.ErrChatAlreadyExists):
 		s.sendAPIErrorResponse(w, errorChatAlreadyExists, chatErr, http.StatusConflict)
 		s.BaseLogger.Error(errorChatAlreadyExists, slog.String("error", chatErr.Error()))
 	}

@@ -3,20 +3,12 @@ package service
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"time"
 
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/pkg"
-)
-
-var (
-	ErrChatNotFound               = errors.New("chat not found")
-	ErrLinkExists                 = errors.New("link already tracked")
-	ErrIncorrectRequestParameters = errors.New("incorrect request parameters")
-	ErrChatAlreadyExists          = errors.New("chat already exists")
-	ErrLinkNotExists              = errors.New("link not exists")
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/scrapper"
 )
 
 const requestTimeout = 5 * time.Second
@@ -59,7 +51,7 @@ func (h LinksService) AddChatID(ctx context.Context, chatID int64) error {
 		}
 
 		if exists {
-			return ErrChatAlreadyExists
+			return scrapper.ErrChatAlreadyExists
 		}
 
 		if err = h.ChatsRepo.AddChat(ctx, chatID); err != nil {
@@ -85,7 +77,7 @@ func (h LinksService) GetLinks(ctx context.Context, chatID int64) ([]pkg.LinkInf
 		return nil, fmt.Errorf("error checking chat existence %w", err)
 	}
 	if !exists {
-		return nil, ErrChatNotFound
+		return nil, scrapper.ErrChatNotFound
 	}
 
 	links, err := h.LinkRepo.GetUserLinks(ctx, chatID)
@@ -117,7 +109,7 @@ func (h LinksService) DeleteLink(ctx context.Context, chatID int64, link string)
 		return pkg.LinkInfo{}, fmt.Errorf("error checking chat existence %w", err)
 	}
 	if !exists {
-		return pkg.LinkInfo{}, ErrChatNotFound
+		return pkg.LinkInfo{}, scrapper.ErrChatNotFound
 	}
 
 	exists, err = h.LinkRepo.LinkExists(ctx, link)
@@ -125,7 +117,7 @@ func (h LinksService) DeleteLink(ctx context.Context, chatID int64, link string)
 		return pkg.LinkInfo{}, fmt.Errorf("error checking link %w", err)
 	}
 	if !exists {
-		return pkg.LinkInfo{}, ErrLinkNotExists
+		return pkg.LinkInfo{}, scrapper.ErrLinkNotExists
 	}
 
 	linkInfo, err := h.LinkRepo.DeleteLink(ctx, chatID, link)

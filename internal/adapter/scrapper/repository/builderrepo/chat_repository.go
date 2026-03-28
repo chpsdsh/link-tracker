@@ -1,9 +1,10 @@
-package sqlrepo
+package builderrepo
 
 import (
 	"context"
 	"fmt"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/database"
@@ -11,23 +12,34 @@ import (
 )
 
 type ChatRepository struct {
-	db *pgxpool.Pool
+	db      *pgxpool.Pool
+	builder squirrel.StatementBuilderType
 }
 
 func NewChatRepository(db *pgxpool.Pool) *ChatRepository {
-	return &ChatRepository{db: db}
+	b := squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar)
+	return &ChatRepository{db: db, builder: b}
 }
 
 func (r *ChatRepository) ChatExists(ctx context.Context, chatID int64) (bool, error) {
 	q := database.GetQuerier(ctx, r.db)
 
 	var exists bool
-	err := q.QueryRow(ctx, `select exists(
-	select 1 from chats where chat_id = $1
-    )
-	`, chatID).Scan(&exists)
+
+	subquery := r.builder.Select("1").
+		From("chats").
+		Where(squirrel.Eq{"chat_id": chatID})
+
+	query, args, err := r.builder.Select().
+		Column(squirrel.Expr("exists (?)", subquery)).
+		ToSql()
+
 	if err != nil {
-		return false, fmt.Errorf("error check chat existence: %w", err)
+		return false, fmt.Errorf("error building query %w", err)
+	}
+
+	if err = q.QueryRow(ctx, query, args...).Scan(&exists); err != nil {
+		return false, fmt.Errorf("error checking existence of chat: %w", err)
 	}
 	return exists, nil
 }
@@ -35,7 +47,14 @@ func (r *ChatRepository) ChatExists(ctx context.Context, chatID int64) (bool, er
 func (r *ChatRepository) AddChat(ctx context.Context, chatID int64) error {
 	q := database.GetQuerier(ctx, r.db)
 
-	_, err := q.Exec(ctx, `insert into chats (chat_id) values ($1)`, chatID)
+	query, args, err := r.builder.Insert("chats").
+		Values(chatID).
+		ToSql()
+	if err != nil {
+		return fmt.Errorf("error building query: %w", err)
+	}
+
+	_, err = q.Exec(ctx, query, args...)
 
 	switch {
 	case database.IsUniqueViolation(err):
@@ -50,7 +69,14 @@ func (r *ChatRepository) AddChat(ctx context.Context, chatID int64) error {
 func (r *ChatRepository) DeleteChat(ctx context.Context, chatID int64) error {
 	q := database.GetQuerier(ctx, r.db)
 
-	commandTag, err := q.Exec(ctx, `delete from chats where chat_id = $1`, chatID)
+	query, args, err := r.builder.Delete("chats").
+		Where(squirrel.Eq{"chat_id": chatID}).
+		ToSql()
+	if err != nil {
+		return fmt.Errorf("error building query: %w", err)
+	}
+
+	commandTag, err := q.Exec(ctx, query, args...)
 	if err != nil {
 		return fmt.Errorf("error deleting chat: %w", err)
 	}

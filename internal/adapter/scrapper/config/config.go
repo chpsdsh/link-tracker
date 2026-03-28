@@ -23,7 +23,7 @@ type AssetType int
 
 const (
 	AssetTypeSQL AssetType = iota
-	AssetTypeORM
+	AssetTypeBuilder
 )
 
 type Config struct {
@@ -58,8 +58,8 @@ func findAssetType(asset string) (AssetType, error) {
 	switch asset {
 	case "SQL":
 		return AssetTypeSQL, nil
-	case "ORM":
-		return AssetTypeORM, nil
+	case "BUILDER":
+		return AssetTypeBuilder, nil
 	default:
 		return 0, ErrNoAssetType
 	}

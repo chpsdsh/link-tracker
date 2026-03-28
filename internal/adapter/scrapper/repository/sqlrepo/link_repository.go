@@ -8,8 +8,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/database"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/scrapper/service"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/pkg"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/scrapper"
 )
 
 type LinkRepository struct {
@@ -40,13 +40,16 @@ func (r *LinkRepository) AddLink(ctx context.Context, chatID int64, link pkg.Lin
 	values($1,$2)
 	on conflict do nothing
 	`, chatID, linkID)
-	switch {
-	case database.IsForeignKeyViolation(err):
-		return service.ErrChatNotFound
-	case commandTag.RowsAffected() == 0:
-		return service.ErrLinkExists
-	case err != nil:
+
+	if err != nil {
+		if database.IsForeignKeyViolation(err) {
+			return scrapper.ErrChatNotFound
+		}
 		return fmt.Errorf("error insert link: %w", err)
+	}
+
+	if commandTag.RowsAffected() == 0 {
+		return scrapper.ErrLinkExists
 	}
 
 	for _, tag := range link.Tags {
