@@ -205,7 +205,6 @@ func (r *LinkRepository) GetAllLinks(ctx context.Context, host string, limit int
 
 func (r *LinkRepository) UpdateLinksTime(ctx context.Context, newTime time.Time, url string) error {
 	q := database.GetQuerier(ctx, r.db)
-
 	_, err := q.Exec(ctx, `
 	update links 
 	set updated_at = $1

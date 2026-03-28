@@ -84,75 +84,88 @@ func (r LinksRequester) StartLinkRequester() {
 
 func (r LinksRequester) HandleGithubLinks() {
 	offset := 0
-	for {
-		ctx, cancel := context.WithTimeout(context.Background(), linksHandleDuration)
-		links, err := r.Repo.GetAllLinks(ctx, gitHubHost, linksRequestLimit, offset)
-		cancel()
-		if err != nil {
-			r.BaseLogger.Error("error getting github links", slog.String("error", err.Error()))
-			return
-		}
-
-		if len(links) == 0 {
-			break
-		}
-
-		for _, l := range links {
-			link, parseErr := ParseGithubLink(l.Link)
-			if parseErr != nil {
-				continue
-			}
-
-			gitUpdate, sendErr := r.Client.DoGithubRequest(link.ConvertToURL())
-			if sendErr != nil {
-				r.BaseLogger.Error("error during github query", slog.String("error", sendErr.Error()))
-				continue
-			}
-			
-			updateTime, parseErr := time.Parse(time.RFC3339, gitUpdate.UpdatedAt)
-			if parseErr != nil {
-				r.BaseLogger.Error("error during update", slog.String("error", parseErr.Error()))
-				continue
-			}
-
-			r.sendUpdate(ctx, updateTime, l)
-		}
+	for r.githubIteration(offset) {
 		offset += linksRequestLimit
 	}
 
 }
 
+func (r LinksRequester) githubIteration(offset int) bool {
+	ctx, cancel := context.WithTimeout(context.Background(), linksHandleDuration)
+	defer cancel()
+
+	links, err := r.Repo.GetAllLinks(ctx, gitHubHost, linksRequestLimit, offset)
+
+	if err != nil {
+		r.BaseLogger.Error("error getting github links", slog.String("error", err.Error()))
+		return false
+	}
+
+	if len(links) == 0 {
+		return false
+	}
+
+	for _, l := range links {
+		link, parseErr := ParseGithubLink(l.Link)
+		if parseErr != nil {
+			continue
+		}
+
+		gitUpdate, sendErr := r.Client.DoGithubRequest(link.ConvertToURL())
+		if sendErr != nil {
+			r.BaseLogger.Error("error during github query", slog.String("error", sendErr.Error()))
+			continue
+		}
+
+		updateTime, parseErr := time.Parse(time.RFC3339, gitUpdate.UpdatedAt)
+		if parseErr != nil {
+			r.BaseLogger.Error("error during update", slog.String("error", parseErr.Error()))
+			continue
+		}
+
+		r.sendUpdate(ctx, updateTime, l)
+	}
+	return true
+}
+
 func (r LinksRequester) HandleStackOverflowLinks() {
 	offset := 0
-	for {
-		ctx, cancel := context.WithTimeout(context.Background(), linksHandleDuration)
-		links, err := r.Repo.GetAllLinks(ctx, stackOverflowHost, linksRequestLimit, offset)
-		cancel()
-		if err != nil {
-			r.BaseLogger.Error("error getting github links", slog.String("error", err.Error()))
-			return
-		}
-
-		if len(links) == 0 {
-			break
-		}
-		for _, l := range links {
-			link, parseErr := ParseStackOverflowLink(l.Link)
-			if parseErr != nil {
-				continue
-			}
-			stackUpdate, sendErr := r.Client.DoStackOverflowRequest(link.ConvertToURL())
-			if sendErr != nil {
-				r.BaseLogger.Error("error during stack overflow", slog.String("error", sendErr.Error()))
-				continue
-			}
-
-			updateTime := time.Unix(stackUpdate.Items[0].LastActivityDate, 0).UTC()
-
-			r.sendUpdate(ctx, updateTime, l)
-		}
+	for r.stackOverflowIteration(offset) {
 		offset += linksRequestLimit
 	}
+}
+
+func (r LinksRequester) stackOverflowIteration(offset int) bool {
+	ctx, cancel := context.WithTimeout(context.Background(), linksHandleDuration)
+	defer cancel()
+
+	links, err := r.Repo.GetAllLinks(ctx, stackOverflowHost, linksRequestLimit, offset)
+
+	if err != nil {
+		r.BaseLogger.Error("error getting stack overflow links", slog.String("error", err.Error()))
+		return false
+	}
+
+	if len(links) == 0 {
+		return false
+	}
+
+	for _, l := range links {
+		link, parseErr := ParseStackOverflowLink(l.Link)
+		if parseErr != nil {
+			continue
+		}
+		stackUpdate, sendErr := r.Client.DoStackOverflowRequest(link.ConvertToURL())
+		if sendErr != nil {
+			r.BaseLogger.Error("error during stack overflow", slog.String("error", sendErr.Error()))
+			continue
+		}
+
+		updateTime := time.Unix(stackUpdate.Items[0].LastActivityDate, 0).UTC()
+
+		r.sendUpdate(ctx, updateTime, l)
+	}
+	return true
 }
 
 func (r LinksRequester) sendUpdate(ctx context.Context, updateTime time.Time, linkInfo pkg.LinkInfo) {
