@@ -14,7 +14,7 @@ func CreateRepositories(db *pgxpool.Pool, assetType config.AssetType) (service.C
 	case config.AssetTypeSQL:
 		return sqlrepo.NewChatRepository(db), sqlrepo.NewLinkRepository(db), nil
 	case config.AssetTypeBuilder:
-		return builderrepo.NewChatRepository(db), sqlrepo.NewLinkRepository(db), nil
+		return builderrepo.NewChatRepository(db), builderrepo.NewLinkRepository(db), nil
 	default:
 		return nil, nil, config.ErrNoAssetType
 	}
