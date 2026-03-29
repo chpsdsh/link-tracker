@@ -168,14 +168,12 @@ func (r *LinkRepository) DeleteLink(ctx context.Context, chatID int64, url strin
 		Scan(&li.Link, &li.LastUpdateTime, &tags)
 
 	if err != nil {
-		return pkg.LinkInfo{}, err
+		return pkg.LinkInfo{}, fmt.Errorf("delete link error: %w", err)
 	}
 
 	li.Tags = tags
 
-	builder := r.builder
-
-	subQuery, subArgs, err := builder.
+	subQuery, subArgs, err := r.builder.
 		Select("id").
 		From("links").
 		Where(squirrel.Eq{"url": url}).
@@ -185,7 +183,7 @@ func (r *LinkRepository) DeleteLink(ctx context.Context, chatID int64, url strin
 		return pkg.LinkInfo{}, fmt.Errorf("build subquery: %w", err)
 	}
 
-	notExistsQuery, notExistsArgs, err := builder.
+	notExistsQuery, notExistsArgs, err := r.builder.
 		Select("1").
 		From("link_chat lc").
 		Join("links l on l.id = lc.link_id").
@@ -196,7 +194,7 @@ func (r *LinkRepository) DeleteLink(ctx context.Context, chatID int64, url strin
 		return pkg.LinkInfo{}, fmt.Errorf("build exists: %w", err)
 	}
 
-	query, args, err := builder.
+	query, args, err := r.builder.
 		Delete("links").
 		Where(squirrel.Expr("id = ("+subQuery+")", subArgs...)).
 		Where(squirrel.Expr("not exists ("+notExistsQuery+")", notExistsArgs...)).

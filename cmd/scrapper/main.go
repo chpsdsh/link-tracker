@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -37,15 +38,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	conf, err := config.ParseConfig()
+	conf, dbConf, err := parseConfigs()
 	if err != nil {
-		baseLogger.Error("error parsing environment variables", slog.String("err", err.Error()))
-		os.Exit(1)
-	}
-
-	dbConf, err := config.ParsePostgresConfig()
-	if err != nil {
-		baseLogger.Error("error parsing postgres configuration", slog.String("err", err.Error()))
+		baseLogger.Error("error parsing config", slog.String("err", err.Error()))
 		os.Exit(1)
 	}
 
@@ -56,9 +51,6 @@ func main() {
 		baseLogger.Error("error parsing environment variables", slog.String("err", err.Error()))
 		os.Exit(1)
 	}
-
-	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer cancel()
 
 	db, err := database.NewDB(dbConf)
 	if err != nil {
@@ -71,6 +63,9 @@ func main() {
 		baseLogger.Error("error creating repository", slog.String("err", err.Error()))
 		os.Exit(1)
 	}
+
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer cancel()
 
 	linksScheduler := scheduler.LinksRequester{
 		Client:     scrapperclient.Client{Client: client, Config: conf},
@@ -112,4 +107,17 @@ func main() {
 	}
 
 	db.CloseConnectionPool()
+}
+
+func parseConfigs() (config.Config, config.PostgresConfig, error) {
+	conf, err := config.ParseConfig()
+	if err != nil {
+		return config.Config{}, config.PostgresConfig{}, fmt.Errorf("error parsing scrapper config: %w", err)
+	}
+
+	dbConf, err := config.ParsePostgresConfig()
+	if err != nil {
+		return config.Config{}, config.PostgresConfig{}, fmt.Errorf("error parsing postgres config: %w", err)
+	}
+	return conf, dbConf, nil
 }

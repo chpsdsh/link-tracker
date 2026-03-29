@@ -5,6 +5,7 @@ import (
 
 	"github.com/stretchr/testify/suite"
 	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/network"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
@@ -17,7 +18,6 @@ const (
 	botAlias              = "bot"
 	telegramAPIKey        = "APP_TELEGRAM_TOKEN"
 	scrapperServerAddress = "SCRAPPER_SERVER_ADDRESS"
-	networkName           = "linktracker-test-network"
 	githubAPIKey          = "GITHUB_API_KEY"
 	stackoverflowAPIKey   = "STACKOVERFLOW_API_KEY"
 	botServerAddress      = "BOT_SERVER_ADDRESS"
@@ -27,12 +27,27 @@ const (
 	scrapperServerAddr    = "http://scrapper:8081"
 	withTelegramAPI       = "false"
 	pathToDockerfile      = "../../"
+	assetType             = "ASSET_TYPE"
+	assetTypeBuilder      = "BUILDER"
+	dbUser                = "user"
+	dbPassword            = "password"
+	dbName                = "mydb"
+	exposedPort           = "5432/tcp"
+	dbPort                = "5432"
+	dbHost                = "postgres"
+	postgresHost          = "POSTGRES_HOST"
+	postgresPort          = "POSTGRES_PORT"
+	postgresUser          = "POSTGRES_USER"
+	postgresPassword      = "POSTGRES_PASSWORD"
+	postgresDatabase      = "POSTGRES_DB"
 )
 
 type Suite struct {
 	suite.Suite
 	botContainer      testcontainers.Container
 	scrapperContainer testcontainers.Container
+	dbContainer       testcontainers.Container
+	network           *testcontainers.DockerNetwork
 	scrapperURL       string
 	botURL            string
 }
@@ -40,74 +55,26 @@ type Suite struct {
 func (s *Suite) SetupSuite() {
 	ctx := context.Background()
 
-	scrapperReq := testcontainers.ContainerRequest{
-		FromDockerfile: testcontainers.FromDockerfile{
-			Context:    pathToDockerfile,
-			Dockerfile: scrapperDockerfile,
-		},
-		ExposedPorts: []string{scrapperPort},
-		Env: map[string]string{
-			githubAPIKey:        APIToken,
-			stackoverflowAPIKey: APIToken,
-			botServerAddress:    botServerAddr,
-		},
-		Networks: []string{networkName},
-		NetworkAliases: map[string][]string{
-			networkName: {scrapperAlias},
-		},
-		WaitingFor: wait.ForListeningPort(scrapperPort),
-	}
+	s.setupNetwork(ctx)
 
-	botReq := testcontainers.ContainerRequest{
-		FromDockerfile: testcontainers.FromDockerfile{
-			Context:    pathToDockerfile,
-			Dockerfile: botDockerfile,
-		},
-		ExposedPorts: []string{botPort},
-		Env: map[string]string{
-			botAPIFlag:            withTelegramAPI,
-			telegramAPIKey:        APIToken,
-			scrapperServerAddress: scrapperServerAddr,
-		},
-		Networks: []string{networkName},
-		NetworkAliases: map[string][]string{
-			networkName: {botAlias},
-		},
-		WaitingFor: wait.ForListeningPort(botPort),
-	}
+	s.setupPostgres(ctx)
 
-	scrapperContainer, err := testcontainers.GenericContainer(
-		ctx,
-		testcontainers.GenericContainerRequest{
-			ContainerRequest: scrapperReq,
-			Started:          true,
-		},
-	)
-	s.Require().NoError(err)
-	s.scrapperContainer = scrapperContainer
+	s.setupScrapper(ctx)
 
-	botC, err := testcontainers.GenericContainer(
-		ctx,
-		testcontainers.GenericContainerRequest{
-			ContainerRequest: botReq,
-			Started:          true,
-		},
-	)
-	s.Require().NoError(err)
-	s.botContainer = botC
+	s.setupBot(ctx)
 
-	host, err := scrapperContainer.Host(ctx)
+	host, err := s.scrapperContainer.Host(ctx)
 	s.Require().NoError(err)
 
-	port, err := scrapperContainer.MappedPort(ctx, scrapperPort)
+	port, err := s.scrapperContainer.MappedPort(ctx, scrapperPort)
 	s.Require().NoError(err)
 
 	s.scrapperURL = "http://" + host + ":" + port.Port()
 
-	host, err = botC.Host(ctx)
+	host, err = s.botContainer.Host(ctx)
 	s.Require().NoError(err)
 
-	port, err = botC.MappedPort(ctx, botPort)
+	port, err = s.botContainer.MappedPort(ctx, botPort)
 	s.Require().NoError(err)
 
 	s.botURL = "http://" + host + ":" + port.Port()
@@ -126,4 +93,115 @@ func (s *Suite) TearDownSuite() {
 			return
 		}
 	}
+	if s.dbContainer != nil {
+		err := s.dbContainer.Terminate(context.Background())
+		if err != nil {
+			return
+		}
+	}
+	if s.network != nil {
+		err := s.network.Remove(context.Background())
+		if err != nil {
+			return
+		}
+	}
+}
+
+func (s *Suite) setupBot(ctx context.Context) {
+	botReq := testcontainers.ContainerRequest{
+		FromDockerfile: testcontainers.FromDockerfile{
+			Context:    pathToDockerfile,
+			Dockerfile: botDockerfile,
+		},
+		ExposedPorts: []string{botPort},
+		Env: map[string]string{
+			botAPIFlag:            withTelegramAPI,
+			telegramAPIKey:        APIToken,
+			scrapperServerAddress: scrapperServerAddr,
+		},
+		Networks: []string{s.network.Name},
+		NetworkAliases: map[string][]string{
+			s.network.Name: {botAlias},
+		},
+		WaitingFor: wait.ForListeningPort(botPort),
+	}
+
+	botC, err := testcontainers.GenericContainer(
+		ctx,
+		testcontainers.GenericContainerRequest{
+			ContainerRequest: botReq,
+			Started:          true,
+		},
+	)
+	s.Require().NoError(err)
+	s.botContainer = botC
+}
+
+func (s *Suite) setupScrapper(ctx context.Context) {
+	scrapperReq := testcontainers.ContainerRequest{
+		FromDockerfile: testcontainers.FromDockerfile{
+			Context:    pathToDockerfile,
+			Dockerfile: scrapperDockerfile,
+		},
+		ExposedPorts: []string{scrapperPort},
+		Env: map[string]string{
+			githubAPIKey:        APIToken,
+			stackoverflowAPIKey: APIToken,
+			botServerAddress:    botServerAddr,
+			assetType:           assetTypeBuilder,
+			postgresHost:        dbHost,
+			postgresPort:        dbPort,
+			postgresUser:        dbUser,
+			postgresPassword:    dbPassword,
+			postgresDatabase:    dbName,
+		},
+		Networks: []string{s.network.Name},
+		NetworkAliases: map[string][]string{
+			s.network.Name: {scrapperAlias},
+		},
+		WaitingFor: wait.ForListeningPort(scrapperPort),
+	}
+
+	scrapperContainer, err := testcontainers.GenericContainer(
+		ctx,
+		testcontainers.GenericContainerRequest{
+			ContainerRequest: scrapperReq,
+			Started:          true,
+		},
+	)
+	s.Require().NoError(err)
+	s.scrapperContainer = scrapperContainer
+
+}
+
+func (s *Suite) setupPostgres(ctx context.Context) {
+	dbReq := testcontainers.ContainerRequest{
+		Image:        "postgres:18",
+		ExposedPorts: []string{exposedPort},
+		Env: map[string]string{
+			postgresUser:     dbUser,
+			postgresPassword: dbPassword,
+			postgresDatabase: dbName,
+		},
+		Networks: []string{s.network.Name},
+		NetworkAliases: map[string][]string{
+			s.network.Name: {dbHost},
+		},
+		WaitingFor: wait.ForLog("database system is ready to accept connections"),
+	}
+
+	dbC, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+		ContainerRequest: dbReq,
+		Started:          true,
+	})
+	s.Require().NoError(err)
+	s.dbContainer = dbC
+
+}
+
+func (s *Suite) setupNetwork(ctx context.Context) {
+	net, err := network.New(ctx)
+	s.Require().NoError(err)
+
+	s.network = net
 }

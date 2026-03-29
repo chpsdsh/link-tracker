@@ -1,39 +1,55 @@
 package service
 
 import (
+	"context"
 	"errors"
-	"io"
-	"log/slog"
 	"testing"
-	"time"
 
 	"github.com/golang/mock/gomock"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/scrapper/mocks"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/pkg"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/scrapper"
 )
 
-func TestLinksHandlerAddChatId(t *testing.T) {
+func TestLinksService_AddChatID(t *testing.T) {
 	tests := []struct {
-		name        string
-		chatID      int64
-		chatExists  bool
-		expectedErr error
-		expectAdd   bool
+		name          string
+		chatID        int64
+		chatExists    bool
+		chatExistsErr error
+		addChatErr    error
+		expectedErr   error
+		expectAddCall bool
 	}{
 		{
 			name:        "chat already exists",
 			chatID:      1,
 			chatExists:  true,
-			expectedErr: ErrChatAlreadyExists,
-			expectAdd:   false,
+			expectedErr: scrapper.ErrChatAlreadyExists,
 		},
 		{
-			name:        "chat added successfully",
-			chatID:      2,
-			chatExists:  false,
-			expectedErr: nil,
-			expectAdd:   true,
+			name:          "chat exists check error",
+			chatID:        2,
+			chatExistsErr: errors.New("db error"),
+			expectedErr:   scrapper.ErrInternalError,
+		},
+		{
+			name:          "add chat error",
+			chatID:        3,
+			chatExists:    false,
+			addChatErr:    errors.New("insert error"),
+			expectedErr:   scrapper.ErrInternalError,
+			expectAddCall: true,
+		},
+		{
+			name:          "success",
+			chatID:        4,
+			chatExists:    false,
+			expectedErr:   nil,
+			expectAddCall: true,
 		},
 	}
 
@@ -42,52 +58,55 @@ func TestLinksHandlerAddChatId(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
-			mockRepo := mocks.NewMockRepository(ctrl)
+			chatRepo := mocks.NewMockChatRepository(ctrl)
+			tx := mocks.NewMockTransactor(ctrl)
 
-			h := LinksService{
-				Repo:       mockRepo,
-				BaseLogger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+			svc := LinksService{
+				ChatsRepo:  chatRepo,
+				Transactor: tx,
 			}
 
-			mockRepo.EXPECT().
-				ChatExists(tt.chatID).
-				Return(tt.chatExists)
+			tx.EXPECT().
+				WithTransaction(gomock.Any(), gomock.Any()).
+				DoAndReturn(func(ctx context.Context, fn func(context.Context) error) error {
+					return fn(ctx)
+				})
 
-			if tt.expectAdd {
-				mockRepo.EXPECT().
-					AddChat(tt.chatID)
+			chatRepo.EXPECT().
+				ChatExists(gomock.Any(), tt.chatID).
+				Return(tt.chatExists, tt.chatExistsErr)
+
+			if tt.expectAddCall {
+				chatRepo.EXPECT().
+					AddChat(gomock.Any(), tt.chatID).
+					Return(tt.addChatErr)
 			}
 
-			err := h.AddChatID(tt.chatID)
+			err := svc.AddChatID(context.Background(), tt.chatID)
 
-			if !errors.Is(err, tt.expectedErr) {
-				t.Fatalf("expected error %v, got %v", tt.expectedErr, err)
-			}
+			require.ErrorIs(t, err, tt.expectedErr)
 		})
 	}
 }
 
-func TestLinksHandlerDeleteChat(t *testing.T) {
+func TestLinksService_DeleteChat(t *testing.T) {
 	tests := []struct {
 		name        string
 		chatID      int64
-		chatExists  bool
+		deleteErr   error
 		expectedErr error
-		expectDel   bool
 	}{
 		{
-			name:        "chat not found",
+			name:        "success",
 			chatID:      1,
-			chatExists:  false,
-			expectedErr: ErrChatNotFound,
-			expectDel:   false,
-		},
-		{
-			name:        "chat deleted successfully",
-			chatID:      2,
-			chatExists:  true,
+			deleteErr:   nil,
 			expectedErr: nil,
-			expectDel:   true,
+		},
+		{
+			name:        "repo error",
+			chatID:      2,
+			deleteErr:   errors.New("db error"),
+			expectedErr: scrapper.ErrInternalError,
 		},
 	}
 
@@ -96,337 +115,340 @@ func TestLinksHandlerDeleteChat(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
-			mockRepo := mocks.NewMockRepository(ctrl)
+			chatRepo := mocks.NewMockChatRepository(ctrl)
 
-			h := LinksService{
-				Repo:       mockRepo,
-				BaseLogger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+			svc := LinksService{
+				ChatsRepo: chatRepo,
 			}
 
-			mockRepo.EXPECT().
-				ChatExists(tt.chatID).
-				Return(tt.chatExists)
+			chatRepo.EXPECT().
+				DeleteChat(gomock.Any(), tt.chatID).
+				Return(tt.deleteErr)
 
-			if tt.expectDel {
-				mockRepo.EXPECT().
-					DeleteChat(tt.chatID)
-			}
+			err := svc.DeleteChat(context.Background(), tt.chatID)
 
-			err := h.DeleteChat(tt.chatID)
-
-			if !errors.Is(err, tt.expectedErr) {
-				t.Fatalf("expected error %v, got %v", tt.expectedErr, err)
+			if tt.expectedErr == nil {
+				require.NoError(t, err)
+			} else {
+				require.ErrorIs(t, err, tt.expectedErr)
 			}
 		})
 	}
 }
 
-func TestLinksHandlerGetLinks(t *testing.T) {
-	expectedLinks := []pkg.LinkInfo{
-		{Link: "https://github.com/golang/go", Tags: []string{"work"}},
-		{Link: "https://stackoverflow.com/questions/1/test", Tags: []string{"study"}},
-	}
-
-	tests := []struct {
-		name         string
-		chatID       int64
-		chatExists   bool
-		repoLinks    []pkg.LinkInfo
-		expectedErr  error
-		expectedSize int
-	}{
-		{
-			name:         "chat not found",
-			chatID:       1,
-			chatExists:   false,
-			repoLinks:    nil,
-			expectedErr:  ErrChatNotFound,
-			expectedSize: 0,
-		},
-		{
-			name:         "links returned successfully",
-			chatID:       2,
-			chatExists:   true,
-			repoLinks:    expectedLinks,
-			expectedErr:  nil,
-			expectedSize: 2,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ctrl := gomock.NewController(t)
-			defer ctrl.Finish()
-
-			mockRepo := mocks.NewMockRepository(ctrl)
-
-			h := LinksService{
-				Repo:       mockRepo,
-				BaseLogger: slog.New(slog.NewTextHandler(io.Discard, nil)),
-			}
-
-			mockRepo.EXPECT().
-				ChatExists(tt.chatID).
-				Return(tt.chatExists)
-
-			if tt.chatExists {
-				mockRepo.EXPECT().
-					GetLinks(tt.chatID).
-					Return(tt.repoLinks)
-			}
-
-			links, err := h.GetLinks(tt.chatID)
-
-			if !errors.Is(err, tt.expectedErr) {
-				t.Fatalf("expected error %v, got %v", tt.expectedErr, err)
-			}
-
-			if len(links) != tt.expectedSize {
-				t.Fatalf("expected %d links, got %d", tt.expectedSize, len(links))
-			}
-		})
-	}
-}
-
-func TestLinksHandlerAddLink(t *testing.T) {
+func TestGetLinks(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
 	tests := []struct {
 		name          string
 		chatID        int64
-		chatExists    bool
-		request       pkg.AddLinkRequest
-		existingLinks []pkg.LinkInfo
-		expectedErr   error
-		expectAdd     bool
+		linkRepo      func() LinkRepository
+		chatRepo      func() ChatRepository
+		expectedLinks []pkg.LinkInfo
+
+		expectedErr error
 	}{
 		{
-			name:       "chat not found",
-			chatID:     1,
-			chatExists: false,
-			request: pkg.AddLinkRequest{
-				Link: "https://github.com/golang/go",
-				Tags: []string{"work"},
+			name:   "success",
+			chatID: 1,
+			chatRepo: func() ChatRepository {
+				chatRepo := mocks.NewMockChatRepository(ctrl)
+				chatRepo.EXPECT().ChatExists(gomock.Any(), gomock.Any()).Return(true, nil)
+				return chatRepo
 			},
-			expectedErr: ErrChatNotFound,
-			expectAdd:   false,
+			linkRepo: func() LinkRepository {
+				links := []pkg.LinkInfo{{Link: "https://github.com"}, {Link: "https://stackoverflow.com"}}
+				linkRepo := mocks.NewMockLinkRepository(ctrl)
+				linkRepo.EXPECT().GetUserLinks(gomock.Any(), gomock.Any()).Return(links, nil)
+				return linkRepo
+			},
+			expectedLinks: []pkg.LinkInfo{{Link: "https://github.com"}, {Link: "https://stackoverflow.com"}},
+			expectedErr:   nil,
 		},
 		{
-			name:       "incorrect request parameters",
-			chatID:     2,
-			chatExists: true,
-			request: pkg.AddLinkRequest{
-				Link: "://bad-url",
-				Tags: []string{"work"},
+			name:   "chat repo error",
+			chatID: 2,
+			chatRepo: func() ChatRepository {
+				chatRepo := mocks.NewMockChatRepository(ctrl)
+				chatRepo.EXPECT().ChatExists(gomock.Any(), gomock.Any()).Return(false, errors.New("db error"))
+				return chatRepo
 			},
-			expectedErr: ErrIncorrectRequestParameters,
-			expectAdd:   false,
+			linkRepo: func() LinkRepository {
+				return mocks.NewMockLinkRepository(ctrl)
+			},
+			expectedErr: scrapper.ErrInternalError,
 		},
 		{
-			name:       "link already exists",
-			chatID:     3,
-			chatExists: true,
-			request: pkg.AddLinkRequest{
-				Link: "https://github.com/golang/go",
-				Tags: []string{"work"},
+			name:   "chat not exists",
+			chatID: 3,
+			chatRepo: func() ChatRepository {
+				chatRepo := mocks.NewMockChatRepository(ctrl)
+				chatRepo.EXPECT().ChatExists(gomock.Any(), gomock.Any()).Return(false, nil)
+				return chatRepo
 			},
-			existingLinks: []pkg.LinkInfo{
-				{Link: "https://github.com/golang/go", Tags: []string{"old"}},
+			linkRepo: func() LinkRepository {
+				return mocks.NewMockLinkRepository(ctrl)
 			},
-			expectedErr: ErrLinkExists,
-			expectAdd:   false,
+			expectedErr: scrapper.ErrChatNotFound,
 		},
 		{
-			name:       "link added successfully",
-			chatID:     4,
-			chatExists: true,
-			request: pkg.AddLinkRequest{
-				Link: "https://github.com/golang/go",
-				Tags: []string{"work", "repo"},
+			name:   "link repository error",
+			chatID: 4,
+			chatRepo: func() ChatRepository {
+				chatRepo := mocks.NewMockChatRepository(ctrl)
+				chatRepo.EXPECT().ChatExists(gomock.Any(), gomock.Any()).Return(true, nil)
+				return chatRepo
 			},
-			existingLinks: []pkg.LinkInfo{
-				{Link: "https://stackoverflow.com/questions/1/test", Tags: []string{"study"}},
+			linkRepo: func() LinkRepository {
+				linkRepo := mocks.NewMockLinkRepository(ctrl)
+				linkRepo.EXPECT().GetUserLinks(gomock.Any(), gomock.Any()).Return(nil, errors.New("db error"))
+				return linkRepo
+			},
+			expectedErr: scrapper.ErrInternalError,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			srv := LinksService{LinkRepo: tt.linkRepo(), ChatsRepo: tt.chatRepo()}
+			links, err := srv.GetLinks(context.Background(), tt.chatID)
+			require.ErrorIs(t, err, tt.expectedErr)
+			require.Equal(t, tt.expectedLinks, links)
+		})
+	}
+}
+
+func TestAddLink(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	tests := []struct {
+		name        string
+		chatID      int64
+		request     pkg.AddLinkRequest
+		linkRepo    func() LinkRepository
+		tx          func() Transactor
+		expectedErr error
+	}{
+		{
+			name:   "success",
+			chatID: 1,
+			request: pkg.AddLinkRequest{
+				Link: "https://github.com",
+				Tags: []string{"tag"},
+			},
+			linkRepo: func() LinkRepository {
+				repo := mocks.NewMockLinkRepository(ctrl)
+				repo.EXPECT().
+					AddLink(gomock.Any(), gomock.Any(), gomock.Any()).
+					Return(nil)
+				return repo
+			},
+			tx: func() Transactor {
+				tx := mocks.NewMockTransactor(ctrl)
+				tx.EXPECT().
+					WithTransaction(gomock.Any(), gomock.Any()).
+					DoAndReturn(func(ctx context.Context, fn func(context.Context) error) error {
+						return fn(ctx)
+					})
+				return tx
 			},
 			expectedErr: nil,
-			expectAdd:   true,
+		},
+		{
+			name:   "repo error",
+			chatID: 2,
+			request: pkg.AddLinkRequest{
+				Link: "https://github.com",
+			},
+			linkRepo: func() LinkRepository {
+				repo := mocks.NewMockLinkRepository(ctrl)
+				repo.EXPECT().
+					AddLink(gomock.Any(), gomock.Any(), gomock.Any()).
+					Return(errors.New("db error"))
+				return repo
+			},
+			tx: func() Transactor {
+				tx := mocks.NewMockTransactor(ctrl)
+				tx.EXPECT().
+					WithTransaction(gomock.Any(), gomock.Any()).
+					DoAndReturn(func(ctx context.Context, fn func(context.Context) error) error {
+						return fn(ctx)
+					})
+				return tx
+			},
+			expectedErr: scrapper.ErrInternalError,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			h, mockRepo := newLinksHandlerTest(t)
-
-			expectChatExists(mockRepo, tt.chatID, tt.chatExists)
-			expectGetLinksIfNeeded(mockRepo, tt.chatID, tt.chatExists, tt.expectedErr, tt.existingLinks)
-			expectAddLinkIfNeeded(t, mockRepo, tt.chatID, tt.request, tt.expectAdd)
-
-			err := h.AddLink(tt.chatID, tt.request)
-
-			if !errors.Is(err, tt.expectedErr) {
-				t.Fatalf("expected error %v, got %v", tt.expectedErr, err)
+			srv := LinksService{
+				LinkRepo:   tt.linkRepo(),
+				Transactor: tt.tx(),
 			}
+
+			err := srv.AddLink(context.Background(), tt.chatID, tt.request)
+
+			require.ErrorIs(t, err, tt.expectedErr)
 		})
 	}
 }
 
-func newLinksHandlerTest(t *testing.T) (LinksService, *mocks.MockRepository) {
-	t.Helper()
-
+func TestDeleteLink(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	t.Cleanup(ctrl.Finish)
-
-	mockRepo := mocks.NewMockRepository(ctrl)
-
-	h := LinksService{
-		Repo:       mockRepo,
-		BaseLogger: slog.New(slog.NewTextHandler(io.Discard, nil)),
-	}
-
-	return h, mockRepo
-}
-
-func expectChatExists(mockRepo *mocks.MockRepository, chatID int64, chatExists bool) {
-	mockRepo.EXPECT().
-		ChatExists(chatID).
-		Return(chatExists)
-}
-
-func expectGetLinksIfNeeded(
-	mockRepo *mocks.MockRepository,
-	chatID int64,
-	chatExists bool,
-	expectedErr error,
-	existingLinks []pkg.LinkInfo,
-) {
-	if !chatExists || errors.Is(expectedErr, ErrIncorrectRequestParameters) {
-		return
-	}
-
-	mockRepo.EXPECT().
-		GetLinks(chatID).
-		Return(existingLinks)
-}
-
-func expectAddLinkIfNeeded(
-	t *testing.T,
-	mockRepo *mocks.MockRepository,
-	chatID int64,
-	request pkg.AddLinkRequest,
-	expectAdd bool,
-) {
-	t.Helper()
-
-	if !expectAdd {
-		return
-	}
-
-	mockRepo.EXPECT().
-		AddLink(chatID, gomock.Any()).
-		DoAndReturn(func(_ int64, link pkg.LinkInfo) {
-			assertAddedLink(t, link, request)
-		})
-}
-
-func assertAddedLink(t *testing.T, got pkg.LinkInfo, expected pkg.AddLinkRequest) {
-	t.Helper()
-
-	if got.Link != expected.Link {
-		t.Fatalf("expected link %s, got %s", expected.Link, got.Link)
-	}
-
-	if len(got.Tags) != len(expected.Tags) {
-		t.Fatalf("expected tags %v, got %v", expected.Tags, got.Tags)
-	}
-
-	for i := range got.Tags {
-		if got.Tags[i] != expected.Tags[i] {
-			t.Fatalf("expected tags %v, got %v", expected.Tags, got.Tags)
-		}
-	}
-
-	if time.Since(got.LastUpdateTime) > time.Second {
-		t.Fatalf("expected recent LastUpdateTime, got %v", got.LastUpdateTime)
-	}
-}
-
-func TestLinksHandlerDeleteLink(t *testing.T) {
-	deletedLink := pkg.LinkInfo{
-		Link: "https://github.com/golang/go",
-		Tags: []string{"work"},
-	}
+	defer ctrl.Finish()
 
 	tests := []struct {
 		name         string
 		chatID       int64
 		link         string
-		chatExists   bool
-		deleteResult pkg.LinkInfo
-		deleteOK     bool
-		expectedErr  error
+		chatRepo     func() ChatRepository
+		linkRepo     func() LinkRepository
 		expectedLink pkg.LinkInfo
-		expectDelete bool
+		expectedErr  error
 	}{
 		{
-			name:         "chat not found",
-			chatID:       1,
-			link:         "https://github.com/golang/go",
-			chatExists:   false,
-			expectedErr:  ErrChatNotFound,
-			expectedLink: pkg.LinkInfo{},
-			expectDelete: false,
-		},
-		{
-			name:         "link not exists",
-			chatID:       2,
-			link:         "https://github.com/golang/go",
-			chatExists:   true,
-			deleteResult: pkg.LinkInfo{},
-			deleteOK:     false,
-			expectedErr:  ErrLinkNotExists,
-			expectedLink: pkg.LinkInfo{},
-			expectDelete: true,
-		},
-		{
-			name:         "link deleted successfully",
-			chatID:       3,
-			link:         "https://github.com/golang/go",
-			chatExists:   true,
-			deleteResult: deletedLink,
-			deleteOK:     true,
+			name:   "success",
+			chatID: 1,
+			link:   "https://github.com",
+			chatRepo: func() ChatRepository {
+				repo := mocks.NewMockChatRepository(ctrl)
+				repo.EXPECT().
+					ChatExists(gomock.Any(), gomock.Any()).
+					Return(true, nil)
+				return repo
+			},
+			linkRepo: func() LinkRepository {
+				repo := mocks.NewMockLinkRepository(ctrl)
+
+				repo.EXPECT().
+					LinkExists(gomock.Any(), gomock.Any()).
+					Return(true, nil)
+
+				repo.EXPECT().
+					DeleteLink(gomock.Any(), gomock.Any(), gomock.Any()).
+					Return(pkg.LinkInfo{Link: "https://github.com"}, nil)
+
+				return repo
+			},
+			expectedLink: pkg.LinkInfo{Link: "https://github.com"},
 			expectedErr:  nil,
-			expectedLink: deletedLink,
-			expectDelete: true,
+		},
+		{
+			name:   "chat repo error",
+			chatID: 2,
+			link:   "url",
+			chatRepo: func() ChatRepository {
+				repo := mocks.NewMockChatRepository(ctrl)
+				repo.EXPECT().
+					ChatExists(gomock.Any(), gomock.Any()).
+					Return(false, errors.New("db error"))
+				return repo
+			},
+			linkRepo: func() LinkRepository {
+				return mocks.NewMockLinkRepository(ctrl)
+			},
+			expectedErr: scrapper.ErrInternalError,
+		},
+		{
+			name:   "chat not exists",
+			chatID: 3,
+			link:   "url",
+			chatRepo: func() ChatRepository {
+				repo := mocks.NewMockChatRepository(ctrl)
+				repo.EXPECT().
+					ChatExists(gomock.Any(), gomock.Any()).
+					Return(false, nil)
+				return repo
+			},
+			linkRepo: func() LinkRepository {
+				return mocks.NewMockLinkRepository(ctrl)
+			},
+			expectedErr: scrapper.ErrChatNotFound,
+		},
+		{
+			name:   "link exists error",
+			chatID: 4,
+			link:   "url",
+			chatRepo: func() ChatRepository {
+				repo := mocks.NewMockChatRepository(ctrl)
+				repo.EXPECT().
+					ChatExists(gomock.Any(), gomock.Any()).
+					Return(true, nil)
+				return repo
+			},
+			linkRepo: func() LinkRepository {
+				repo := mocks.NewMockLinkRepository(ctrl)
+				repo.EXPECT().
+					LinkExists(gomock.Any(), gomock.Any()).
+					Return(false, errors.New("db error"))
+				return repo
+			},
+			expectedErr: scrapper.ErrInternalError,
+		},
+		{
+			name:   "link not exists",
+			chatID: 5,
+			link:   "url",
+			chatRepo: func() ChatRepository {
+				repo := mocks.NewMockChatRepository(ctrl)
+				repo.EXPECT().
+					ChatExists(gomock.Any(), gomock.Any()).
+					Return(true, nil)
+				return repo
+			},
+			linkRepo: func() LinkRepository {
+				repo := mocks.NewMockLinkRepository(ctrl)
+				repo.EXPECT().
+					LinkExists(gomock.Any(), gomock.Any()).
+					Return(false, nil)
+				return repo
+			},
+			expectedErr: scrapper.ErrLinkNotExists,
+		},
+		{
+			name:   "delete error",
+			chatID: 6,
+			link:   "url",
+			chatRepo: func() ChatRepository {
+				repo := mocks.NewMockChatRepository(ctrl)
+				repo.EXPECT().
+					ChatExists(gomock.Any(), gomock.Any()).
+					Return(true, nil)
+				return repo
+			},
+			linkRepo: func() LinkRepository {
+				repo := mocks.NewMockLinkRepository(ctrl)
+
+				repo.EXPECT().
+					LinkExists(gomock.Any(), gomock.Any()).
+					Return(true, nil)
+
+				repo.EXPECT().
+					DeleteLink(gomock.Any(), gomock.Any(), gomock.Any()).
+					Return(pkg.LinkInfo{}, errors.New("db error"))
+
+				return repo
+			},
+			expectedErr: scrapper.ErrInternalError,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctrl := gomock.NewController(t)
-			defer ctrl.Finish()
-
-			mockRepo := mocks.NewMockRepository(ctrl)
-
-			h := LinksService{
-				Repo:       mockRepo,
-				BaseLogger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+			srv := LinksService{
+				LinkRepo:  tt.linkRepo(),
+				ChatsRepo: tt.chatRepo(),
 			}
 
-			mockRepo.EXPECT().
-				ChatExists(tt.chatID).
-				Return(tt.chatExists)
+			link, err := srv.DeleteLink(context.Background(), tt.chatID, tt.link)
 
-			if tt.expectDelete {
-				mockRepo.EXPECT().
-					DeleteLink(tt.chatID, tt.link).
-					Return(tt.deleteResult, tt.deleteOK)
-			}
+			require.ErrorIs(t, err, tt.expectedErr)
 
-			linkInfo, err := h.DeleteLink(tt.chatID, tt.link)
-
-			if !errors.Is(err, tt.expectedErr) {
-				t.Fatalf("expected error %v, got %v", tt.expectedErr, err)
-			}
-
-			if linkInfo.Link != tt.expectedLink.Link {
-				t.Fatalf("expected link %s, got %s", tt.expectedLink.Link, linkInfo.Link)
+			if tt.expectedErr == nil {
+				assert.Equal(t, tt.expectedLink, link)
+			} else {
+				assert.Equal(t, pkg.LinkInfo{}, link)
 			}
 		})
 	}

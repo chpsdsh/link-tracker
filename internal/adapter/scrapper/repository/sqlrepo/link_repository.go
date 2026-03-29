@@ -119,7 +119,7 @@ func (r *LinkRepository) DeleteLink(ctx context.Context, chatID int64, url strin
 	`, chatID, url).Scan(&li.Link, &li.LastUpdateTime, &tags)
 
 	if err != nil {
-		return pkg.LinkInfo{}, err
+		return pkg.LinkInfo{}, fmt.Errorf("error delete link from link_chat: %w", err)
 	}
 
 	li.Tags = tags
@@ -135,6 +135,10 @@ func (r *LinkRepository) DeleteLink(ctx context.Context, chatID int64, url strin
 			where l.url = $1
 		)
 	`, url)
+
+	if err != nil {
+		return pkg.LinkInfo{}, fmt.Errorf("error deleting link link: %w", err)
+	}
 
 	return li, nil
 }

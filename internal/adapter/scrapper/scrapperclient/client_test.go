@@ -9,8 +9,8 @@ import (
 	"testing"
 
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/config"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/scrapper/scheduler"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/pkg"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/scrapper"
 )
 
 func TestDoGithubRequestSuccess(t *testing.T) {
@@ -196,7 +196,7 @@ func TestSendLinkUpdateBadStatus(t *testing.T) {
 
 	err := client.SendLinkUpdate(update)
 
-	if !errors.Is(err, scheduler.ErrIncorrectRequestParameters) {
+	if !errors.Is(err, scrapper.ErrIncorrectRequestParameters) {
 		t.Fatalf("expected ErrIncorrectRequestParameters, got %v", err)
 	}
 }

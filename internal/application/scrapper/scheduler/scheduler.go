@@ -17,13 +17,12 @@ import (
 )
 
 var (
-	ErrNotGitHubURL               = errors.New("not github")
-	ErrInvalidGitHubURL           = errors.New("invalid github url")
-	ErrIncorrectRequestParameters = errors.New("incorrect request parameters")
-	ErrNotStackOverflow           = errors.New("not StackOverflow")
-	ErrInvalidStackOverflowURL    = errors.New("invalid StackOverflow url")
-	ErrUnsupportedGithubURL       = errors.New("unsupported github url")
-	ErrNotURL                     = errors.New("not url")
+	ErrNotGitHubURL            = errors.New("not github")
+	ErrInvalidGitHubURL        = errors.New("invalid github url")
+	ErrNotStackOverflow        = errors.New("not StackOverflow")
+	ErrInvalidStackOverflowURL = errors.New("invalid StackOverflow url")
+	ErrUnsupportedGithubURL    = errors.New("unsupported github url")
+	ErrNotURL                  = errors.New("not url")
 )
 
 const (
@@ -90,6 +89,13 @@ func (r LinksRequester) HandleGithubLinks() {
 
 }
 
+func (r LinksRequester) HandleStackOverflowLinks() {
+	offset := 0
+	for r.stackOverflowIteration(offset) {
+		offset += linksRequestLimit
+	}
+}
+
 func (r LinksRequester) githubIteration(offset int) bool {
 	ctx, cancel := context.WithTimeout(context.Background(), linksHandleDuration)
 	defer cancel()
@@ -126,13 +132,6 @@ func (r LinksRequester) githubIteration(offset int) bool {
 		r.sendUpdate(ctx, updateTime, l)
 	}
 	return true
-}
-
-func (r LinksRequester) HandleStackOverflowLinks() {
-	offset := 0
-	for r.stackOverflowIteration(offset) {
-		offset += linksRequestLimit
-	}
 }
 
 func (r LinksRequester) stackOverflowIteration(offset int) bool {

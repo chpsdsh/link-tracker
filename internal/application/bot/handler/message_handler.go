@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/bot/statestorage"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/bot"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/pkg"
@@ -104,7 +105,6 @@ func (h TelegramHandler) handleCommand(update tgbotapi.Update) {
 			text = greetingMessage
 			h.Session.SetState(update.Message.Chat.ID, statestorage.InitialState)
 		}
-
 	case "help":
 		text = helpMessage
 	case "track":
@@ -114,7 +114,6 @@ func (h TelegramHandler) handleCommand(update tgbotapi.Update) {
 			text = trackMessage
 			h.Session.SetState(update.Message.Chat.ID, statestorage.WaitingForTrackURLState)
 		}
-
 	case "untrack":
 		if h.Session.GetState(update.Message.Chat.ID) == statestorage.NoState {
 			text = notAuthorizedMessage

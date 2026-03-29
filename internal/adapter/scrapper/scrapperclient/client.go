@@ -10,7 +10,6 @@ import (
 	"net/http"
 
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/config"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/scrapper/scheduler"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/pkg"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/scrapper"
 )
@@ -105,6 +104,6 @@ func (c Client) SendLinkUpdate(update pkg.LinkUpdate) error {
 	case http.StatusOK:
 		return nil
 	default:
-		return scheduler.ErrIncorrectRequestParameters
+		return scrapper.ErrIncorrectRequestParameters
 	}
 }

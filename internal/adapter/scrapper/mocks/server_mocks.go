@@ -5,10 +5,11 @@
 package mocks
 
 import (
+	context "context"
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	shared "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/pkg"
+	pkg "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/pkg"
 )
 
 // MockScrapperHandler is a mock of ScrapperHandler interface.
@@ -35,73 +36,73 @@ func (m *MockScrapperHandler) EXPECT() *MockScrapperHandlerMockRecorder {
 }
 
 // AddChatID mocks base method.
-func (m *MockScrapperHandler) AddChatID(chatId int64) error {
+func (m *MockScrapperHandler) AddChatID(ctx context.Context, chatID int64) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AddChatID", chatId)
+	ret := m.ctrl.Call(m, "AddChatID", ctx, chatID)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // AddChatID indicates an expected call of AddChatID.
-func (mr *MockScrapperHandlerMockRecorder) AddChatID(chatId interface{}) *gomock.Call {
+func (mr *MockScrapperHandlerMockRecorder) AddChatID(ctx, chatID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddChatID", reflect.TypeOf((*MockScrapperHandler)(nil).AddChatID), chatId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddChatID", reflect.TypeOf((*MockScrapperHandler)(nil).AddChatID), ctx, chatID)
 }
 
 // AddLink mocks base method.
-func (m *MockScrapperHandler) AddLink(chatId int64, linkRequest shared.AddLinkRequest) error {
+func (m *MockScrapperHandler) AddLink(ctx context.Context, chatID int64, linkRequest pkg.AddLinkRequest) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AddLink", chatId, linkRequest)
+	ret := m.ctrl.Call(m, "AddLink", ctx, chatID, linkRequest)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // AddLink indicates an expected call of AddLink.
-func (mr *MockScrapperHandlerMockRecorder) AddLink(chatId, linkRequest interface{}) *gomock.Call {
+func (mr *MockScrapperHandlerMockRecorder) AddLink(ctx, chatID, linkRequest interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddLink", reflect.TypeOf((*MockScrapperHandler)(nil).AddLink), chatId, linkRequest)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddLink", reflect.TypeOf((*MockScrapperHandler)(nil).AddLink), ctx, chatID, linkRequest)
 }
 
 // DeleteChat mocks base method.
-func (m *MockScrapperHandler) DeleteChat(chatId int64) error {
+func (m *MockScrapperHandler) DeleteChat(ctx context.Context, chatID int64) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteChat", chatId)
+	ret := m.ctrl.Call(m, "DeleteChat", ctx, chatID)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteChat indicates an expected call of DeleteChat.
-func (mr *MockScrapperHandlerMockRecorder) DeleteChat(chatId interface{}) *gomock.Call {
+func (mr *MockScrapperHandlerMockRecorder) DeleteChat(ctx, chatID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteChat", reflect.TypeOf((*MockScrapperHandler)(nil).DeleteChat), chatId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteChat", reflect.TypeOf((*MockScrapperHandler)(nil).DeleteChat), ctx, chatID)
 }
 
 // DeleteLink mocks base method.
-func (m *MockScrapperHandler) DeleteLink(chatId int64, link string) (shared.LinkInfo, error) {
+func (m *MockScrapperHandler) DeleteLink(ctx context.Context, chatID int64, link string) (pkg.LinkInfo, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteLink", chatId, link)
-	ret0, _ := ret[0].(shared.LinkInfo)
+	ret := m.ctrl.Call(m, "DeleteLink", ctx, chatID, link)
+	ret0, _ := ret[0].(pkg.LinkInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // DeleteLink indicates an expected call of DeleteLink.
-func (mr *MockScrapperHandlerMockRecorder) DeleteLink(chatId, link interface{}) *gomock.Call {
+func (mr *MockScrapperHandlerMockRecorder) DeleteLink(ctx, chatID, link interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteLink", reflect.TypeOf((*MockScrapperHandler)(nil).DeleteLink), chatId, link)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteLink", reflect.TypeOf((*MockScrapperHandler)(nil).DeleteLink), ctx, chatID, link)
 }
 
 // GetLinks mocks base method.
-func (m *MockScrapperHandler) GetLinks(chatId int64) ([]shared.LinkInfo, error) {
+func (m *MockScrapperHandler) GetLinks(ctx context.Context, chatID int64) ([]pkg.LinkInfo, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetLinks", chatId)
-	ret0, _ := ret[0].([]shared.LinkInfo)
+	ret := m.ctrl.Call(m, "GetLinks", ctx, chatID)
+	ret0, _ := ret[0].([]pkg.LinkInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetLinks indicates an expected call of GetLinks.
-func (mr *MockScrapperHandlerMockRecorder) GetLinks(chatId interface{}) *gomock.Call {
+func (mr *MockScrapperHandlerMockRecorder) GetLinks(ctx, chatID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLinks", reflect.TypeOf((*MockScrapperHandler)(nil).GetLinks), chatId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLinks", reflect.TypeOf((*MockScrapperHandler)(nil).GetLinks), ctx, chatID)
 }

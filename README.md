@@ -11,4 +11,11 @@
 2) **Создать файл "scrapper.env" с полями:**
  - GITHUB_API_KEY=token
  - STACKOVERFLOW_API_KEY=token
- - BOT_SERVER_ADDRESS=http://localhost:8080
+ -  BOT_SERVER_ADDRESS=http://localhost:8080
+ -  ASSET_TYPE=SQL/BUILDER
+ -  POSTGRES_HOST=localhost
+ -  POSTGRES_PORT=5432
+ -  POSTGRES_USER=user
+ -  POSTGRES_PASSWORD=password
+ -  POSTGRES_DB=mydb
+3) postgres запускается через docker-compose.yml

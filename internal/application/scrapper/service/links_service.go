@@ -1,9 +1,9 @@
-//go:generate mockgen -source links_handler.go -destination=../mocks/links_handler_mocks.go -package=mocks
+//go:generate mockgen -source links_service.go -destination=../mocks/links_service_mocks.go -package=mocks
 package service
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"log/slog"
 	"time"
 
@@ -41,13 +41,13 @@ type LinksService struct {
 }
 
 func (h LinksService) AddChatID(ctx context.Context, chatID int64) error {
-	return h.Transactor.WithTransaction(ctx, func(ctx context.Context) error {
+	return h.Transactor.WithTransaction(ctx, func(ctx context.Context) error { //nolint:wrapcheck// no need to wrap function call
 		ctx, cancel := context.WithTimeout(ctx, requestTimeout)
 		defer cancel()
 
 		exists, err := h.ChatsRepo.ChatExists(ctx, chatID)
 		if err != nil {
-			return fmt.Errorf("error checking chat existence %w", err)
+			return errors.Join(err, scrapper.ErrInternalError)
 		}
 
 		if exists {
@@ -55,7 +55,7 @@ func (h LinksService) AddChatID(ctx context.Context, chatID int64) error {
 		}
 
 		if err = h.ChatsRepo.AddChat(ctx, chatID); err != nil {
-			return fmt.Errorf("error adding chat %w", err)
+			return errors.Join(err, scrapper.ErrInternalError)
 		}
 		return nil
 	})
@@ -63,10 +63,9 @@ func (h LinksService) AddChatID(ctx context.Context, chatID int64) error {
 
 func (h LinksService) DeleteChat(ctx context.Context, chatID int64) error {
 	if err := h.ChatsRepo.DeleteChat(ctx, chatID); err != nil {
-		return fmt.Errorf("error deleting chat %w", err)
+		return errors.Join(err, scrapper.ErrInternalError)
 	}
 	return nil
-
 }
 
 func (h LinksService) GetLinks(ctx context.Context, chatID int64) ([]pkg.LinkInfo, error) {
@@ -74,7 +73,7 @@ func (h LinksService) GetLinks(ctx context.Context, chatID int64) ([]pkg.LinkInf
 	defer cancel()
 	exists, err := h.ChatsRepo.ChatExists(ctx, chatID)
 	if err != nil {
-		return nil, fmt.Errorf("error checking chat existence %w", err)
+		return nil, errors.Join(err, scrapper.ErrInternalError)
 	}
 	if !exists {
 		return nil, scrapper.ErrChatNotFound
@@ -82,23 +81,22 @@ func (h LinksService) GetLinks(ctx context.Context, chatID int64) ([]pkg.LinkInf
 
 	links, err := h.LinkRepo.GetUserLinks(ctx, chatID)
 	if err != nil {
-		return nil, fmt.Errorf("error getting user links %w", err)
+		return nil, errors.Join(err, scrapper.ErrInternalError)
 	}
 
 	return links, nil
 }
 
 func (h LinksService) AddLink(ctx context.Context, chatID int64, linkRequest pkg.AddLinkRequest) error {
-	return h.Transactor.WithTransaction(ctx, func(ctx context.Context) error {
+	return h.Transactor.WithTransaction(ctx, func(ctx context.Context) error { //nolint:wrapcheck// no need to wrap function call
 		ctx, cancel := context.WithTimeout(ctx, requestTimeout)
 		defer cancel()
 		trackedLink := pkg.LinkInfo{Link: linkRequest.Link, Tags: linkRequest.Tags}
 		if err := h.LinkRepo.AddLink(ctx, chatID, trackedLink); err != nil {
-			return fmt.Errorf("error adding link %w", err)
+			return errors.Join(err, scrapper.ErrInternalError)
 		}
 		return nil
 	})
-
 }
 
 func (h LinksService) DeleteLink(ctx context.Context, chatID int64, link string) (pkg.LinkInfo, error) {
@@ -106,7 +104,7 @@ func (h LinksService) DeleteLink(ctx context.Context, chatID int64, link string)
 	defer cancel()
 	exists, err := h.ChatsRepo.ChatExists(ctx, chatID)
 	if err != nil {
-		return pkg.LinkInfo{}, fmt.Errorf("error checking chat existence %w", err)
+		return pkg.LinkInfo{}, errors.Join(err, scrapper.ErrInternalError)
 	}
 	if !exists {
 		return pkg.LinkInfo{}, scrapper.ErrChatNotFound
@@ -114,7 +112,7 @@ func (h LinksService) DeleteLink(ctx context.Context, chatID int64, link string)
 
 	exists, err = h.LinkRepo.LinkExists(ctx, link)
 	if err != nil {
-		return pkg.LinkInfo{}, fmt.Errorf("error checking link %w", err)
+		return pkg.LinkInfo{}, errors.Join(err, scrapper.ErrInternalError)
 	}
 	if !exists {
 		return pkg.LinkInfo{}, scrapper.ErrLinkNotExists
@@ -122,8 +120,7 @@ func (h LinksService) DeleteLink(ctx context.Context, chatID int64, link string)
 
 	linkInfo, err := h.LinkRepo.DeleteLink(ctx, chatID, link)
 	if err != nil {
-		slog.Error("error deleting link ", slog.String("error", err.Error()))
-		return pkg.LinkInfo{}, err
+		return pkg.LinkInfo{}, errors.Join(err, scrapper.ErrInternalError)
 	}
 	return linkInfo, nil
 }

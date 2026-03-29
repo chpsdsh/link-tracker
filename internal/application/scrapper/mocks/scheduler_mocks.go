@@ -8,8 +8,8 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
+	pkg "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/pkg"
 	scrapper "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/scrapper"
-	shared "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/pkg"
 )
 
 // MockNetworkClient is a mock of NetworkClient interface.
@@ -66,7 +66,7 @@ func (mr *MockNetworkClientMockRecorder) DoStackOverflowRequest(url interface{})
 }
 
 // SendLinkUpdate mocks base method.
-func (m *MockNetworkClient) SendLinkUpdate(update shared.LinkUpdate) error {
+func (m *MockNetworkClient) SendLinkUpdate(update pkg.LinkUpdate) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SendLinkUpdate", update)
 	ret0, _ := ret[0].(error)

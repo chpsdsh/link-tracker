@@ -1,10 +1,9 @@
 package scrapperserver
 
 import (
+	"encoding/json"
 	"errors"
 	"io"
-
-	"encoding/json"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -12,9 +11,10 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/mocks"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/scrapper/service"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/pkg"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/scrapper"
 )
 
 func TestScrapperServerPostTgChatId(t *testing.T) {
@@ -34,7 +34,7 @@ func TestScrapperServerPostTgChatId(t *testing.T) {
 		{
 			name:           "chat already exists",
 			id:             10,
-			handlerErr:     service.ErrChatAlreadyExists,
+			handlerErr:     scrapper.ErrChatAlreadyExists,
 			expectedStatus: http.StatusConflict,
 			expectedCode:   badRequest,
 		},
@@ -56,7 +56,7 @@ func TestScrapperServerPostTgChatId(t *testing.T) {
 			rec := httptest.NewRecorder()
 
 			mockHandler.EXPECT().
-				AddChatID(tt.id).
+				AddChatID(gomock.Any(), tt.id).
 				Return(tt.handlerErr)
 
 			s.PostTgChatId(rec, req, tt.id)
@@ -94,7 +94,7 @@ func TestScrapperServerDeleteTgChatId(t *testing.T) {
 		{
 			name:           "chat not found",
 			id:             15,
-			handlerErr:     service.ErrChatNotFound,
+			handlerErr:     scrapper.ErrChatNotFound,
 			expectedStatus: http.StatusNotFound,
 		},
 	}
@@ -115,7 +115,7 @@ func TestScrapperServerDeleteTgChatId(t *testing.T) {
 			rec := httptest.NewRecorder()
 
 			mockHandler.EXPECT().
-				DeleteChat(tt.id).
+				DeleteChat(gomock.Any(), tt.id).
 				Return(tt.handlerErr)
 
 			s.DeleteTgChatId(rec, req, tt.id)
@@ -150,7 +150,7 @@ func TestScrapperServerGetLinks(t *testing.T) {
 		{
 			name:           "chat not found",
 			chatID:         1,
-			handlerErr:     service.ErrChatNotFound,
+			handlerErr:     scrapper.ErrChatNotFound,
 			expectedStatus: http.StatusNotFound,
 		},
 	}
@@ -171,7 +171,7 @@ func TestScrapperServerGetLinks(t *testing.T) {
 			rec := httptest.NewRecorder()
 
 			mockHandler.EXPECT().
-				GetLinks(tt.chatID).
+				GetLinks(gomock.Any(), tt.chatID).
 				Return(tt.handlerLinks, tt.handlerErr)
 
 			s.GetLinks(rec, req, GetLinksParams{TgChatId: tt.chatID})
@@ -207,7 +207,7 @@ func TestScrapperServerPostLinks(t *testing.T) {
 			body:   `{"link":"https://github.com/golang/go","tags":["work"],"filters":["f1"]}`,
 			setupMock: func(m *mocks.MockScrapperHandler) {
 				m.EXPECT().
-					AddLink(int64(1), pkg.AddLinkRequest{
+					AddLink(gomock.Any(), int64(1), pkg.AddLinkRequest{
 						Link: "https://github.com/golang/go",
 						Tags: []string{"work"},
 					}).
@@ -229,11 +229,11 @@ func TestScrapperServerPostLinks(t *testing.T) {
 			body:   `{"link":"bad","tags":["work"],"filters":["f1"]}`,
 			setupMock: func(m *mocks.MockScrapperHandler) {
 				m.EXPECT().
-					AddLink(int64(1), pkg.AddLinkRequest{
+					AddLink(gomock.Any(), int64(1), pkg.AddLinkRequest{
 						Link: "bad",
 						Tags: []string{"work"},
 					}).
-					Return(service.ErrIncorrectRequestParameters)
+					Return(scrapper.ErrIncorrectRequestParameters)
 			},
 			expectedStatus: http.StatusBadRequest,
 		},
@@ -243,11 +243,11 @@ func TestScrapperServerPostLinks(t *testing.T) {
 			body:   `{"link":"https://github.com/golang/go","tags":["work"],"filters":["f1"]}`,
 			setupMock: func(m *mocks.MockScrapperHandler) {
 				m.EXPECT().
-					AddLink(int64(1), pkg.AddLinkRequest{
+					AddLink(gomock.Any(), int64(1), pkg.AddLinkRequest{
 						Link: "https://github.com/golang/go",
 						Tags: []string{"work"},
 					}).
-					Return(service.ErrChatNotFound)
+					Return(scrapper.ErrChatNotFound)
 			},
 			expectedStatus: http.StatusNotFound,
 		},
@@ -257,11 +257,11 @@ func TestScrapperServerPostLinks(t *testing.T) {
 			body:   `{"link":"https://github.com/golang/go","tags":["work"],"filters":["f1"]}`,
 			setupMock: func(m *mocks.MockScrapperHandler) {
 				m.EXPECT().
-					AddLink(int64(1), pkg.AddLinkRequest{
+					AddLink(gomock.Any(), int64(1), pkg.AddLinkRequest{
 						Link: "https://github.com/golang/go",
 						Tags: []string{"work"},
 					}).
-					Return(service.ErrLinkExists)
+					Return(scrapper.ErrLinkExists)
 			},
 			expectedStatus: http.StatusConflict,
 		},
@@ -306,7 +306,7 @@ func TestScrapperServerDeleteLinks(t *testing.T) {
 			body:   `{"link":"https://github.com/golang/go"}`,
 			setupMock: func(m *mocks.MockScrapperHandler) {
 				m.EXPECT().
-					DeleteLink(int64(1), "https://github.com/golang/go").
+					DeleteLink(gomock.Any(), int64(1), "https://github.com/golang/go").
 					Return(pkg.LinkInfo{
 						Link: "https://github.com/golang/go",
 						Tags: []string{"work"},
@@ -320,8 +320,8 @@ func TestScrapperServerDeleteLinks(t *testing.T) {
 			body:   `{"link":"https://github.com/golang/go"}`,
 			setupMock: func(m *mocks.MockScrapperHandler) {
 				m.EXPECT().
-					DeleteLink(int64(1), "https://github.com/golang/go").
-					Return(pkg.LinkInfo{}, service.ErrChatNotFound)
+					DeleteLink(gomock.Any(), int64(1), "https://github.com/golang/go").
+					Return(pkg.LinkInfo{}, scrapper.ErrChatNotFound)
 			},
 			expectedStatus: http.StatusNotFound,
 		},
@@ -331,8 +331,8 @@ func TestScrapperServerDeleteLinks(t *testing.T) {
 			body:   `{"link":"https://github.com/golang/go"}`,
 			setupMock: func(m *mocks.MockScrapperHandler) {
 				m.EXPECT().
-					DeleteLink(int64(1), "https://github.com/golang/go").
-					Return(pkg.LinkInfo{}, service.ErrLinkNotExists)
+					DeleteLink(gomock.Any(), int64(1), "https://github.com/golang/go").
+					Return(pkg.LinkInfo{}, scrapper.ErrLinkNotExists)
 			},
 			expectedStatus: http.StatusNotFound,
 		},

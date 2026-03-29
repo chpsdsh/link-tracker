@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/suite"
+
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/bot"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/pkg"
 )

@@ -26,7 +26,7 @@ const (
 )
 
 var (
-	ErrCreatingDatabaseFromUrl = errors.New("migrating database error")
+	ErrCreatingDatabaseFromURL = errors.New("migrating database error")
 	ErrMigrating               = errors.New("migrating database error")
 	ErrCreatingConnectionPool  = errors.New("creating connection db error")
 )
@@ -59,25 +59,21 @@ type DB struct {
 	db *pgxpool.Pool
 }
 
-func (db *DB) GetDBPool() *pgxpool.Pool {
-	return db.db
-}
-
 func NewDB(config config.PostgresConfig) (*DB, error) {
-	dsn := createDataBaseUrlFromConfig(config)
+	dsn := createDataBaseURLFromConfig(config)
 
 	connConf, err := pgx.ParseConfig(dsn)
 	if err != nil {
-		return nil, errors.Join(err, ErrCreatingDatabaseFromUrl)
+		return nil, errors.Join(err, ErrCreatingDatabaseFromURL)
 	}
 
 	if err = migrate(connConf); err != nil {
-		return nil, fmt.Errorf("%w: %s", ErrMigrating, err)
+		return nil, fmt.Errorf("%w: %w", ErrMigrating, err)
 	}
 
 	poolConf, err := pgxpool.ParseConfig(dsn)
 	if err != nil {
-		return nil, errors.Join(err, ErrCreatingDatabaseFromUrl)
+		return nil, errors.Join(err, ErrCreatingDatabaseFromURL)
 	}
 	poolConf.MinConns = minConnections
 	poolConf.MaxConns = maxConnections
@@ -91,6 +87,10 @@ func NewDB(config config.PostgresConfig) (*DB, error) {
 	}
 
 	return &DB{db: pool}, nil
+}
+
+func (db *DB) GetDBPool() *pgxpool.Pool {
+	return db.db
 }
 
 func (db *DB) CloseConnectionPool() {
@@ -114,7 +114,10 @@ func (db *DB) WithTransaction(ctx context.Context, txFunc func(ctx context.Conte
 		return err
 	}
 
-	return tx.Commit(ctx)
+	if err = tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit transaction: %w", err)
+	}
+	return nil
 }
 
 func migrate(cfg *pgx.ConnConfig) error {
@@ -132,7 +135,7 @@ func migrate(cfg *pgx.ConnConfig) error {
 	return nil
 }
 
-func createDataBaseUrlFromConfig(cfg config.PostgresConfig) string {
+func createDataBaseURLFromConfig(cfg config.PostgresConfig) string {
 	return fmt.Sprintf(
 		"postgres://%s:%s@%s:%s/%s?sslmode=disable",
 		cfg.User,
