@@ -2,6 +2,7 @@ package config
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -9,11 +10,16 @@ import (
 
 func TestParseConfig(t *testing.T) {
 	tests := []struct {
-		name            string
+		name string
+
 		githubToken     string
 		stackToken      string
 		botServerAddr   string
 		configAssetType string
+
+		interval   string
+		batchSize  string
+		numWorkers string
 
 		expectedCfg Config
 		expectedErr error
@@ -24,44 +30,85 @@ func TestParseConfig(t *testing.T) {
 			stackToken:      "stack_token",
 			botServerAddr:   "http://localhost:8080",
 			configAssetType: "SQL",
+			interval:        "10",
+			batchSize:       "100",
+			numWorkers:      "4",
 			expectedCfg: Config{
 				GithubToken:        "github_token",
 				StackoverflowToken: "stack_token",
 				BotServerAddr:      "http://localhost:8080",
+				AssetType:          AssetTypeSQL,
+				ScrapperInterval:   10 * time.Second,
+				BatchSize:          100,
+				NumWorkers:         4,
 			},
 			expectedErr: nil,
 		},
 		{
-			name:          "no asset type",
-			githubToken:   "github_token",
-			stackToken:    "stack_token",
-			botServerAddr: "http://localhost:8080",
-			expectedCfg:   Config{},
-			expectedErr:   ErrNoAssetType,
+			name:            "missing scrapper interval",
+			githubToken:     "github_token",
+			stackToken:      "stack_token",
+			botServerAddr:   "http://localhost:8080",
+			configAssetType: "SQL",
+			interval:        "",
+			batchSize:       "100",
+			numWorkers:      "4",
+			expectedErr:     ErrNoScrapperTimeInterval,
 		},
 		{
-			name:          "missing github token",
-			githubToken:   "",
-			stackToken:    "stack_token",
-			botServerAddr: "http://localhost:8080",
-			expectedCfg:   Config{},
-			expectedErr:   ErrNoTelegramToken,
+			name:            "invalid scrapper interval",
+			githubToken:     "github_token",
+			stackToken:      "stack_token",
+			botServerAddr:   "http://localhost:8080",
+			configAssetType: "SQL",
+			interval:        "abc",
+			batchSize:       "100",
+			numWorkers:      "4",
+			expectedErr:     ErrInvalidScrapperTimeInterval,
 		},
 		{
-			name:          "missing stackoverflow token",
-			githubToken:   "github_token",
-			stackToken:    "",
-			botServerAddr: "http://localhost:8080",
-			expectedCfg:   Config{},
-			expectedErr:   ErrNoStackOverflowToken,
+			name:            "missing batch size",
+			githubToken:     "github_token",
+			stackToken:      "stack_token",
+			botServerAddr:   "http://localhost:8080",
+			configAssetType: "SQL",
+			interval:        "10",
+			batchSize:       "",
+			numWorkers:      "4",
+			expectedErr:     ErrNoLinksBatchSize,
 		},
 		{
-			name:          "missing bot server address",
-			githubToken:   "github_token",
-			stackToken:    "stack_token",
-			botServerAddr: "",
-			expectedCfg:   Config{},
-			expectedErr:   ErrNoBotServerAddress,
+			name:            "invalid batch size",
+			githubToken:     "github_token",
+			stackToken:      "stack_token",
+			botServerAddr:   "http://localhost:8080",
+			configAssetType: "SQL",
+			interval:        "10",
+			batchSize:       "abc",
+			numWorkers:      "4",
+			expectedErr:     ErrInvalidBachSize,
+		},
+		{
+			name:            "missing num workers",
+			githubToken:     "github_token",
+			stackToken:      "stack_token",
+			botServerAddr:   "http://localhost:8080",
+			configAssetType: "SQL",
+			interval:        "10",
+			batchSize:       "100",
+			numWorkers:      "",
+			expectedErr:     ErrNoNumWorkers,
+		},
+		{
+			name:            "invalid num workers",
+			githubToken:     "github_token",
+			stackToken:      "stack_token",
+			botServerAddr:   "http://localhost:8080",
+			configAssetType: "SQL",
+			interval:        "10",
+			batchSize:       "100",
+			numWorkers:      "abc",
+			expectedErr:     ErrInvalidNumWorkers,
 		},
 	}
 
@@ -72,19 +119,22 @@ func TestParseConfig(t *testing.T) {
 			t.Setenv(botServerAddress, tt.botServerAddr)
 			t.Setenv(assetType, tt.configAssetType)
 
+			t.Setenv(scrapperTimeInterval, tt.interval)
+			t.Setenv(linksBatchSize, tt.batchSize)
+			t.Setenv(schedulerNumWorkers, tt.numWorkers)
+
 			cfg, err := ParseConfig()
 
 			if tt.expectedErr != nil {
 				require.ErrorIs(t, err, tt.expectedErr)
-			} else {
-				require.NoError(t, err)
+				return
 			}
 
+			require.NoError(t, err)
 			assert.Equal(t, tt.expectedCfg, cfg)
 		})
 	}
 }
-
 func TestFindAssetType(t *testing.T) {
 	tests := []struct {
 		name        string

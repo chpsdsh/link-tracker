@@ -26,6 +26,7 @@ var (
 	ErrInvalidScrapperTimeInterval = errors.New(scrapperTimeInterval + "should be integer")
 	ErrNoLinksBatchSize            = errors.New("scrapper links batch size should  be set with " + linksBatchSize + " environment variable")
 	ErrInvalidBachSize             = errors.New(linksBatchSize + "should be integer")
+	ErrNoNumWorkers                = errors.New("scrapper num workers should be set with " + schedulerNumWorkers + " environment variable")
 	ErrInvalidNumWorkers           = errors.New(schedulerNumWorkers + "should be integer")
 )
 
@@ -88,9 +89,9 @@ func ParseConfig() (Config, error) {
 
 	numWorkersStr := os.Getenv(schedulerNumWorkers)
 	if numWorkersStr == "" {
-		return Config{}, ErrNoLinksBatchSize
+		return Config{}, ErrNoNumWorkers
 	}
-	numWorkers, err := strconv.Atoi(batchSizeStr)
+	numWorkers, err := strconv.Atoi(numWorkersStr)
 	if err != nil {
 		return Config{}, ErrInvalidNumWorkers
 	}
