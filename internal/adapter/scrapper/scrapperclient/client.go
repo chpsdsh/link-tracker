@@ -21,7 +21,7 @@ const (
 	contentTypeKey      = "Content-Type"
 	typeApplicationJSON = "application/json"
 	applicationType     = "application/vnd.github.v3+json"
-	version             = "2022-11-28"
+	version             = "2026-03-10"
 	stackOverflowKey    = "&key="
 )
 
@@ -57,7 +57,59 @@ func (c Client) DoGithubRequest(url string) (scrapper.GitHubUpdate, error) {
 	return gitUpdate, nil
 }
 
-func (c Client) DoStackOverflowRequest(url string) (scrapper.StackOverflowUpdate, error) {
+func (c Client) DoGithubIssueRequest(url string) ([]scrapper.GithubIssue, error) {
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request: %w", err)
+	}
+
+	req.Header.Add("Accept", applicationType)
+	req.Header.Add("Authorization", c.Config.GithubToken)
+	req.Header.Add("X-GitHub-Api-Version", version)
+
+	resp, err := c.Client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("error doing request: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading response body: %w", err)
+	}
+	var issueResponse []scrapper.GithubIssue
+	if err = json.Unmarshal(data, &issueResponse); err != nil {
+		return nil, errors.Join(err, ErrUnmarshallingJSON)
+	}
+	return issueResponse, nil
+}
+
+func (c Client) DoGithubPullRequestRequest(url string) ([]scrapper.GithubPullRequest, error) {
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request: %w", err)
+	}
+
+	req.Header.Add("Accept", applicationType)
+	req.Header.Add("Authorization", c.Config.GithubToken)
+	req.Header.Add("X-GitHub-Api-Version", version)
+
+	resp, err := c.Client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("error doing request: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading response body: %w", err)
+	}
+	var pullRequestsResponse []scrapper.GithubPullRequest
+	if err = json.Unmarshal(data, &pullRequestsResponse); err != nil {
+		return nil, errors.Join(err, ErrUnmarshallingJSON)
+	}
+	return pullRequestsResponse, nil
+}
+
+func (c Client) DoStackOverflowQuestionRequest(url string) (scrapper.StackOverflowUpdate, error) {
 	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, url+stackOverflowKey+c.Config.StackoverflowToken, nil)
 	if err != nil {
 		return scrapper.StackOverflowUpdate{}, fmt.Errorf("error creating request: %w", err)
@@ -81,6 +133,58 @@ func (c Client) DoStackOverflowRequest(url string) (scrapper.StackOverflowUpdate
 	}
 
 	return stackOverflowUpdate, nil
+}
+
+func (c Client) DoStackOverflowAnswersRequest(url string) (scrapper.StackOverflowAnswersResponse, error) {
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, url+stackOverflowKey+c.Config.StackoverflowToken, nil)
+	if err != nil {
+		return scrapper.StackOverflowAnswersResponse{}, fmt.Errorf("error creating request: %w", err)
+	}
+
+	resp, err := c.Client.Do(req)
+	if err != nil {
+		return scrapper.StackOverflowAnswersResponse{}, fmt.Errorf("error doing request: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	data, err := io.ReadAll(resp.Body)
+
+	if err != nil {
+		return scrapper.StackOverflowAnswersResponse{}, fmt.Errorf("error reading response body: %w", err)
+	}
+
+	stackOverflowAnswers := scrapper.StackOverflowAnswersResponse{}
+	if err = json.Unmarshal(data, &stackOverflowAnswers); err != nil {
+		return scrapper.StackOverflowAnswersResponse{}, errors.Join(err, ErrUnmarshallingJSON)
+	}
+
+	return stackOverflowAnswers, nil
+}
+
+func (c Client) DoStackOverflowCommentsRequest(url string) (scrapper.StackOverflowCommentsResponse, error) {
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, url+stackOverflowKey+c.Config.StackoverflowToken, nil)
+	if err != nil {
+		return scrapper.StackOverflowCommentsResponse{}, fmt.Errorf("error creating request: %w", err)
+	}
+
+	resp, err := c.Client.Do(req)
+	if err != nil {
+		return scrapper.StackOverflowCommentsResponse{}, fmt.Errorf("error doing request: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	data, err := io.ReadAll(resp.Body)
+
+	if err != nil {
+		return scrapper.StackOverflowCommentsResponse{}, fmt.Errorf("error reading response body: %w", err)
+	}
+
+	stackOverflowComments := scrapper.StackOverflowCommentsResponse{}
+	if err = json.Unmarshal(data, &stackOverflowComments); err != nil {
+		return scrapper.StackOverflowCommentsResponse{}, errors.Join(err, ErrUnmarshallingJSON)
+	}
+
+	return stackOverflowComments, nil
 }
 
 func (c Client) SendLinkUpdate(update pkg.LinkUpdate) error {

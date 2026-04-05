@@ -254,13 +254,12 @@ func (r *LinkRepository) GetUserLinks(ctx context.Context, chatID int64) ([]pkg.
 	return links, nil
 }
 
-func (r *LinkRepository) GetAllLinks(ctx context.Context, host string, limit int, offset int) ([]pkg.LinkInfo, error) {
+func (r *LinkRepository) GetAllLinks(ctx context.Context, limit int, offset int) ([]pkg.LinkInfo, error) {
 	q := database.GetQuerier(ctx, r.db)
 
 	query, args, err := r.builder.
 		Select("url", "updated_at").
 		From("links").
-		Where(squirrel.Expr("url like '%' || ? || '%'", host)).
 		OrderBy("id").
 		Limit(uint64(limit)).
 		Offset(uint64(offset)).

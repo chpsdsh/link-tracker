@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/config"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/pkg"
@@ -44,8 +45,8 @@ func TestDoGithubRequestSuccess(t *testing.T) {
 	if errors.Is(err, ErrUnmarshallingJSON) {
 		t.Fatalf("unexpected error %v", err)
 	}
-
-	if resp.UpdatedAt != "2024-03-03T18:58:10Z" {
+	ti, _ := time.Parse(time.RFC3339, "2024-03-03T18:58:10Z")
+	if resp.UpdatedAt != ti {
 		t.Fatalf("wrong updated_at %s", resp.UpdatedAt)
 	}
 }
@@ -95,7 +96,7 @@ func TestDoStackOverflowRequestSuccess(t *testing.T) {
 		},
 	}
 
-	resp, err := client.DoStackOverflowRequest(server.URL + "?site=stackoverflow")
+	resp, err := client.DoStackOverflowQuestionRequest(server.URL + "?site=stackoverflow")
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
@@ -122,7 +123,7 @@ func TestDoStackOverflowRequestInvalidJSON(t *testing.T) {
 		},
 	}
 
-	_, err := client.DoStackOverflowRequest(server.URL + "?site=stackoverflow")
+	_, err := client.DoStackOverflowQuestionRequest(server.URL + "?site=stackoverflow")
 
 	if !errors.Is(err, ErrUnmarshallingJSON) {
 		t.Fatalf("expected json error, got %v", err)

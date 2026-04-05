@@ -1,5 +1,7 @@
 package scrapper
 
+import "time"
+
 type GitHubUpdate struct {
-	UpdatedAt string `json:"updated_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }

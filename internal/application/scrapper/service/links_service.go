@@ -17,7 +17,7 @@ type LinkRepository interface {
 	AddLink(ctx context.Context, chatID int64, link pkg.LinkInfo) error
 	DeleteLink(ctx context.Context, chatID int64, url string) (pkg.LinkInfo, error)
 	GetUserLinks(ctx context.Context, chatID int64) ([]pkg.LinkInfo, error)
-	GetAllLinks(ctx context.Context, host string, limit int, offset int) ([]pkg.LinkInfo, error)
+	GetAllLinks(ctx context.Context, limit int, offset int) ([]pkg.LinkInfo, error)
 	UpdateLinksTime(ctx context.Context, newTime time.Time, url string) error
 	GetChatIDsByLink(ctx context.Context, link string) ([]int64, error)
 	LinkExists(ctx context.Context, url string) (bool, error)

@@ -2,24 +2,36 @@ package scrapper
 
 import "fmt"
 
-type StackOverflowLinkType int
+type StackOverflowLinkOption int
 
-const StackOverflowQuestion StackOverflowLinkType = iota
+const (
+	StackOverflowLinkQuestion StackOverflowLinkOption = iota
+	StackOverflowLinkAnswer
+	StackOverflowLinkComment
+)
 
 type StackOverflowLink struct {
-	Type StackOverflowLinkType
-	ID   string
+	ID string
 }
 
-func (s StackOverflowLink) ConvertToURL() string {
+func (s StackOverflowLink) ConvertToURL(option StackOverflowLinkOption) string {
 	var url string
-
-	if s.Type == StackOverflowQuestion {
+	switch option {
+	case StackOverflowLinkQuestion:
 		url = fmt.Sprintf(
-			"https://api.stackexchange.com/2.3/questions/%s?site=stackoverflow",
+			"https://api.stackexchange.com/2.3/questions/%s?site=stackoverflow&filter=withbody",
+			s.ID,
+		)
+	case StackOverflowLinkAnswer:
+		url = fmt.Sprintf(
+			"https://api.stackexchange.com/2.3/questions/%s/answers?site=stackoverflow&filter=withbody",
+			s.ID,
+		)
+	case StackOverflowLinkComment:
+		url = fmt.Sprintf(
+			"https://api.stackexchange.com/2.3/questions/%s/comments?site=stackoverflow&filter=withbody",
 			s.ID,
 		)
 	}
-
 	return url
 }
