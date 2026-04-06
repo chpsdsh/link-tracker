@@ -66,10 +66,10 @@ func (mr *MockNetworkClientMockRecorder) DoGithubPullRequestRequest(url interfac
 }
 
 // DoGithubRequest mocks base method.
-func (m *MockNetworkClient) DoGithubRequest(url string) (scrapper.GitHubUpdate, error) {
+func (m *MockNetworkClient) DoGithubRequest(url string) (scrapper.GitHubRepositoryResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DoGithubRequest", url)
-	ret0, _ := ret[0].(scrapper.GitHubUpdate)
+	ret0, _ := ret[0].(scrapper.GitHubRepositoryResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -111,10 +111,10 @@ func (mr *MockNetworkClientMockRecorder) DoStackOverflowCommentsRequest(url inte
 }
 
 // DoStackOverflowQuestionRequest mocks base method.
-func (m *MockNetworkClient) DoStackOverflowQuestionRequest(url string) (scrapper.StackOverflowUpdate, error) {
+func (m *MockNetworkClient) DoStackOverflowQuestionRequest(url string) (scrapper.StackOverflowQuestionResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DoStackOverflowQuestionRequest", url)
-	ret0, _ := ret[0].(scrapper.StackOverflowUpdate)
+	ret0, _ := ret[0].(scrapper.StackOverflowQuestionResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

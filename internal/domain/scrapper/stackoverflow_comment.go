@@ -10,5 +10,5 @@ type StackOverflowComment struct {
 	Body             string `json:"body"`
 	Owner            struct {
 		DisplayName string `json:"display_name"`
-	}
+	} `json:"owner"`
 }

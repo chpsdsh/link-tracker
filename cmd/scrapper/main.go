@@ -107,13 +107,17 @@ func main() {
 	}()
 
 	<-ctx.Done()
+	shutdown(server, baseLogger, sched, db)
+}
+
+func shutdown(server *http.Server, baseLogger *slog.Logger, sched gocron.Scheduler, db *database.DB) {
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), shutdownDuration)
 	defer shutdownCancel()
-	if err = server.Shutdown(shutdownCtx); err != nil {
+	if err := server.Shutdown(shutdownCtx); err != nil {
 		baseLogger.Error("error shutting down scrapper http server", slog.String("error", err.Error()))
 	}
 
-	if err = sched.Shutdown(); err != nil {
+	if err := sched.Shutdown(); err != nil {
 		baseLogger.Error("error shutting down scheduler", slog.String("error", err.Error()))
 	}
 

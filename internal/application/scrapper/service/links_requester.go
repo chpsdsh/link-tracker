@@ -25,16 +25,16 @@ const (
 	repositoryRequestDuration = time.Second * 5
 	stackOverflowQuestions    = "questions"
 	minGithubURLParts         = 3
-	minStackOverflowURLParts  = 2
+	minStackOverflowURLParts  = 3
 	descriptionMaxLength      = 200
 )
 
 type NetworkClient interface {
-	DoGithubRequest(url string) (scrapper.GitHubUpdate, error)
+	DoGithubRequest(url string) (scrapper.GitHubRepositoryResponse, error)
 	DoGithubIssueRequest(url string) ([]scrapper.GithubIssue, error)
 	DoGithubPullRequestRequest(url string) ([]scrapper.GithubPullRequest, error)
 	SendLinkUpdate(update pkg.LinkUpdate) error
-	DoStackOverflowQuestionRequest(url string) (scrapper.StackOverflowUpdate, error)
+	DoStackOverflowQuestionRequest(url string) (scrapper.StackOverflowQuestionResponse, error)
 	DoStackOverflowAnswersRequest(url string) (scrapper.StackOverflowAnswersResponse, error)
 	DoStackOverflowCommentsRequest(url string) (scrapper.StackOverflowCommentsResponse, error)
 }
@@ -93,7 +93,6 @@ func (r LinksRequester) linksIteration(offset int) bool {
 		if endOffset > len(links) {
 			endOffset = len(links)
 		}
-		slog.Info("processing link", slog.Int("startoffset", startOffset+i), slog.Int("endoffset", endOffset))
 		r.LinksPool.LinksChan <- links[startOffset:endOffset]
 
 		startOffset = endOffset + 1
@@ -108,6 +107,27 @@ func (r LinksRequester) linksIteration(offset int) bool {
 		}
 	}
 	return true
+}
+
+func (r LinksRequester) worker(ctx context.Context) {
+	for {
+		select {
+		case links := <-r.LinksPool.LinksChan:
+			for _, link := range links {
+				switch scrapper.GetLinkType(link.Link) {
+				case scrapper.GithubLinkType:
+					r.handleGithubLink(link)
+				case scrapper.StackOverflowLinkType:
+					r.handleStackOverflowLink(link)
+				case scrapper.UnknownLinkType:
+					r.sendUpdate(link, "Only github and stackOverflow links are supported")
+				}
+			}
+
+		case <-ctx.Done():
+			return
+		}
+	}
 }
 
 func (r LinksRequester) handleGithubLink(link pkg.LinkInfo) {
@@ -175,7 +195,6 @@ func (r LinksRequester) handlePullRequestsUpdates(gitLink scrapper.GithubLink, l
 	newUpdateTime := link.LastUpdateTime
 
 	for _, item := range pullRequestUpdate {
-		slog.Info("updated_at", slog.Any("updated_at", item.UpdatedAt))
 		if item.UpdatedAt.After(link.LastUpdateTime) {
 			r.sendUpdate(link, formatPullRequest(item))
 			if item.UpdatedAt.After(newUpdateTime) {
@@ -194,7 +213,7 @@ func (r LinksRequester) handleRepositoryUpdates(gitLink scrapper.GithubLink, lin
 		return link.LastUpdateTime
 	}
 	if gitUpdate.UpdatedAt.After(link.LastUpdateTime) {
-		r.sendUpdate(link, "Repository updated:"+link.Link)
+		r.sendUpdate(link, "Repository updated:")
 	}
 	return gitUpdate.UpdatedAt
 }
@@ -227,27 +246,6 @@ func formatIssue(issue scrapper.GithubIssue) string {
 		issue.CreatedAt.Format(time.RFC3339),
 		body,
 	)
-}
-
-func (r LinksRequester) worker(ctx context.Context) {
-	for {
-		select {
-		case links := <-r.LinksPool.LinksChan:
-			for _, link := range links {
-				switch scrapper.GetLinkType(link.Link) {
-				case scrapper.GithubLinkType:
-					r.handleGithubLink(link)
-				case scrapper.StackOverflowLinkType:
-					r.handleStackOverflowLink(link)
-				case scrapper.UnknownLinkType:
-					r.sendUpdate(link, "only github and stackOverflow links are supported")
-				}
-			}
-
-		case <-ctx.Done():
-			return
-		}
-	}
 }
 
 func (r LinksRequester) handleStackOverflowLink(link pkg.LinkInfo) {
@@ -388,7 +386,7 @@ func parseStackOverflowLink(link string) (scrapper.StackOverflowLink, error) {
 		return scrapper.StackOverflowLink{}, ErrInvalidStackOverflowURL
 	}
 
-	id := parts[1]
+	id := parts[2]
 
 	return scrapper.StackOverflowLink{
 		ID: id,
