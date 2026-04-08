@@ -5,6 +5,7 @@ import (
 	"embed"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -140,6 +141,7 @@ func (db *DB) TransactionWithReturn(ctx context.Context, txFunc func(ctx context
 	if err = tx.Commit(ctx); err != nil {
 		return nil, fmt.Errorf("commit transaction: %w", err)
 	}
+	slog.Info("transaction returned", value)
 	return value, nil
 }
 

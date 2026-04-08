@@ -199,12 +199,11 @@ func (r *LinkRepository) DeleteLink(ctx context.Context, chatID int64, url strin
 		Where(squirrel.Expr("id = ("+subQuery+")", subArgs...)).
 		Where(squirrel.Expr("not exists ("+notExistsQuery+")", notExistsArgs...)).
 		ToSql()
-
 	if err != nil {
 		return pkg.LinkInfo{}, fmt.Errorf("build delete links: %w", err)
 	}
 
-	_, err = q.Exec(ctx, query, args...)
+	_, err = q.Exec(ctx, query, args[0])
 	if err != nil {
 		return pkg.LinkInfo{}, fmt.Errorf("delete links: %w", err)
 	}
