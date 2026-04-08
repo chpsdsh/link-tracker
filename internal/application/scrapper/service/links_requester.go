@@ -207,6 +207,7 @@ func (r LinksRequester) handleRepositoryUpdates(gitLink scrapper.GithubLink, lin
 }
 
 func (r LinksRequester) handleStackOverflowLink(link pkg.LinkInfo) {
+
 	stackOverflowLink, err := utils.ParseStackOverflowLink(link.Link)
 	if err != nil {
 		r.sendUpdate(link, "Error parsing stackOverflow link")
@@ -219,12 +220,10 @@ func (r LinksRequester) handleStackOverflowLink(link pkg.LinkInfo) {
 	if answerTimeToUpdate.After(timeToUpdate) {
 		timeToUpdate = answerTimeToUpdate
 	}
-
 	commentsTimeToUpdate := r.handleStackOverflowComments(stackOverflowLink, link)
 	if commentsTimeToUpdate.After(timeToUpdate) {
 		timeToUpdate = commentsTimeToUpdate
 	}
-
 	questionTimeToUpdate := r.handleStackOverflowQuestion(stackOverflowLink, link)
 	if questionTimeToUpdate.After(timeToUpdate) {
 		timeToUpdate = questionTimeToUpdate
