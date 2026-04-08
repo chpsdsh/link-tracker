@@ -185,10 +185,11 @@ func (r *LinkRepository) GetUserLinks(ctx context.Context, chatID int64) ([]pkg.
 func (r *LinkRepository) GetAllLinks(ctx context.Context, limit int, offset int) ([]pkg.LinkInfo, error) {
 	q := database.GetQuerier(ctx, r.db)
 	rows, err := q.Query(ctx, `
-	select url, updated_at from links 
+	select url, updated_at from links
+	where id > $1
     order by id
-    limit $2 offset $3
-	`, limit, offset)
+    limit $2
+	`, offset, limit)
 	if err != nil {
 		return nil, fmt.Errorf("error query get all links: %w", err)
 	}

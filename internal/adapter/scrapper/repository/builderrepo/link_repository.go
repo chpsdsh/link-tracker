@@ -259,9 +259,9 @@ func (r *LinkRepository) GetAllLinks(ctx context.Context, limit int, offset int)
 	query, args, err := r.builder.
 		Select("url", "updated_at").
 		From("links").
+		Where(squirrel.Gt{"id": offset}).
 		OrderBy("id").
 		Limit(uint64(limit)).
-		Offset(uint64(offset)).
 		ToSql()
 
 	if err != nil {
