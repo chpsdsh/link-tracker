@@ -228,16 +228,31 @@ func (m *MockTransactor) EXPECT() *MockTransactorMockRecorder {
 	return m.recorder
 }
 
-// WithTransaction mocks base method.
-func (m *MockTransactor) WithTransaction(ctx context.Context, txFunc func(context.Context) error) error {
+// Transaction mocks base method.
+func (m *MockTransactor) Transaction(ctx context.Context, txFunc func(context.Context) error) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "WithTransaction", ctx, txFunc)
+	ret := m.ctrl.Call(m, "Transaction", ctx, txFunc)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// WithTransaction indicates an expected call of WithTransaction.
-func (mr *MockTransactorMockRecorder) WithTransaction(ctx, txFunc interface{}) *gomock.Call {
+// Transaction indicates an expected call of Transaction.
+func (mr *MockTransactorMockRecorder) Transaction(ctx, txFunc interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WithTransaction", reflect.TypeOf((*MockTransactor)(nil).WithTransaction), ctx, txFunc)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Transaction", reflect.TypeOf((*MockTransactor)(nil).Transaction), ctx, txFunc)
+}
+
+// TransactionWithReturn mocks base method.
+func (m *MockTransactor) TransactionWithReturn(ctx context.Context, txFunc func(context.Context) (any, error)) (any, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TransactionWithReturn", ctx, txFunc)
+	ret0, _ := ret[0].(any)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// TransactionWithReturn indicates an expected call of TransactionWithReturn.
+func (mr *MockTransactorMockRecorder) TransactionWithReturn(ctx, txFunc interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TransactionWithReturn", reflect.TypeOf((*MockTransactor)(nil).TransactionWithReturn), ctx, txFunc)
 }
