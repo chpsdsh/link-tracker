@@ -3,30 +3,18 @@ package service
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"log/slog"
-	"strings"
 	"sync"
 	"time"
 
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/scrapper/service/utils"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/pkg"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/scrapper"
-)
-
-var (
-	ErrInvalidGitHubURL        = errors.New("invalid github url")
-	ErrInvalidStackOverflowURL = errors.New("invalid StackOverflow url")
-	ErrUnsupportedGithubURL    = errors.New("unsupported github url")
 )
 
 const (
 	linksHandleDuration       = time.Second * 10
 	repositoryRequestDuration = time.Second * 5
-	stackOverflowQuestions    = "questions"
-	minGithubURLParts         = 3
-	minStackOverflowURLParts  = 3
-	descriptionMaxLength      = 200
 )
 
 type NetworkClient interface {
@@ -131,7 +119,7 @@ func (r LinksRequester) worker(ctx context.Context) {
 }
 
 func (r LinksRequester) handleGithubLink(link pkg.LinkInfo) {
-	gitLink, err := parseGithubLink(link.Link)
+	gitLink, err := utils.ParseGithubLink(link.Link)
 	if err != nil {
 		r.BaseLogger.Error("error parsing github link", slog.String("error", err.Error()))
 		r.sendUpdate(link, "Error parsing github link")
@@ -175,7 +163,7 @@ func (r LinksRequester) handleIssueUpdates(gitLink scrapper.GithubLink, link pkg
 
 	for _, item := range issueUpdate {
 		if item.UpdatedAt.After(link.LastUpdateTime) {
-			r.sendUpdate(link, formatIssue(item))
+			r.sendUpdate(link, utils.FormatIssue(item))
 			if item.UpdatedAt.After(newUpdateTime) {
 				newUpdateTime = item.UpdatedAt
 			}
@@ -196,7 +184,7 @@ func (r LinksRequester) handlePullRequestsUpdates(gitLink scrapper.GithubLink, l
 
 	for _, item := range pullRequestUpdate {
 		if item.UpdatedAt.After(link.LastUpdateTime) {
-			r.sendUpdate(link, formatPullRequest(item))
+			r.sendUpdate(link, utils.FormatPullRequest(item))
 			if item.UpdatedAt.After(newUpdateTime) {
 				newUpdateTime = item.UpdatedAt
 			}
@@ -218,38 +206,8 @@ func (r LinksRequester) handleRepositoryUpdates(gitLink scrapper.GithubLink, lin
 	return gitUpdate.UpdatedAt
 }
 
-func formatPullRequest(pr scrapper.GithubPullRequest) string {
-	body := pr.Body
-	if len(body) > descriptionMaxLength {
-		body = body[:descriptionMaxLength] + "..."
-	}
-
-	return fmt.Sprintf(
-		"Pull Request\n\nНазвание: %s\nАвтор: %s\nСоздан: %s\n\n%s",
-		pr.Title,
-		pr.User.Login,
-		pr.CreatedAt.Format(time.RFC3339),
-		body,
-	)
-}
-
-func formatIssue(issue scrapper.GithubIssue) string {
-	body := issue.Body
-	if len(body) > descriptionMaxLength {
-		body = body[:descriptionMaxLength] + "..."
-	}
-
-	return fmt.Sprintf(
-		"Issue\n\nНазвание: %s\nАвтор: %s\nСоздан: %s\n\n%s",
-		issue.Title,
-		issue.User.Login,
-		issue.CreatedAt.Format(time.RFC3339),
-		body,
-	)
-}
-
 func (r LinksRequester) handleStackOverflowLink(link pkg.LinkInfo) {
-	stackOverflowLink, err := parseStackOverflowLink(link.Link)
+	stackOverflowLink, err := utils.ParseStackOverflowLink(link.Link)
 	if err != nil {
 		r.sendUpdate(link, "Error parsing stackOverflow link")
 		return
@@ -293,6 +251,7 @@ func (r LinksRequester) handleStackOverflowAnswers(stackOverflowLink scrapper.St
 	for _, item := range stackUpdate.Items {
 		updateTime := time.Unix(item.LastActivityDate, 0).UTC()
 		if updateTime.After(timeToUpdate) {
+			r.sendUpdate(link, utils.FormatStackOverflowAnswer(item))
 			timeToUpdate = updateTime
 		}
 	}
@@ -308,8 +267,9 @@ func (r LinksRequester) handleStackOverflowComments(stackOverflowLink scrapper.S
 	}
 
 	for _, item := range stackUpdate.Items {
-		updateTime := time.Unix(item.LastActivityDate, 0).UTC()
+		updateTime := time.Unix(item.CreationDate, 0).UTC()
 		if updateTime.After(timeToUpdate) {
+			r.sendUpdate(link, utils.FormatStackOverflowComment(item))
 			timeToUpdate = updateTime
 		}
 	}
@@ -327,6 +287,7 @@ func (r LinksRequester) handleStackOverflowQuestion(stackOverflowLink scrapper.S
 	for _, item := range stackUpdate.Items {
 		updateTime := time.Unix(item.LastActivityDate, 0).UTC()
 		if updateTime.After(timeToUpdate) {
+			r.sendUpdate(link, "Question updated:")
 			timeToUpdate = updateTime
 		}
 	}
@@ -350,45 +311,4 @@ func (r LinksRequester) sendUpdate(linkInfo pkg.LinkInfo, description string) {
 		return
 	}
 	r.BaseLogger.Info("link is sent to chats", slog.String("link", linkInfo.Link), slog.Any("chats", chatIDs))
-
-}
-
-func parseGithubLink(link string) (scrapper.GithubLink, error) {
-	parts := strings.Split(strings.Trim(link[8:], "/"), "/")
-
-	if len(parts) < minGithubURLParts {
-		slog.Info("invalid link", slog.Any("parts", parts))
-		return scrapper.GithubLink{}, ErrInvalidGitHubURL
-	}
-
-	owner := parts[1]
-	repo := parts[2]
-
-	if len(parts) == minGithubURLParts {
-		return scrapper.GithubLink{
-			Owner: owner,
-			Repo:  repo,
-		}, nil
-	}
-
-	return scrapper.GithubLink{}, ErrUnsupportedGithubURL
-}
-
-func parseStackOverflowLink(link string) (scrapper.StackOverflowLink, error) {
-
-	parts := strings.Split(strings.Trim(link[8:], "/"), "/")
-
-	if len(parts) < minStackOverflowURLParts {
-		return scrapper.StackOverflowLink{}, ErrInvalidStackOverflowURL
-	}
-
-	if parts[1] != stackOverflowQuestions {
-		return scrapper.StackOverflowLink{}, ErrInvalidStackOverflowURL
-	}
-
-	id := parts[2]
-
-	return scrapper.StackOverflowLink{
-		ID: id,
-	}, nil
 }

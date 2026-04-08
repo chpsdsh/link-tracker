@@ -4,121 +4,17 @@ import (
 	"errors"
 	"io"
 	"log/slog"
-	"strings"
 	"testing"
 	"time"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/scrapper/service/utils"
 
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/scrapper/mocks"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/pkg"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/scrapper"
 )
-
-func TestParseGithubLink(t *testing.T) {
-	tests := []struct {
-		name        string
-		link        string
-		expected    scrapper.GithubLink
-		expectedErr error
-	}{
-		{
-			name: "repo link",
-			link: "https://github.com/golang/go",
-			expected: scrapper.GithubLink{
-				Owner: "golang",
-				Repo:  "go",
-			},
-		},
-		{
-			name:        "invalid github path",
-			link:        "https://github.com/golang",
-			expectedErr: ErrInvalidGitHubURL,
-		},
-		{
-			name:        "unsupported github url",
-			link:        "https://github.com/golang/go/wiki/home",
-			expectedErr: ErrUnsupportedGithubURL,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result, err := parseGithubLink(tt.link)
-
-			if tt.expectedErr != nil {
-				if !errors.Is(err, tt.expectedErr) {
-					t.Fatalf("expected error %v, got %v", tt.expectedErr, err)
-				}
-				return
-			}
-
-			if err != nil {
-				t.Fatalf("unexpected error %v", err)
-			}
-
-			if result != tt.expected {
-				t.Fatalf("expected %+v, got %+v", tt.expected, result)
-			}
-		})
-	}
-}
-
-func TestParseStackOverflowLink(t *testing.T) {
-	tests := []struct {
-		name        string
-		link        string
-		expected    scrapper.StackOverflowLink
-		expectedErr error
-	}{
-		{
-			name: "valid question link",
-			link: "https://stackoverflow.com/questions/11227809/test",
-			expected: scrapper.StackOverflowLink{
-				ID: "11227809",
-			},
-		},
-		{
-			name: "valid question link without title",
-			link: "https://stackoverflow.com/questions/11227809",
-			expected: scrapper.StackOverflowLink{
-				ID: "11227809",
-			},
-		},
-		{
-			name:        "invalid path",
-			link:        "https://stackoverflow.com/answers/11227809",
-			expectedErr: ErrInvalidStackOverflowURL,
-		},
-		{
-			name:        "too short path",
-			link:        "https://stackoverflow.com/questions",
-			expectedErr: ErrInvalidStackOverflowURL,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result, err := parseStackOverflowLink(tt.link)
-
-			if tt.expectedErr != nil {
-				if !errors.Is(err, tt.expectedErr) {
-					t.Fatalf("expected error %v, got %v", tt.expectedErr, err)
-				}
-				return
-			}
-
-			if err != nil {
-				t.Fatalf("unexpected error %v", err)
-			}
-
-			if result != tt.expected {
-				t.Fatalf("expected %+v, got %+v", tt.expected, result)
-			}
-		})
-	}
-}
 
 func TestLinksRequester_SendUpdate(t *testing.T) {
 	ctrl := gomock.NewController(t)
@@ -271,7 +167,7 @@ func TestHandleIssueUpdates(t *testing.T) {
 					}}, nil)
 
 				client.EXPECT().
-					SendLinkUpdate(pkg.LinkUpdate{Description: formatIssue(scrapper.GithubIssue{
+					SendLinkUpdate(pkg.LinkUpdate{Description: utils.FormatIssue(scrapper.GithubIssue{
 						Title:     "Issue",
 						Body:      "New commit",
 						CreatedAt: time.Time{}.UTC(),
@@ -355,7 +251,7 @@ func TestHandlePullRequestsUpdates(t *testing.T) {
 					}}, nil)
 
 				client.EXPECT().
-					SendLinkUpdate(pkg.LinkUpdate{Description: formatPullRequest(scrapper.GithubPullRequest{
+					SendLinkUpdate(pkg.LinkUpdate{Description: utils.FormatPullRequest(scrapper.GithubPullRequest{
 						Title:     "Issue",
 						Body:      "New commit",
 						CreatedAt: time.Time{}.UTC(),
@@ -483,138 +379,6 @@ func TestHandleRepositoryUpdates(t *testing.T) {
 	}
 }
 
-func TestFormatPullRequest(t *testing.T) {
-	tests := []struct {
-		name string
-		pr   scrapper.GithubPullRequest
-
-		expectedContains []string
-	}{
-		{
-			name: "success without truncation",
-			pr: scrapper.GithubPullRequest{
-				Title:     "Fix bug",
-				Body:      "Short description",
-				CreatedAt: time.Date(2026, 3, 11, 10, 0, 0, 0, time.UTC),
-				User: struct {
-					Login string `json:"login"`
-				}{Login: "alice"},
-			},
-			expectedContains: []string{
-				"Pull Request",
-				"Fix bug",
-				"alice",
-				"Short description",
-			},
-		},
-		{
-			name: "body is truncated",
-			pr: scrapper.GithubPullRequest{
-				Title:     "Big PR",
-				Body:      strings.Repeat("a", descriptionMaxLength+10),
-				CreatedAt: time.Date(2026, 3, 11, 10, 0, 0, 0, time.UTC),
-				User: struct {
-					Login string `json:"login"`
-				}{Login: "bob"},
-			},
-			expectedContains: []string{
-				"...",
-			},
-		},
-		{
-			name: "empty body",
-			pr: scrapper.GithubPullRequest{
-				Title:     "Empty body",
-				Body:      "",
-				CreatedAt: time.Date(2026, 3, 11, 10, 0, 0, 0, time.UTC),
-				User: struct {
-					Login string `json:"login"`
-				}{Login: "charlie"},
-			},
-			expectedContains: []string{
-				"Empty body",
-				"charlie",
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := formatPullRequest(tt.pr)
-
-			for _, substr := range tt.expectedContains {
-				assert.Contains(t, result, substr)
-			}
-		})
-	}
-}
-
-func TestFormatIssue(t *testing.T) {
-	tests := []struct {
-		name string
-		iss  scrapper.GithubIssue
-
-		expectedContains []string
-	}{
-		{
-			name: "success without truncation",
-			iss: scrapper.GithubIssue{
-				Title:     "Crash bug",
-				Body:      "Some issue description",
-				CreatedAt: time.Date(2026, 3, 11, 10, 0, 0, 0, time.UTC),
-				User: struct {
-					Login string `json:"login"`
-				}{Login: "dave"},
-			},
-			expectedContains: []string{
-				"Issue",
-				"Crash bug",
-				"dave",
-				"Some issue description",
-			},
-		},
-		{
-			name: "body is truncated",
-			iss: scrapper.GithubIssue{
-				Title:     "Big issue",
-				Body:      strings.Repeat("b", descriptionMaxLength+20),
-				CreatedAt: time.Date(2026, 3, 11, 10, 0, 0, 0, time.UTC),
-				User: struct {
-					Login string `json:"login"`
-				}{Login: "eve"},
-			},
-			expectedContains: []string{
-				"...",
-			},
-		},
-		{
-			name: "empty body",
-			iss: scrapper.GithubIssue{
-				Title:     "No body",
-				Body:      "",
-				CreatedAt: time.Date(2026, 3, 11, 10, 0, 0, 0, time.UTC),
-				User: struct {
-					Login string `json:"login"`
-				}{Login: "frank"},
-			},
-			expectedContains: []string{
-				"No body",
-				"frank",
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := formatIssue(tt.iss)
-
-			for _, substr := range tt.expectedContains {
-				assert.Contains(t, result, substr)
-			}
-		})
-	}
-}
-
 func TestHandleStackOverflowAnswers(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -624,11 +388,13 @@ func TestHandleStackOverflowAnswers(t *testing.T) {
 		linkInfo       pkg.LinkInfo
 		soLink         scrapper.StackOverflowLink
 		client         func() NetworkClient
+		repo           func() LinkRepository
 		expectedResult time.Time
 	}{
 		{
 			name: "success",
 			linkInfo: pkg.LinkInfo{
+				Link:           "https://stackoverflow.com/2.3/questions/123",
 				LastUpdateTime: time.Unix(1000, 0).UTC(),
 			},
 			soLink: scrapper.StackOverflowLink{ID: "123"},
@@ -640,13 +406,24 @@ func TestHandleStackOverflowAnswers(t *testing.T) {
 					Return(scrapper.StackOverflowAnswersResponse{
 						Items: []scrapper.StackOverflowAnswer{
 							{LastActivityDate: 2000},
-							{LastActivityDate: 3000},
 						},
 					}, nil)
 
+				c.EXPECT().
+					SendLinkUpdate(pkg.LinkUpdate{Description: utils.FormatStackOverflowAnswer(scrapper.StackOverflowAnswer{
+						LastActivityDate: 2000,
+					}),
+						TgChatIDs: []int64{1, 2},
+						URL:       "https://stackoverflow.com/2.3/questions/123"},
+					).Return(nil)
 				return c
 			},
-			expectedResult: time.Unix(3000, 0).UTC(),
+			repo: func() LinkRepository {
+				repo := mocks.NewMockLinkRepository(ctrl)
+				repo.EXPECT().GetChatIDsByLink(gomock.Any(), "https://stackoverflow.com/2.3/questions/123").Return([]int64{1, 2}, nil)
+				return repo
+			},
+			expectedResult: time.Unix(2000, 0).UTC(),
 		},
 		{
 			name: "no newer answers",
@@ -656,7 +433,6 @@ func TestHandleStackOverflowAnswers(t *testing.T) {
 			soLink: scrapper.StackOverflowLink{ID: "123"},
 			client: func() NetworkClient {
 				c := mocks.NewMockNetworkClient(ctrl)
-
 				c.EXPECT().
 					DoStackOverflowAnswersRequest(gomock.Any()).
 					Return(scrapper.StackOverflowAnswersResponse{
@@ -666,6 +442,9 @@ func TestHandleStackOverflowAnswers(t *testing.T) {
 					}, nil)
 
 				return c
+			},
+			repo: func() LinkRepository {
+				return mocks.NewMockLinkRepository(ctrl)
 			},
 			expectedResult: time.Unix(5000, 0).UTC(),
 		},
@@ -684,6 +463,9 @@ func TestHandleStackOverflowAnswers(t *testing.T) {
 
 				return c
 			},
+			repo: func() LinkRepository {
+				return mocks.NewMockLinkRepository(ctrl)
+			},
 			expectedResult: time.Unix(5000, 0).UTC(),
 		},
 	}
@@ -693,6 +475,7 @@ func TestHandleStackOverflowAnswers(t *testing.T) {
 			r := LinksRequester{
 				Client:     tt.client(),
 				BaseLogger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+				Repo:       tt.repo(),
 			}
 
 			result := r.handleStackOverflowAnswers(tt.soLink, tt.linkInfo)
@@ -710,11 +493,13 @@ func TestHandleStackOverflowComments(t *testing.T) {
 		linkInfo       pkg.LinkInfo
 		soLink         scrapper.StackOverflowLink
 		client         func() NetworkClient
+		repo           func() LinkRepository
 		expectedResult time.Time
 	}{
 		{
 			name: "success",
 			linkInfo: pkg.LinkInfo{
+				Link:           "https://stackoverflow.com/2.3/questions/123",
 				LastUpdateTime: time.Unix(1000, 0).UTC(),
 			},
 			soLink: scrapper.StackOverflowLink{ID: "123"},
@@ -725,13 +510,48 @@ func TestHandleStackOverflowComments(t *testing.T) {
 					DoStackOverflowCommentsRequest(gomock.Any()).
 					Return(scrapper.StackOverflowCommentsResponse{
 						Items: []scrapper.StackOverflowComment{
-							{LastActivityDate: 2000},
+							{CreationDate: 2000},
+						},
+					}, nil)
+
+				c.EXPECT().
+					SendLinkUpdate(pkg.LinkUpdate{Description: utils.FormatStackOverflowComment(scrapper.StackOverflowComment{
+						CreationDate: 2000,
+					}),
+						TgChatIDs: []int64{1, 2},
+						URL:       "https://stackoverflow.com/2.3/questions/123"},
+					).Return(nil)
+				return c
+			},
+			repo: func() LinkRepository {
+				repo := mocks.NewMockLinkRepository(ctrl)
+				repo.EXPECT().GetChatIDsByLink(gomock.Any(), "https://stackoverflow.com/2.3/questions/123").Return([]int64{1, 2}, nil)
+				return repo
+			},
+			expectedResult: time.Unix(2000, 0).UTC(),
+		},
+		{
+			name: "no newer answers",
+			linkInfo: pkg.LinkInfo{
+				LastUpdateTime: time.Unix(5000, 0).UTC(),
+			},
+			soLink: scrapper.StackOverflowLink{ID: "123"},
+			client: func() NetworkClient {
+				c := mocks.NewMockNetworkClient(ctrl)
+				c.EXPECT().
+					DoStackOverflowCommentsRequest(gomock.Any()).
+					Return(scrapper.StackOverflowCommentsResponse{
+						Items: []scrapper.StackOverflowComment{
+							{CreationDate: 1000},
 						},
 					}, nil)
 
 				return c
 			},
-			expectedResult: time.Unix(2000, 0).UTC(),
+			repo: func() LinkRepository {
+				return mocks.NewMockLinkRepository(ctrl)
+			},
+			expectedResult: time.Unix(5000, 0).UTC(),
 		},
 		{
 			name: "request error",
@@ -744,9 +564,12 @@ func TestHandleStackOverflowComments(t *testing.T) {
 
 				c.EXPECT().
 					DoStackOverflowCommentsRequest(gomock.Any()).
-					Return(scrapper.StackOverflowCommentsResponse{}, errors.New("network error"))
+					Return(scrapper.StackOverflowCommentsResponse{}, errors.New("error"))
 
 				return c
+			},
+			repo: func() LinkRepository {
+				return mocks.NewMockLinkRepository(ctrl)
 			},
 			expectedResult: time.Unix(5000, 0).UTC(),
 		},
@@ -757,6 +580,7 @@ func TestHandleStackOverflowComments(t *testing.T) {
 			r := LinksRequester{
 				Client:     tt.client(),
 				BaseLogger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+				Repo:       tt.repo(),
 			}
 
 			result := r.handleStackOverflowComments(tt.soLink, tt.linkInfo)
@@ -764,6 +588,7 @@ func TestHandleStackOverflowComments(t *testing.T) {
 		})
 	}
 }
+
 func TestHandleStackOverflowQuestion(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -773,11 +598,13 @@ func TestHandleStackOverflowQuestion(t *testing.T) {
 		linkInfo       pkg.LinkInfo
 		soLink         scrapper.StackOverflowLink
 		client         func() NetworkClient
+		repo           func() LinkRepository
 		expectedResult time.Time
 	}{
 		{
 			name: "success",
 			linkInfo: pkg.LinkInfo{
+				Link:           "https://stackoverflow.com/2.3/questions/123",
 				LastUpdateTime: time.Unix(1000, 0).UTC(),
 			},
 			soLink: scrapper.StackOverflowLink{ID: "123"},
@@ -794,7 +621,19 @@ func TestHandleStackOverflowQuestion(t *testing.T) {
 						},
 					}, nil)
 
+				c.EXPECT().
+					SendLinkUpdate(pkg.LinkUpdate{Description: "Question updated:",
+						TgChatIDs: []int64{1, 2},
+						URL:       "https://stackoverflow.com/2.3/questions/123"},
+					).Return(nil)
+
 				return c
+			},
+
+			repo: func() LinkRepository {
+				repo := mocks.NewMockLinkRepository(ctrl)
+				repo.EXPECT().GetChatIDsByLink(gomock.Any(), "https://stackoverflow.com/2.3/questions/123").Return([]int64{1, 2}, nil)
+				return repo
 			},
 			expectedResult: time.Unix(4000, 0).UTC(),
 		},
@@ -813,6 +652,9 @@ func TestHandleStackOverflowQuestion(t *testing.T) {
 
 				return c
 			},
+			repo: func() LinkRepository {
+				return mocks.NewMockLinkRepository(ctrl)
+			},
 			expectedResult: time.Unix(6000, 0).UTC(),
 		},
 	}
@@ -821,6 +663,7 @@ func TestHandleStackOverflowQuestion(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			r := LinksRequester{
 				Client:     tt.client(),
+				Repo:       tt.repo(),
 				BaseLogger: slog.New(slog.NewTextHandler(io.Discard, nil)),
 			}
 

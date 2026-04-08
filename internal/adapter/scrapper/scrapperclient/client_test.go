@@ -425,7 +425,7 @@ func TestDoStackOverflowCommentsRequestSuccess(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Len(t, resp.Items, 1)
-	assert.Equal(t, int64(1720000000), resp.Items[0].LastActivityDate)
+	assert.Equal(t, int64(1710000000), resp.Items[0].CreationDate)
 	assert.Equal(t, "test comment", resp.Items[0].Body)
 	assert.Equal(t, "comment_user", resp.Items[0].Owner.DisplayName)
 }
