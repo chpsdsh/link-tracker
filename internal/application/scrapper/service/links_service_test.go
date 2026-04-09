@@ -67,7 +67,7 @@ func TestLinksService_AddChatID(t *testing.T) {
 			}
 
 			tx.EXPECT().
-				WithTransaction(gomock.Any(), gomock.Any()).
+				Transaction(gomock.Any(), gomock.Any()).
 				DoAndReturn(func(ctx context.Context, fn func(context.Context) error) error {
 					return fn(ctx)
 				})
@@ -209,7 +209,14 @@ func TestGetLinks(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			srv := LinksService{LinkRepo: tt.linkRepo(), ChatsRepo: tt.chatRepo()}
+			tx := mocks.NewMockTransactor(ctrl)
+			tx.EXPECT().
+				TransactionWithReturn(gomock.Any(), gomock.Any()).
+				DoAndReturn(func(ctx context.Context, fn func(context.Context) (any, error)) (any, error) {
+					return fn(ctx)
+				})
+
+			srv := LinksService{LinkRepo: tt.linkRepo(), ChatsRepo: tt.chatRepo(), Transactor: tx}
 			links, err := srv.GetLinks(context.Background(), tt.chatID)
 			require.ErrorIs(t, err, tt.expectedErr)
 			require.Equal(t, tt.expectedLinks, links)
@@ -246,7 +253,7 @@ func TestAddLink(t *testing.T) {
 			tx: func() Transactor {
 				tx := mocks.NewMockTransactor(ctrl)
 				tx.EXPECT().
-					WithTransaction(gomock.Any(), gomock.Any()).
+					Transaction(gomock.Any(), gomock.Any()).
 					DoAndReturn(func(ctx context.Context, fn func(context.Context) error) error {
 						return fn(ctx)
 					})
@@ -270,7 +277,7 @@ func TestAddLink(t *testing.T) {
 			tx: func() Transactor {
 				tx := mocks.NewMockTransactor(ctrl)
 				tx.EXPECT().
-					WithTransaction(gomock.Any(), gomock.Any()).
+					Transaction(gomock.Any(), gomock.Any()).
 					DoAndReturn(func(ctx context.Context, fn func(context.Context) error) error {
 						return fn(ctx)
 					})
@@ -436,9 +443,17 @@ func TestDeleteLink(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			tx := mocks.NewMockTransactor(ctrl)
+			tx.EXPECT().
+				TransactionWithReturn(gomock.Any(), gomock.Any()).
+				DoAndReturn(func(ctx context.Context, fn func(context.Context) (any, error)) (any, error) {
+					return fn(ctx)
+				})
+
 			srv := LinksService{
-				LinkRepo:  tt.linkRepo(),
-				ChatsRepo: tt.chatRepo(),
+				LinkRepo:   tt.linkRepo(),
+				ChatsRepo:  tt.chatRepo(),
+				Transactor: tx,
 			}
 
 			link, err := srv.DeleteLink(context.Background(), tt.chatID, tt.link)

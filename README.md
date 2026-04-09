@@ -9,9 +9,12 @@
  - SCRAPPER_SERVER_ADDRESS=http://localhost:8081
  - WITH_TELEGRAM_API=true (false нужно ТОЛЬКО для интеграциионных тестов)
 2) **Создать файл "scrapper.env" с полями:**
- - GITHUB_API_KEY=token
- - STACKOVERFLOW_API_KEY=token
+ -  GITHUB_API_KEY=token
+ -  STACKOVERFLOW_API_KEY=token
  -  BOT_SERVER_ADDRESS=http://localhost:8080
+ -  SCRAPPER_TIME_INTERVAL=10
+ -  LINKS_BATCH_SIZE=20
+ -  SCHEDULER_NUM_WORKERS=5
  -  ASSET_TYPE=SQL/BUILDER
  -  POSTGRES_HOST=localhost
  -  POSTGRES_PORT=5432

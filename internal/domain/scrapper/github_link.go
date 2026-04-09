@@ -2,43 +2,39 @@ package scrapper
 
 import "fmt"
 
-type GithubLinkType int
+type GithubLinkOption int
 
 const (
-	GithubRepo GithubLinkType = iota
-	GithubIssue
-	GithubPull
+	GithubLinkOptionRepository GithubLinkOption = iota
+	GithubLinkOptionIssue
+	GithubLinkPullRequest
 )
 
 type GithubLink struct {
-	Type  GithubLinkType
 	Owner string
 	Repo  string
-	ID    string
 }
 
-func (g GithubLink) ConvertToURL() string {
+func (g GithubLink) ConvertToURL(option GithubLinkOption) string {
 	var url string
-	switch g.Type {
-	case GithubRepo:
+	switch option {
+	case GithubLinkOptionRepository:
 		url = fmt.Sprintf(
 			"https://api.github.com/repos/%s/%s",
 			g.Owner,
 			g.Repo,
 		)
-	case GithubIssue:
+	case GithubLinkOptionIssue:
 		url = fmt.Sprintf(
-			"https://api.github.com/repos/%s/%s/issues/%s",
+			"https://api.github.com/repos/%s/%s/issues",
 			g.Owner,
 			g.Repo,
-			g.ID,
 		)
-	case GithubPull:
+	case GithubLinkPullRequest:
 		url = fmt.Sprintf(
-			"https://api.github.com/repos/%s/%s/pulls/%s",
+			"https://api.github.com/repos/%s/%s/pulls",
 			g.Owner,
 			g.Repo,
-			g.ID,
 		)
 	}
 	return url

@@ -182,14 +182,14 @@ func (r *LinkRepository) GetUserLinks(ctx context.Context, chatID int64) ([]pkg.
 	return links, nil
 }
 
-func (r *LinkRepository) GetAllLinks(ctx context.Context, host string, limit int, offset int) ([]pkg.LinkInfo, error) {
+func (r *LinkRepository) GetAllLinks(ctx context.Context, limit int, offset int) ([]pkg.LinkInfo, error) {
 	q := database.GetQuerier(ctx, r.db)
 	rows, err := q.Query(ctx, `
-	select url, updated_at from links 
-	where url like '%' || $1 || '%'
+	select url, updated_at from links
+	where id > $1
     order by id
-    limit $2 offset $3
-	`, host, limit, offset)
+    limit $2
+	`, offset, limit)
 	if err != nil {
 		return nil, fmt.Errorf("error query get all links: %w", err)
 	}

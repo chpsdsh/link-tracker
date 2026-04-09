@@ -199,12 +199,11 @@ func (r *LinkRepository) DeleteLink(ctx context.Context, chatID int64, url strin
 		Where(squirrel.Expr("id = ("+subQuery+")", subArgs...)).
 		Where(squirrel.Expr("not exists ("+notExistsQuery+")", notExistsArgs...)).
 		ToSql()
-
 	if err != nil {
 		return pkg.LinkInfo{}, fmt.Errorf("build delete links: %w", err)
 	}
 
-	_, err = q.Exec(ctx, query, args...)
+	_, err = q.Exec(ctx, query, args[0])
 	if err != nil {
 		return pkg.LinkInfo{}, fmt.Errorf("delete links: %w", err)
 	}
@@ -254,16 +253,15 @@ func (r *LinkRepository) GetUserLinks(ctx context.Context, chatID int64) ([]pkg.
 	return links, nil
 }
 
-func (r *LinkRepository) GetAllLinks(ctx context.Context, host string, limit int, offset int) ([]pkg.LinkInfo, error) {
+func (r *LinkRepository) GetAllLinks(ctx context.Context, limit int, offset int) ([]pkg.LinkInfo, error) {
 	q := database.GetQuerier(ctx, r.db)
 
 	query, args, err := r.builder.
 		Select("url", "updated_at").
 		From("links").
-		Where(squirrel.Expr("url like '%' || ? || '%'", host)).
+		Where(squirrel.Gt{"id": offset}).
 		OrderBy("id").
 		Limit(uint64(limit)).
-		Offset(uint64(offset)).
 		ToSql()
 
 	if err != nil {

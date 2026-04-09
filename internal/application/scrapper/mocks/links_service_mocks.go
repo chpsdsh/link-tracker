@@ -66,18 +66,18 @@ func (mr *MockLinkRepositoryMockRecorder) DeleteLink(ctx, chatID, url interface{
 }
 
 // GetAllLinks mocks base method.
-func (m *MockLinkRepository) GetAllLinks(ctx context.Context, host string, limit, offset int) ([]pkg.LinkInfo, error) {
+func (m *MockLinkRepository) GetAllLinks(ctx context.Context, limit, offset int) ([]pkg.LinkInfo, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetAllLinks", ctx, host, limit, offset)
+	ret := m.ctrl.Call(m, "GetAllLinks", ctx, limit, offset)
 	ret0, _ := ret[0].([]pkg.LinkInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetAllLinks indicates an expected call of GetAllLinks.
-func (mr *MockLinkRepositoryMockRecorder) GetAllLinks(ctx, host, limit, offset interface{}) *gomock.Call {
+func (mr *MockLinkRepositoryMockRecorder) GetAllLinks(ctx, limit, offset interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAllLinks", reflect.TypeOf((*MockLinkRepository)(nil).GetAllLinks), ctx, host, limit, offset)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAllLinks", reflect.TypeOf((*MockLinkRepository)(nil).GetAllLinks), ctx, limit, offset)
 }
 
 // GetChatIDsByLink mocks base method.
@@ -228,16 +228,31 @@ func (m *MockTransactor) EXPECT() *MockTransactorMockRecorder {
 	return m.recorder
 }
 
-// WithTransaction mocks base method.
-func (m *MockTransactor) WithTransaction(ctx context.Context, txFunc func(context.Context) error) error {
+// Transaction mocks base method.
+func (m *MockTransactor) Transaction(ctx context.Context, txFunc func(context.Context) error) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "WithTransaction", ctx, txFunc)
+	ret := m.ctrl.Call(m, "Transaction", ctx, txFunc)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// WithTransaction indicates an expected call of WithTransaction.
-func (mr *MockTransactorMockRecorder) WithTransaction(ctx, txFunc interface{}) *gomock.Call {
+// Transaction indicates an expected call of Transaction.
+func (mr *MockTransactorMockRecorder) Transaction(ctx, txFunc interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WithTransaction", reflect.TypeOf((*MockTransactor)(nil).WithTransaction), ctx, txFunc)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Transaction", reflect.TypeOf((*MockTransactor)(nil).Transaction), ctx, txFunc)
+}
+
+// TransactionWithReturn mocks base method.
+func (m *MockTransactor) TransactionWithReturn(ctx context.Context, txFunc func(context.Context) (any, error)) (any, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TransactionWithReturn", ctx, txFunc)
+	ret0, _ := ret[0].(any)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// TransactionWithReturn indicates an expected call of TransactionWithReturn.
+func (mr *MockTransactorMockRecorder) TransactionWithReturn(ctx, txFunc interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TransactionWithReturn", reflect.TypeOf((*MockTransactor)(nil).TransactionWithReturn), ctx, txFunc)
 }

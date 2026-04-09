@@ -1,6 +1,6 @@
 package scrapper
 
-type StackOverflowUpdate struct {
+type StackOverflowQuestionResponse struct {
 	Items []struct {
 		LastActivityDate int64 `json:"last_activity_date"`
 	} `json:"items"`

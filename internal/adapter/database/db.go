@@ -97,7 +97,7 @@ func (db *DB) CloseConnectionPool() {
 	db.db.Close()
 }
 
-func (db *DB) WithTransaction(ctx context.Context, txFunc func(ctx context.Context) error) error {
+func (db *DB) Transaction(ctx context.Context, txFunc func(ctx context.Context) error) error {
 	tx, err := db.db.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("begin transaction: %w", err)
@@ -118,6 +118,29 @@ func (db *DB) WithTransaction(ctx context.Context, txFunc func(ctx context.Conte
 		return fmt.Errorf("commit transaction: %w", err)
 	}
 	return nil
+}
+
+func (db *DB) TransactionWithReturn(ctx context.Context, txFunc func(ctx context.Context) (any, error)) (any, error) {
+	tx, err := db.db.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("begin transaction: %w", err)
+	}
+
+	defer func() {
+		if err != nil {
+			err = errors.Join(err, tx.Rollback(ctx))
+		}
+	}()
+
+	value, err := txFunc(injectTx(ctx, tx))
+	if err != nil {
+		return nil, fmt.Errorf("get transaction from ctx: %w", err)
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("commit transaction: %w", err)
+	}
+	return value, nil
 }
 
 func migrate(cfg *pgx.ConnConfig) error {

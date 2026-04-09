@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -67,14 +68,24 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
-	linksScheduler := scheduler.LinksRequester{
-		Client:     scrapperclient.Client{Client: client, Config: conf},
-		Scheduler:  sched,
-		Repo:       linkRepo,
-		BaseLogger: baseLogger,
-	}
+	linksRequester := service.NewLinkRequester(
+		scrapperclient.Client{Client: client, Config: conf},
+		linkRepo,
+		conf.NumWorkers,
+		conf.BatchSize,
+		baseLogger,
+	)
 
-	linksScheduler.StartLinkRequester()
+	wg := &sync.WaitGroup{}
+	linksRequester.Start(ctx, wg)
+
+	go func() {
+		wg.Wait()
+		close(linksRequester.LinksPool.LinksChan)
+	}()
+
+	scrapperScheduler := scheduler.ScrapperScheduler{Scheduler: sched, LinksRequester: linksRequester}
+	scrapperScheduler.StartScrapperScheduler()
 
 	scrapperHandler := service.LinksService{
 		LinkRepo:   linkRepo,
@@ -96,13 +107,17 @@ func main() {
 	}()
 
 	<-ctx.Done()
+	shutdown(server, baseLogger, sched, db)
+}
+
+func shutdown(server *http.Server, baseLogger *slog.Logger, sched gocron.Scheduler, db *database.DB) {
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), shutdownDuration)
 	defer shutdownCancel()
-	if err = server.Shutdown(shutdownCtx); err != nil {
+	if err := server.Shutdown(shutdownCtx); err != nil {
 		baseLogger.Error("error shutting down scrapper http server", slog.String("error", err.Error()))
 	}
 
-	if err = sched.Shutdown(); err != nil {
+	if err := sched.Shutdown(); err != nil {
 		baseLogger.Error("error shutting down scheduler", slog.String("error", err.Error()))
 	}
 

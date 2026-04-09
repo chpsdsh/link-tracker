@@ -17,7 +17,7 @@ type LinkRepository interface {
 	AddLink(ctx context.Context, chatID int64, link pkg.LinkInfo) error
 	DeleteLink(ctx context.Context, chatID int64, url string) (pkg.LinkInfo, error)
 	GetUserLinks(ctx context.Context, chatID int64) ([]pkg.LinkInfo, error)
-	GetAllLinks(ctx context.Context, host string, limit int, offset int) ([]pkg.LinkInfo, error)
+	GetAllLinks(ctx context.Context, limit int, offset int) ([]pkg.LinkInfo, error)
 	UpdateLinksTime(ctx context.Context, newTime time.Time, url string) error
 	GetChatIDsByLink(ctx context.Context, link string) ([]int64, error)
 	LinkExists(ctx context.Context, url string) (bool, error)
@@ -30,7 +30,8 @@ type ChatRepository interface {
 }
 
 type Transactor interface {
-	WithTransaction(ctx context.Context, txFunc func(ctx context.Context) error) error
+	Transaction(ctx context.Context, txFunc func(ctx context.Context) error) error
+	TransactionWithReturn(ctx context.Context, txFunc func(ctx context.Context) (any, error)) (any, error)
 }
 
 type LinksService struct {
@@ -41,7 +42,7 @@ type LinksService struct {
 }
 
 func (h LinksService) AddChatID(ctx context.Context, chatID int64) error {
-	return h.Transactor.WithTransaction(ctx, func(ctx context.Context) error { //nolint:wrapcheck// no need to wrap function call
+	return h.Transactor.Transaction(ctx, func(ctx context.Context) error { //nolint:wrapcheck// no need to wrap function call
 		ctx, cancel := context.WithTimeout(ctx, requestTimeout)
 		defer cancel()
 
@@ -62,6 +63,8 @@ func (h LinksService) AddChatID(ctx context.Context, chatID int64) error {
 }
 
 func (h LinksService) DeleteChat(ctx context.Context, chatID int64) error {
+	ctx, cancel := context.WithTimeout(ctx, requestTimeout)
+	defer cancel()
 	if err := h.ChatsRepo.DeleteChat(ctx, chatID); err != nil {
 		return errors.Join(err, scrapper.ErrInternalError)
 	}
@@ -69,26 +72,38 @@ func (h LinksService) DeleteChat(ctx context.Context, chatID int64) error {
 }
 
 func (h LinksService) GetLinks(ctx context.Context, chatID int64) ([]pkg.LinkInfo, error) {
-	ctx, cancel := context.WithTimeout(ctx, requestTimeout)
-	defer cancel()
-	exists, err := h.ChatsRepo.ChatExists(ctx, chatID)
+	links, err := h.Transactor.TransactionWithReturn(ctx, func(ctx context.Context) (any, error) {
+		ctx, cancel := context.WithTimeout(ctx, requestTimeout)
+		defer cancel()
+		exists, err := h.ChatsRepo.ChatExists(ctx, chatID)
+		if err != nil {
+			return nil, errors.Join(err, scrapper.ErrInternalError)
+		}
+		if !exists {
+			return nil, scrapper.ErrChatNotFound
+		}
+
+		links, err := h.LinkRepo.GetUserLinks(ctx, chatID)
+		if err != nil {
+			return nil, errors.Join(err, scrapper.ErrInternalError)
+		}
+		return links, nil
+	})
+
 	if err != nil {
 		return nil, errors.Join(err, scrapper.ErrInternalError)
 	}
-	if !exists {
-		return nil, scrapper.ErrChatNotFound
+
+	linksArr, ok := links.([]pkg.LinkInfo)
+	if !ok {
+		return nil, errors.Join(scrapper.ErrInternalError)
 	}
 
-	links, err := h.LinkRepo.GetUserLinks(ctx, chatID)
-	if err != nil {
-		return nil, errors.Join(err, scrapper.ErrInternalError)
-	}
-
-	return links, nil
+	return linksArr, nil
 }
 
 func (h LinksService) AddLink(ctx context.Context, chatID int64, linkRequest pkg.AddLinkRequest) error {
-	return h.Transactor.WithTransaction(ctx, func(ctx context.Context) error { //nolint:wrapcheck// no need to wrap function call
+	return h.Transactor.Transaction(ctx, func(ctx context.Context) error { //nolint:wrapcheck// no need to wrap function call
 		ctx, cancel := context.WithTimeout(ctx, requestTimeout)
 		defer cancel()
 		trackedLink := pkg.LinkInfo{Link: linkRequest.Link, Tags: linkRequest.Tags}
@@ -100,27 +115,37 @@ func (h LinksService) AddLink(ctx context.Context, chatID int64, linkRequest pkg
 }
 
 func (h LinksService) DeleteLink(ctx context.Context, chatID int64, link string) (pkg.LinkInfo, error) {
-	ctx, cancel := context.WithTimeout(ctx, requestTimeout)
-	defer cancel()
-	exists, err := h.ChatsRepo.ChatExists(ctx, chatID)
-	if err != nil {
-		return pkg.LinkInfo{}, errors.Join(err, scrapper.ErrInternalError)
-	}
-	if !exists {
-		return pkg.LinkInfo{}, scrapper.ErrChatNotFound
-	}
+	linkRes, err := h.Transactor.TransactionWithReturn(ctx, func(ctx context.Context) (any, error) {
+		ctx, cancel := context.WithTimeout(ctx, requestTimeout)
+		defer cancel()
+		exists, err := h.ChatsRepo.ChatExists(ctx, chatID)
+		if err != nil {
+			return pkg.LinkInfo{}, errors.Join(err, scrapper.ErrInternalError)
+		}
+		if !exists {
+			return pkg.LinkInfo{}, scrapper.ErrChatNotFound
+		}
 
-	exists, err = h.LinkRepo.LinkExists(ctx, link)
-	if err != nil {
-		return pkg.LinkInfo{}, errors.Join(err, scrapper.ErrInternalError)
-	}
-	if !exists {
-		return pkg.LinkInfo{}, scrapper.ErrLinkNotExists
-	}
+		exists, err = h.LinkRepo.LinkExists(ctx, link)
+		if err != nil {
+			return pkg.LinkInfo{}, errors.Join(err, scrapper.ErrInternalError)
+		}
+		if !exists {
+			return pkg.LinkInfo{}, scrapper.ErrLinkNotExists
+		}
 
-	linkInfo, err := h.LinkRepo.DeleteLink(ctx, chatID, link)
+		linkInfo, err := h.LinkRepo.DeleteLink(ctx, chatID, link)
+		if err != nil {
+			return pkg.LinkInfo{}, errors.Join(err, scrapper.ErrInternalError)
+		}
+		return linkInfo, nil
+	})
 	if err != nil {
 		return pkg.LinkInfo{}, errors.Join(err, scrapper.ErrInternalError)
+	}
+	linkInfo, ok := linkRes.(pkg.LinkInfo)
+	if !ok {
+		return pkg.LinkInfo{}, scrapper.ErrInternalError
 	}
 	return linkInfo, nil
 }
