@@ -105,7 +105,8 @@ services:
     command: |
       "
       kafka-topics --bootstrap-server kafka1:9092 --list
-      kafka-topics --bootstrap-server kafka1:9092 --create --if-not-exists --topic scrapper-notifications --replication-factor 3 --partitions 3
+      kafka-topics --bootstrap-server kafka1:9092 --create --if-not-exists --topic notification-topic --replication-factor 3 --partitions 3
+      kafka-topics --bootstrap-server kafka1:9092 --create --if-not-exists --topic notification-dlq --replication-factor 3 --partitions 3      
       "
 
   kafka-ui:

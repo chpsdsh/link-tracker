@@ -1,4 +1,4 @@
-package kafka
+package producer
 
 import (
 	"context"
@@ -19,7 +19,7 @@ const (
 	producerFLushFrequency = 500 * time.Millisecond
 )
 
-type Producer struct {
+type KafkaProducer struct {
 	producer          sarama.AsyncProducer
 	NotificationTopic string
 	wg                sync.WaitGroup
@@ -28,7 +28,7 @@ type Producer struct {
 	linkUpdatesChan   chan pkg.KafkaLinkUpdate
 }
 
-func NewKafkaProducer(conf config.Config, logger *slog.Logger, linkUpdatesChan chan pkg.KafkaLinkUpdate) (*Producer, error) {
+func NewKafkaProducer(conf config.Config, logger *slog.Logger, linkUpdatesChan chan pkg.KafkaLinkUpdate) (*KafkaProducer, error) {
 	saramaConf := sarama.NewConfig()
 
 	saramaConf.Version = sarama.V3_6_0_0
@@ -40,10 +40,10 @@ func NewKafkaProducer(conf config.Config, logger *slog.Logger, linkUpdatesChan c
 
 	producer, err := sarama.NewAsyncProducer(conf.KafkaConfig.Brokers, saramaConf)
 	if err != nil {
-		return &Producer{}, fmt.Errorf("failed to create Kafka producer: %w", err)
+		return &KafkaProducer{}, fmt.Errorf("failed to create Kafka producer: %w", err)
 	}
 
-	return &Producer{producer: producer,
+	return &KafkaProducer{producer: producer,
 		NotificationTopic: conf.KafkaConfig.NotificationsTopic,
 		linkUpdatesChan:   linkUpdatesChan,
 		wg:                sync.WaitGroup{},
@@ -51,7 +51,7 @@ func NewKafkaProducer(conf config.Config, logger *slog.Logger, linkUpdatesChan c
 		logger:            logger}, nil
 }
 
-func (p *Producer) StartProducerLoop(ctx context.Context) {
+func (p *KafkaProducer) StartProducerLoop(ctx context.Context) {
 	p.wg.Go(func() {
 		for {
 			select {
@@ -90,13 +90,13 @@ func (p *Producer) StartProducerLoop(ctx context.Context) {
 	})
 }
 
-func (p *Producer) closeProducerOnes() {
+func (p *KafkaProducer) closeProducerOnes() {
 	p.closeOnce.Do(func() {
 		p.producer.AsyncClose()
 	})
 }
 
-func (p *Producer) SendLinkUpdate(update pkg.LinkUpdate) error {
+func (p *KafkaProducer) SendLinkUpdate(update pkg.LinkUpdate) error {
 	bytes, err := json.Marshal(update)
 	if err != nil {
 		p.logger.Error("marshalling error:", slog.String("error", err.Error()))
@@ -109,6 +109,6 @@ func (p *Producer) SendLinkUpdate(update pkg.LinkUpdate) error {
 	return nil
 }
 
-func (p *Producer) Close() {
+func (p *KafkaProducer) Close() {
 	p.wg.Wait()
 }
