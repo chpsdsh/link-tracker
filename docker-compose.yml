@@ -121,6 +121,28 @@ services:
       - kafka2
       - kafka3
 
+  bot:
+    build:
+      context: .
+      dockerfile: bot.dockerfile
+    container_name: bot
+    depends_on:
+      - kafka-init
+    restart: unless-stopped
+    volumes:
+      - ./scrapper.env:/app/scrapper.env
+
+  scrapper:
+    build:
+      context: .
+      dockerfile: scrapper.dockerfile
+    container_name: scrapper
+    depends_on:
+      - kafka-init
+    restart: unless-stopped
+    volumes:
+      - ./bot.env:/app/bot.env
+
 
 volumes:
   pgdata:

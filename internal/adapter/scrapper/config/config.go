@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"strconv"
 	"time"
@@ -15,6 +16,7 @@ const (
 	scrapperTimeInterval = "SCRAPPER_TIME_INTERVAL"
 	linksBatchSize       = "LINKS_BATCH_SIZE"
 	schedulerNumWorkers  = "SCHEDULER_NUM_WORKERS"
+	updatesSendType      = "UPDATES_SEND_TYPE"
 )
 
 var (
@@ -28,6 +30,7 @@ var (
 	ErrInvalidBachSize             = errors.New(linksBatchSize + "should be integer")
 	ErrNoNumWorkers                = errors.New("scrapper num workers should be set with " + schedulerNumWorkers + " environment variable")
 	ErrInvalidNumWorkers           = errors.New(schedulerNumWorkers + "should be integer")
+	ErrNoUpdatesSendType           = errors.New("updates send type should be set with " + updatesSendType + " environment variable")
 )
 
 type AssetType int
@@ -46,6 +49,9 @@ type Config struct {
 	ScrapperInterval   time.Duration
 	BatchSize          int
 	NumWorkers         int
+	UpdatesSendType    string
+	KafkaConfig        KafkaConfig
+	PostgresConfig     PostgresConfig
 }
 
 func ParseConfig() (Config, error) {
@@ -96,6 +102,21 @@ func ParseConfig() (Config, error) {
 		return Config{}, ErrInvalidNumWorkers
 	}
 
+	updatesSendTypeStr := os.Getenv(updatesSendType)
+	if updatesSendTypeStr == "" {
+		return Config{}, ErrNoUpdatesSendType
+	}
+
+	kafkaConfig, err := ParseKafkaConfig()
+	if err != nil {
+		return Config{}, fmt.Errorf("parsing kafka config: %w", err)
+	}
+
+	postgresConfig, err := ParsePostgresConfig()
+	if err != nil {
+		return Config{}, fmt.Errorf("parsing postgres config: %w", err)
+	}
+
 	return Config{GithubToken: githubToken,
 		StackoverflowToken: stackoverflowToken,
 		BotServerAddr:      botServAddr,
@@ -103,6 +124,9 @@ func ParseConfig() (Config, error) {
 		ScrapperInterval:   time.Duration(scrapperInterval) * time.Second,
 		BatchSize:          batchSize,
 		NumWorkers:         numWorkers,
+		UpdatesSendType:    updatesSendTypeStr,
+		KafkaConfig:        kafkaConfig,
+		PostgresConfig:     postgresConfig,
 	}, nil
 
 }

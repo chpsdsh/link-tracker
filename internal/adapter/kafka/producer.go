@@ -9,7 +9,7 @@ import (
 
 	"github.com/IBM/sarama"
 	"github.com/goccy/go-json"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/kafka/config"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/config"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/pkg"
 )
 
@@ -24,10 +24,11 @@ type Producer struct {
 	NotificationTopic string
 	wg                sync.WaitGroup
 	closeOnce         sync.Once
-	logger            slog.Logger
+	logger            *slog.Logger
+	linkUpdatesChan   chan pkg.KafkaLinkUpdate
 }
 
-func NewKafkaProducer(kafkaConf config.KafkaConfig, logger slog.Logger) (Producer, error) {
+func NewKafkaProducer(conf config.Config, logger *slog.Logger, linkUpdatesChan chan pkg.KafkaLinkUpdate) (*Producer, error) {
 	saramaConf := sarama.NewConfig()
 
 	saramaConf.Version = sarama.V3_6_0_0
@@ -37,41 +38,36 @@ func NewKafkaProducer(kafkaConf config.KafkaConfig, logger slog.Logger) (Produce
 	saramaConf.Producer.Flush.Messages = producerFlushMessages
 	saramaConf.Producer.Flush.Frequency = producerFLushFrequency
 
-	producer, err := sarama.NewAsyncProducer(kafkaConf.Brokers, saramaConf)
+	producer, err := sarama.NewAsyncProducer(conf.KafkaConfig.Brokers, saramaConf)
 	if err != nil {
-		return Producer{}, fmt.Errorf("failed to create Kafka producer: %w", err)
+		return &Producer{}, fmt.Errorf("failed to create Kafka producer: %w", err)
 	}
 
-	return Producer{producer: producer,
-		NotificationTopic: kafkaConf.NotificationsTopic,
+	return &Producer{producer: producer,
+		NotificationTopic: conf.KafkaConfig.NotificationsTopic,
+		linkUpdatesChan:   linkUpdatesChan,
 		wg:                sync.WaitGroup{},
 		closeOnce:         sync.Once{},
 		logger:            logger}, nil
 }
 
-func (p *Producer) StartProducerLoop(ctx context.Context, linkUpdatesChan <-chan pkg.LinkUpdate) {
+func (p *Producer) StartProducerLoop(ctx context.Context) {
 	p.wg.Go(func() {
 		for {
 			select {
 			case <-ctx.Done():
 				p.closeProducerOnes()
 				return
-			case update, ok := <-linkUpdatesChan:
+			case update, ok := <-p.linkUpdatesChan:
 				if !ok {
 					p.closeProducerOnes()
 					return
 				}
 
-				bytes, err := json.Marshal(update)
-				if err != nil {
-					p.logger.Error("marshalling error:", slog.String("error", err.Error()))
-					continue
-				}
-
 				msg := &sarama.ProducerMessage{
 					Topic: p.NotificationTopic,
-					Key:   sarama.StringEncoder(update.URL),
-					Value: sarama.ByteEncoder(bytes),
+					Key:   sarama.StringEncoder(update.Key),
+					Value: sarama.ByteEncoder(update.Value),
 				}
 
 				select {
@@ -98,6 +94,19 @@ func (p *Producer) closeProducerOnes() {
 	p.closeOnce.Do(func() {
 		p.producer.AsyncClose()
 	})
+}
+
+func (p *Producer) SendLinkUpdate(update pkg.LinkUpdate) error {
+	bytes, err := json.Marshal(update)
+	if err != nil {
+		p.logger.Error("marshalling error:", slog.String("error", err.Error()))
+		return fmt.Errorf("marshalling error: %w", err)
+	}
+
+	linkUpdate := pkg.KafkaLinkUpdate{Key: update.URL, Value: bytes}
+
+	p.linkUpdatesChan <- linkUpdate
+	return nil
 }
 
 func (p *Producer) Close() {

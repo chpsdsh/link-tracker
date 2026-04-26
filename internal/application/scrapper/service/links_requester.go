@@ -21,23 +21,32 @@ type NetworkClient interface {
 	DoGithubRequest(url string) (scrapper.GitHubRepositoryResponse, error)
 	DoGithubIssueRequest(url string) ([]scrapper.GithubIssue, error)
 	DoGithubPullRequestRequest(url string) ([]scrapper.GithubPullRequest, error)
-	SendLinkUpdate(update pkg.LinkUpdate) error
 	DoStackOverflowQuestionRequest(url string) (scrapper.StackOverflowQuestionResponse, error)
 	DoStackOverflowAnswersRequest(url string) (scrapper.StackOverflowAnswersResponse, error)
 	DoStackOverflowCommentsRequest(url string) (scrapper.StackOverflowCommentsResponse, error)
 }
 
-type LinksRequester struct {
-	Client     NetworkClient
-	Repo       LinkRepository
-	LinksPool  LinksPool
-	BaseLogger *slog.Logger
-	BatchSize  int
+type Sender interface {
+	SendLinkUpdate(update pkg.LinkUpdate) error
 }
 
-func NewLinkRequester(client NetworkClient, repo LinkRepository, numWorkers, batchSize int, logger *slog.Logger) LinksRequester {
+type LinksRequester struct {
+	Client             NetworkClient
+	NotificationSender Sender
+	Repo               LinkRepository
+	LinksPool          LinksPool
+	BaseLogger         *slog.Logger
+	BatchSize          int
+}
+
+func NewLinkRequester(client NetworkClient, sender Sender, repo LinkRepository, numWorkers, batchSize int, logger *slog.Logger) LinksRequester {
 	workerPool := NewLinksPool(numWorkers)
-	return LinksRequester{Client: client, Repo: repo, LinksPool: workerPool, BatchSize: batchSize, BaseLogger: logger}
+	return LinksRequester{Client: client,
+		NotificationSender: sender,
+		Repo:               repo,
+		LinksPool:          workerPool,
+		BatchSize:          batchSize,
+		BaseLogger:         logger}
 }
 
 func (r LinksRequester) HandleLinks() {
@@ -305,7 +314,7 @@ func (r LinksRequester) sendUpdate(linkInfo pkg.LinkInfo, description string) {
 
 	update := pkg.LinkUpdate{Description: description, TgChatIDs: chatIDs, URL: linkInfo.Link}
 
-	if err = r.Client.SendLinkUpdate(update); err != nil {
+	if err = r.NotificationSender.SendLinkUpdate(update); err != nil {
 		r.BaseLogger.Error("error sending link update", slog.String("error", err.Error()))
 		return
 	}

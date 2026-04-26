@@ -14,6 +14,8 @@ import (
 
 	"github.com/go-co-op/gocron/v2"
 	"github.com/joho/godotenv"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/senderfactory"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/pkg"
 
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/database"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/logger"
@@ -26,10 +28,11 @@ import (
 )
 
 const (
-	envFilename        = "scrapper.env"
-	scrapperServerPort = ":8081"
-	shutdownDuration   = 10 * time.Second
-	clientTimeout      = 15 * time.Second
+	envFilename             = "scrapper.env"
+	scrapperServerPort      = ":8081"
+	shutdownDuration        = 10 * time.Second
+	clientTimeout           = 15 * time.Second
+	notificationChanBufSize = 10
 )
 
 func main() {
@@ -64,12 +67,16 @@ func main() {
 		baseLogger.Error("error creating repository", slog.String("err", err.Error()))
 		os.Exit(1)
 	}
+	updatesChan := make(chan pkg.KafkaLinkUpdate, notificationChanBufSize)
 
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
+	sender, err := senderfactory.NewSender(ctx, conf, baseLogger, updatesChan)
+
 	linksRequester := service.NewLinkRequester(
 		scrapperclient.Client{Client: client, Config: conf},
+		sender,
 		linkRepo,
 		conf.NumWorkers,
 		conf.BatchSize,
