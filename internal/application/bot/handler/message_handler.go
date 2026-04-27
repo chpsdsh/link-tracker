@@ -3,6 +3,7 @@ package handler
 
 import (
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/url"
 	"strings"
@@ -47,6 +48,10 @@ const (
 	notURLToUntrack            = "Вы ввели не ссылку, для удаления ссылки введить /untrack"
 )
 
+type TelegramBotHandler interface {
+	HandleLinkUpdate(linkUpdate pkg.LinkUpdate) error
+}
+
 type Sender interface {
 	SendMessage(chatID int64, message string) error
 }
@@ -81,12 +86,14 @@ func (h TelegramHandler) HandleUpdate(update tgbotapi.Update) {
 	}
 }
 
-func (h TelegramHandler) HandleLinkUpdate(linkUpdate pkg.LinkUpdate) {
+func (h TelegramHandler) HandleLinkUpdate(linkUpdate pkg.LinkUpdate) error {
 	for _, id := range linkUpdate.TgChatIDs {
 		if err := h.MsgSender.SendMessage(id, linkUpdate.Description+" "+linkUpdate.URL); err != nil {
 			h.BaseLogger.Error("error while sending message", slog.String("error", err.Error()))
+			return fmt.Errorf("telegram send message: %w", err)
 		}
 	}
+	return nil
 }
 
 func (h TelegramHandler) handleCommand(update tgbotapi.Update) {

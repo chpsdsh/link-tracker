@@ -23,12 +23,12 @@ const (
 func NewSender(ctx context.Context, conf config.Config, logger *slog.Logger, updatesChan chan pkg.KafkaLinkUpdate) (service.Sender, error) {
 	switch conf.UpdatesSendType {
 	case kafkaSender:
-		producer, err := producer.NewKafkaProducer(conf, logger, updatesChan)
+		notificationProducer, err := producer.NewKafkaProducer(conf, logger, updatesChan)
 		if err != nil {
 			return nil, fmt.Errorf("error creating kafka producer: %w", err)
 		}
-		producer.StartProducerLoop(ctx)
-		return producer, nil
+		notificationProducer.StartProducerLoop(ctx)
+		return notificationProducer, nil
 	case httpSender:
 		return scrapperclient.NewUpdatesClient(conf), nil
 	default:

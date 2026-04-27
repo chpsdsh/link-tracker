@@ -140,10 +140,10 @@ services:
     container_name: scrapper
     depends_on:
       - kafka-init
+      - postgres
     restart: unless-stopped
     volumes:
       - ./bot.env:/app/bot.env
-
 
 volumes:
   pgdata:

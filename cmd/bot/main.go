@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"log/slog"
 	"net/http"
 	"os"
@@ -13,9 +12,9 @@ import (
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/joho/godotenv"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/bot/receiverfactory"
 
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/bot/botclient"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/bot/botserver"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/bot/config"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/bot/telegram"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/logger"
@@ -25,10 +24,8 @@ import (
 )
 
 const (
-	envFilename      = "bot.env"
-	botServerAddr    = ":8080"
-	shutdownDuration = 10 * time.Second
-	clientTimeout    = 15 * time.Second
+	envFilename   = "bot.env"
+	clientTimeout = 15 * time.Second
 )
 
 func main() {
@@ -58,9 +55,6 @@ func main() {
 		telegramBot = telegram.Bot{BotAPI: integrationTgaAPI, BaseLogger: baseLogger}
 	}
 
-	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer cancel()
-
 	wg := &sync.WaitGroup{}
 
 	client := &http.Client{Timeout: clientTimeout}
@@ -72,30 +66,28 @@ func main() {
 
 	telegramBot.Handler = telegramHandler
 
-	updatesServer := botserver.UpdatesServer{BaseLogger: baseLogger, Handler: telegramHandler}
-	mux := http.NewServeMux()
-	h := botserver.HandlerFromMux(&updatesServer, mux)
-
-	server := &http.Server{
-		Handler: h,
-		Addr:    botServerAddr,
+	receiver, err := receiverfactory.NewReceiver(conf, telegramHandler, baseLogger)
+	if err != nil {
+		baseLogger.Error("error creating telegram receiver", slog.String("err", err.Error()))
+		os.Exit(1)
 	}
 
-	go func() {
-		if err = server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			baseLogger.Error("error starting bot http server", slog.String("err", err.Error()))
-		}
-	}()
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer cancel()
+
+	if receiverStartErr := receiver.Start(ctx); receiverStartErr != nil {
+		baseLogger.Error("error starting receiver", slog.String("err", receiverStartErr.Error()))
+		cancel()
+		os.Exit(1)
+	}
 
 	telegramBot.StartMainLoop(ctx, wg)
 
 	<-ctx.Done()
 
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownDuration)
 	defer cancel()
-	if err = server.Shutdown(shutdownCtx); err != nil {
-		baseLogger.Error("error shutting down bot http server", slog.String("err", err.Error()))
+	if shutdownErr := receiver.Shutdown(); shutdownErr != nil {
+		baseLogger.Error("shutdown error", slog.String("err", shutdownErr.Error()))
 	}
-
 	wg.Wait()
 }

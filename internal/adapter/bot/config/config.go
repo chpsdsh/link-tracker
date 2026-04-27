@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"strconv"
 )
@@ -10,14 +11,14 @@ const (
 	telegramAPIKey        = "APP_TELEGRAM_TOKEN"
 	scrapperServerAddress = "SCRAPPER_SERVER_ADDRESS"
 	withTelegramAPI       = "WITH_TELEGRAM_API"
-	updatesReceiveType    = "UPDATES_RECEIVE_TYPE"
+	updatesReceiverType   = "UPDATES_RECEIVER_TYPE"
 )
 
 var (
 	ErrNoTelegramAPIFlag    = errors.New("telegram API flag should be set up with " + withTelegramAPI + " environment variable")
 	ErrNoTelegramToken      = errors.New("telegram token should be set up with " + telegramAPIKey + " environment variable")
 	ErrNoScrapperAddress    = errors.New("scrapper server address should be set up with " + scrapperServerAddress + " environment variable")
-	ErrNoUpdatesReceiveType = errors.New("updates receive type should be set up with " + updatesReceiveType + " environment variable")
+	ErrNoUpdatesReceiveType = errors.New("updates receive type should be set up with " + updatesReceiverType + " environment variable")
 )
 
 type Config struct {
@@ -25,6 +26,7 @@ type Config struct {
 	TelegramToken         string
 	ScrapperServerAddress string
 	UpdatesReceiveType    string
+	KafkaConfig           KafkaConfig
 }
 
 func ParseConfig() (Config, error) {
@@ -44,9 +46,20 @@ func ParseConfig() (Config, error) {
 		return Config{}, ErrNoTelegramAPIFlag
 	}
 
-	updatesReceiveTypeStr := os.Getenv(updatesReceiveType)
+	updatesReceiveTypeStr := os.Getenv(updatesReceiverType)
 	if updatesReceiveTypeStr == "" {
 		return Config{}, ErrNoUpdatesReceiveType
 	}
-	return Config{TelegramToken: token, ScrapperServerAddress: scrapperAddr, WithTelegramAPI: withTgAPI}, nil
+
+	kafkaConf, err := ParseKafkaConfig()
+	if err != nil {
+		return Config{}, fmt.Errorf("parsing kafka config: %w", err)
+	}
+
+	return Config{TelegramToken: token,
+		ScrapperServerAddress: scrapperAddr,
+		WithTelegramAPI:       withTgAPI,
+		KafkaConfig:           kafkaConf,
+		UpdatesReceiveType:    updatesReceiveTypeStr,
+	}, nil
 }

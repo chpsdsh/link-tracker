@@ -16,7 +16,7 @@ import (
 const (
 	producerRetryMax       = 10
 	producerFlushMessages  = 100
-	producerFLushFrequency = 500 * time.Millisecond
+	producerFlushFrequency = 500 * time.Millisecond
 )
 
 type KafkaProducer struct {
@@ -36,7 +36,7 @@ func NewKafkaProducer(conf config.Config, logger *slog.Logger, linkUpdatesChan c
 	saramaConf.Producer.Retry.Max = producerRetryMax
 	saramaConf.Producer.RequiredAcks = sarama.WaitForAll
 	saramaConf.Producer.Flush.Messages = producerFlushMessages
-	saramaConf.Producer.Flush.Frequency = producerFLushFrequency
+	saramaConf.Producer.Flush.Frequency = producerFlushFrequency
 
 	producer, err := sarama.NewAsyncProducer(conf.KafkaConfig.Brokers, saramaConf)
 	if err != nil {

@@ -28,6 +28,7 @@ type NetworkClient interface {
 
 type Sender interface {
 	SendLinkUpdate(update pkg.LinkUpdate) error
+	Close()
 }
 
 type LinksRequester struct {

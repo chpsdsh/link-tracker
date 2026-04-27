@@ -51,3 +51,7 @@ func (c UpdatesClient) SendLinkUpdate(update pkg.LinkUpdate) error {
 		return scrapper.ErrIncorrectRequestParameters
 	}
 }
+
+func (c UpdatesClient) Close() {
+	c.Client.CloseIdleConnections()
+}

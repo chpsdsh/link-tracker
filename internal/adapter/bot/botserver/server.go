@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/bot/handler"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/pkg"
 )
 
@@ -17,16 +18,12 @@ const (
 	badRequestCode          = "BAD_REQUEST"
 )
 
-type TelegramBotHandler interface {
-	HandleLinkUpdate(linkUpdate pkg.LinkUpdate)
-}
-
-type UpdatesServer struct {
+type UpdatesRouter struct {
 	BaseLogger *slog.Logger
-	Handler    TelegramBotHandler
+	Handler    handler.TelegramHandler
 }
 
-func (u *UpdatesServer) PostUpdates(w http.ResponseWriter, r *http.Request) {
+func (u *UpdatesRouter) PostUpdates(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	defer func() { _ = r.Body.Close() }()
 	if err != nil {
@@ -48,8 +45,11 @@ func (u *UpdatesServer) PostUpdates(w http.ResponseWriter, r *http.Request) {
 	}
 
 	u.BaseLogger.Info("response ", slog.Any("update", linkUpdate))
-	u.Handler.HandleLinkUpdate(pkg.LinkUpdate{Description: *linkUpdate.Description,
-		TgChatIDs: *linkUpdate.TgChatIds, URL: *linkUpdate.Url})
+	if handlerErr := u.Handler.HandleLinkUpdate(pkg.LinkUpdate{Description: *linkUpdate.Description,
+		TgChatIDs: *linkUpdate.TgChatIds, URL: *linkUpdate.Url}); handlerErr != nil {
+		sendAPIErrorResponse(w, "handling link update:", errors.New("error sending telegram message"))
+		return
+	}
 
 	w.WriteHeader(http.StatusOK)
 }

@@ -67,12 +67,12 @@ func main() {
 		baseLogger.Error("error creating repository", slog.String("err", err.Error()))
 		os.Exit(1)
 	}
-	updatesChan := make(chan pkg.KafkaLinkUpdate, notificationChanBufSize)
 
+	notificationsChan := make(chan pkg.KafkaLinkUpdate, notificationChanBufSize)
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
-	sender, err := senderfactory.NewSender(ctx, conf, baseLogger, updatesChan)
+	sender, err := senderfactory.NewSender(ctx, conf, baseLogger, notificationsChan)
 
 	linksRequester := service.NewLinkRequester(
 		scrapperclient.Client{Client: client, Config: conf},
@@ -114,10 +114,10 @@ func main() {
 	}()
 
 	<-ctx.Done()
-	shutdown(server, baseLogger, sched, db)
+	shutdown(server, baseLogger, sched, db, notificationsChan, sender)
 }
 
-func shutdown(server *http.Server, baseLogger *slog.Logger, sched gocron.Scheduler, db *database.DB) {
+func shutdown(server *http.Server, baseLogger *slog.Logger, sched gocron.Scheduler, db *database.DB, updatedChan chan pkg.KafkaLinkUpdate, sender service.Sender) {
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), shutdownDuration)
 	defer shutdownCancel()
 	if err := server.Shutdown(shutdownCtx); err != nil {
@@ -127,7 +127,8 @@ func shutdown(server *http.Server, baseLogger *slog.Logger, sched gocron.Schedul
 	if err := sched.Shutdown(); err != nil {
 		baseLogger.Error("error shutting down scheduler", slog.String("error", err.Error()))
 	}
-
+	sender.Close()
+	close(updatedChan)
 	db.CloseConnectionPool()
 }
 

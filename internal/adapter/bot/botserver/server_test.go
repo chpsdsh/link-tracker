@@ -72,7 +72,7 @@ func TestUpdatesServerPostUpdates(t *testing.T) {
 			mockHandler := mocks.NewMockTelegramBotHandler(ctrl)
 			tt.setupMock(mockHandler)
 
-			server := UpdatesServer{
+			server := UpdatesRouter{
 				BaseLogger: slog.New(slog.NewTextHandler(io.Discard, nil)),
 				Handler:    mockHandler,
 			}
