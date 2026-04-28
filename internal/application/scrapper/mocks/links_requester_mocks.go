@@ -125,8 +125,43 @@ func (mr *MockNetworkClientMockRecorder) DoStackOverflowQuestionRequest(url inte
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DoStackOverflowQuestionRequest", reflect.TypeOf((*MockNetworkClient)(nil).DoStackOverflowQuestionRequest), url)
 }
 
+// MockSender is a mock of Sender interface.
+type MockSender struct {
+	ctrl     *gomock.Controller
+	recorder *MockSenderMockRecorder
+}
+
+// MockSenderMockRecorder is the mock recorder for MockSender.
+type MockSenderMockRecorder struct {
+	mock *MockSender
+}
+
+// NewMockSender creates a new mock instance.
+func NewMockSender(ctrl *gomock.Controller) *MockSender {
+	mock := &MockSender{ctrl: ctrl}
+	mock.recorder = &MockSenderMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockSender) EXPECT() *MockSenderMockRecorder {
+	return m.recorder
+}
+
+// Close mocks base method.
+func (m *MockSender) Close() {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "Close")
+}
+
+// Close indicates an expected call of Close.
+func (mr *MockSenderMockRecorder) Close() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockSender)(nil).Close))
+}
+
 // SendLinkUpdate mocks base method.
-func (m *MockNetworkClient) SendLinkUpdate(update pkg.LinkUpdate) error {
+func (m *MockSender) SendLinkUpdate(update pkg.LinkUpdate) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SendLinkUpdate", update)
 	ret0, _ := ret[0].(error)
@@ -134,7 +169,7 @@ func (m *MockNetworkClient) SendLinkUpdate(update pkg.LinkUpdate) error {
 }
 
 // SendLinkUpdate indicates an expected call of SendLinkUpdate.
-func (mr *MockNetworkClientMockRecorder) SendLinkUpdate(update interface{}) *gomock.Call {
+func (mr *MockSenderMockRecorder) SendLinkUpdate(update interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendLinkUpdate", reflect.TypeOf((*MockNetworkClient)(nil).SendLinkUpdate), update)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendLinkUpdate", reflect.TypeOf((*MockSender)(nil).SendLinkUpdate), update)
 }

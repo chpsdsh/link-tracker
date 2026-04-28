@@ -14,7 +14,7 @@ import (
 
 type NotificationsConsumer struct {
 	notificationTopic string
-	consumerGroup     sarama.ConsumerGroup
+	consumer          sarama.ConsumerGroup
 	wg                sync.WaitGroup
 	logger            *slog.Logger
 	dlqProducer       producer.DlqProducer
@@ -30,7 +30,7 @@ func NewNotificationsConsumer(conf config.Config, logger *slog.Logger, tgHandler
 	saramaConf.Consumer.Offsets.AutoCommit.Enable = false
 	saramaConf.Consumer.Return.Errors = true
 
-	consumerGroup, err := sarama.NewConsumerGroup(conf.KafkaConfig.Brokers, conf.KafkaConfig.ConsumerGroup, saramaConf)
+	consumer, err := sarama.NewConsumerGroup(conf.KafkaConfig.Brokers, conf.KafkaConfig.ConsumerGroup, saramaConf)
 	if err != nil {
 		return nil, fmt.Errorf("creating consumer group connection: %w", err)
 	}
@@ -42,7 +42,7 @@ func NewNotificationsConsumer(conf config.Config, logger *slog.Logger, tgHandler
 
 	groupHandler := NewGroupHandler(dlqProducer, tgHandler, logger)
 
-	return &NotificationsConsumer{consumerGroup: consumerGroup,
+	return &NotificationsConsumer{consumer: consumer,
 		notificationTopic: conf.KafkaConfig.NotificationsTopic,
 		wg:                sync.WaitGroup{},
 		logger:            logger,
@@ -51,7 +51,6 @@ func NewNotificationsConsumer(conf config.Config, logger *slog.Logger, tgHandler
 }
 
 func (c *NotificationsConsumer) Start(ctx context.Context) error {
-
 	c.wg.Go(func() {
 		defer func() {
 			if closeErr := c.dlqProducer.Close(); closeErr != nil {
@@ -60,7 +59,7 @@ func (c *NotificationsConsumer) Start(ctx context.Context) error {
 		}()
 
 		for {
-			if consumeErr := c.consumerGroup.Consume(ctx, []string{c.notificationTopic}, c.groupHandler); consumeErr != nil {
+			if consumeErr := c.consumer.Consume(ctx, []string{c.notificationTopic}, c.groupHandler); consumeErr != nil {
 				c.logger.Error("error consuming", slog.String("err", consumeErr.Error()))
 				continue
 			}
@@ -75,7 +74,7 @@ func (c *NotificationsConsumer) Start(ctx context.Context) error {
 			select {
 			case <-ctx.Done():
 				return
-			case groupErr, ok := <-c.consumerGroup.Errors():
+			case groupErr, ok := <-c.consumer.Errors():
 				if !ok {
 					return
 				}
@@ -87,7 +86,7 @@ func (c *NotificationsConsumer) Start(ctx context.Context) error {
 }
 
 func (c *NotificationsConsumer) Shutdown() error {
-	if err := c.consumerGroup.Close(); err != nil {
+	if err := c.consumer.Close(); err != nil {
 		return fmt.Errorf("closing consumer group: %w", err)
 	}
 	c.wg.Wait()

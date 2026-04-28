@@ -30,7 +30,7 @@ func NewReceiver(conf config.Config, telegramHandler handler.TelegramHandler, lo
 		}
 		return notificationConsumer, nil
 	case httpReceiverType:
-		server := botserver.NewBotHttpServer(logger, telegramHandler)
+		server := botserver.NewBotHTTPServer(logger, telegramHandler)
 		return server, nil
 	}
 	return nil, fmt.Errorf("unknown receiver type: %s", conf.UpdatesReceiveType)

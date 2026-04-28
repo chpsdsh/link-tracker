@@ -40,6 +40,21 @@ const (
 	postgresUser          = "POSTGRES_USER"
 	postgresPassword      = "POSTGRES_PASSWORD"
 	postgresDatabase      = "POSTGRES_DB"
+	updatesSendTypeEnv    = "UPDATES_SEND_TYPE"
+	updatesReceiveTypeEnv = "UPDATES_RECEIVER_TYPE"
+	kafkaConsumerGroupEnv = "KAFKA_CONSUMER_GROUP"
+	kafkaUserEnv          = "KAFKA_USER"
+	kafkaPasswordEnv      = "KAFKA_PASSWORD"
+	kafkaTopicEnv         = "KAFKA_TOPIC"
+	kafkaBrokersEnv       = "KAFKA_BROKERS"
+	kafkaDLQTopicEnv      = "KAFKA_DLQ_TOPIC"
+	updatesSendType       = "http"
+	kafkaUser             = "user1"
+	kafkaPassword         = "user1-secret"
+	kafkaTopic            = "notification-topic"
+	kafkaDLQTopic         = "notification-dlq-topic"
+	kafkaConsumerGroup    = "kafka-consumer-group"
+	kafkaBrokers          = "kafka1:9092,kafka2:9092,kafka3:9092"
 )
 
 type Suite struct {
@@ -118,6 +133,13 @@ func (s *Suite) setupBot(ctx context.Context) {
 			botAPIFlag:            withTelegramAPI,
 			telegramAPIKey:        APIToken,
 			scrapperServerAddress: scrapperServerAddr,
+			updatesReceiveTypeEnv: updatesSendType,
+			kafkaUserEnv:          kafkaUser,
+			kafkaPasswordEnv:      kafkaPassword,
+			kafkaTopicEnv:         kafkaTopic,
+			kafkaDLQTopicEnv:      kafkaDLQTopic,
+			kafkaConsumerGroupEnv: kafkaConsumerGroup,
+			kafkaBrokersEnv:       kafkaBrokers,
 		},
 		Networks: []string{s.network.Name},
 		NetworkAliases: map[string][]string{
@@ -145,15 +167,23 @@ func (s *Suite) setupScrapper(ctx context.Context) {
 		},
 		ExposedPorts: []string{scrapperPort},
 		Env: map[string]string{
-			githubAPIKey:        APIToken,
-			stackoverflowAPIKey: APIToken,
-			botServerAddress:    botServerAddr,
-			assetType:           assetTypeBuilder,
-			postgresHost:        dbHost,
-			postgresPort:        dbPort,
-			postgresUser:        dbUser,
-			postgresPassword:    dbPassword,
-			postgresDatabase:    dbName,
+			githubAPIKey:             APIToken,
+			stackoverflowAPIKey:      APIToken,
+			botServerAddress:         botServerAddr,
+			assetType:                assetTypeBuilder,
+			"SCRAPPER_TIME_INTERVAL": "10",
+			"LINKS_BATCH_SIZE":       "20",
+			"SCHEDULER_NUM_WORKERS":  "5",
+			postgresHost:             dbHost,
+			postgresPort:             dbPort,
+			postgresUser:             dbUser,
+			postgresPassword:         dbPassword,
+			postgresDatabase:         dbName,
+			updatesSendTypeEnv:       updatesSendType,
+			kafkaUserEnv:             kafkaUser,
+			kafkaPasswordEnv:         kafkaPassword,
+			kafkaTopicEnv:            kafkaTopic,
+			kafkaBrokersEnv:          kafkaBrokers,
 		},
 		Networks: []string{s.network.Name},
 		NetworkAliases: map[string][]string{

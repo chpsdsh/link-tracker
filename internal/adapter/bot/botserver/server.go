@@ -1,4 +1,4 @@
-//go:generate mockgen -source server.go -destination=../mocks/server_mocks.go -package=mocks
+//go:generate mockgen -destination=../mocks/server_mocks.go -package=mocks gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/bot/handler TelegramBotHandler
 package botserver
 
 import (
@@ -20,7 +20,7 @@ const (
 
 type UpdatesRouter struct {
 	BaseLogger *slog.Logger
-	Handler    handler.TelegramHandler
+	Handler    handler.TelegramBotHandler
 }
 
 func (u *UpdatesRouter) PostUpdates(w http.ResponseWriter, r *http.Request) {

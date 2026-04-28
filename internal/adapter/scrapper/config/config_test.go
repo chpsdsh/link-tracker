@@ -16,6 +16,7 @@ func TestParseConfig(t *testing.T) {
 		stackToken      string
 		botServerAddr   string
 		configAssetType string
+		updateSendType  string
 
 		interval   string
 		batchSize  string
@@ -25,6 +26,7 @@ func TestParseConfig(t *testing.T) {
 		expectedErr error
 	}{
 		{
+
 			name:            "success",
 			githubToken:     "github_token",
 			stackToken:      "stack_token",
@@ -33,6 +35,7 @@ func TestParseConfig(t *testing.T) {
 			interval:        "10",
 			batchSize:       "100",
 			numWorkers:      "4",
+			updateSendType:  "http",
 			expectedCfg: Config{
 				GithubToken:        "github_token",
 				StackoverflowToken: "stack_token",
@@ -41,6 +44,20 @@ func TestParseConfig(t *testing.T) {
 				ScrapperInterval:   10 * time.Second,
 				BatchSize:          100,
 				NumWorkers:         4,
+				UpdatesSendType:    "http",
+				KafkaConfig: KafkaConfig{
+					Brokers:            []string{"localhost:9092"},
+					NotificationsTopic: "topic",
+					User:               "user",
+					Password:           "pass",
+				},
+				PostgresConfig: PostgresConfig{
+					Host:     "localhost",
+					Port:     "5432",
+					User:     "user",
+					Password: "pass",
+					DBName:   "db",
+				},
 			},
 			expectedErr: nil,
 		},
@@ -122,7 +139,18 @@ func TestParseConfig(t *testing.T) {
 			t.Setenv(scrapperTimeInterval, tt.interval)
 			t.Setenv(linksBatchSize, tt.batchSize)
 			t.Setenv(schedulerNumWorkers, tt.numWorkers)
+			t.Setenv(updatesSendType, tt.updateSendType)
 
+			t.Setenv(kafkaUser, "user")
+			t.Setenv(kafkaPassword, "pass")
+			t.Setenv(kafkaTopic, "topic")
+			t.Setenv(kafkaBrokers, "localhost:9092")
+
+			t.Setenv(postgresHost, "localhost")
+			t.Setenv(postgresPort, "5432")
+			t.Setenv(postgresUser, "user")
+			t.Setenv(postgresPassword, "pass")
+			t.Setenv(postgresDatabaseName, "db")
 			cfg, err := ParseConfig()
 
 			if tt.expectedErr != nil {

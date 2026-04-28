@@ -27,7 +27,7 @@ func TestLinksRequester_SendUpdate(t *testing.T) {
 		linkInfo pkg.LinkInfo
 
 		linkRepo func() LinkRepository
-		client   func() NetworkClient
+		client   func() Sender
 	}{
 		{
 			name: "success",
@@ -44,8 +44,8 @@ func TestLinksRequester_SendUpdate(t *testing.T) {
 
 				return repo
 			},
-			client: func() NetworkClient {
-				client := mocks.NewMockNetworkClient(ctrl)
+			client: func() Sender {
+				client := mocks.NewMockSender(ctrl)
 
 				client.EXPECT().
 					SendLinkUpdate(pkg.LinkUpdate{
@@ -74,8 +74,8 @@ func TestLinksRequester_SendUpdate(t *testing.T) {
 
 				return repo
 			},
-			client: func() NetworkClient {
-				return mocks.NewMockNetworkClient(ctrl)
+			client: func() Sender {
+				return mocks.NewMockSender(ctrl)
 			},
 		},
 		{
@@ -93,8 +93,8 @@ func TestLinksRequester_SendUpdate(t *testing.T) {
 
 				return repo
 			},
-			client: func() NetworkClient {
-				return mocks.NewMockNetworkClient(ctrl)
+			client: func() Sender {
+				return mocks.NewMockSender(ctrl)
 			},
 		},
 		{
@@ -112,8 +112,8 @@ func TestLinksRequester_SendUpdate(t *testing.T) {
 
 				return repo
 			},
-			client: func() NetworkClient {
-				client := mocks.NewMockNetworkClient(ctrl)
+			client: func() Sender {
+				client := mocks.NewMockSender(ctrl)
 
 				client.EXPECT().
 					SendLinkUpdate(pkg.LinkUpdate{Description: "Ссылка обновлена", TgChatIDs: []int64{1}, URL: "https://github.com/golang/go"}).
@@ -127,9 +127,9 @@ func TestLinksRequester_SendUpdate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(_ *testing.T) {
 			r := LinksRequester{
-				Repo:       tt.linkRepo(),
-				Client:     tt.client(),
-				BaseLogger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+				Repo:               tt.linkRepo(),
+				NotificationSender: tt.client(),
+				BaseLogger:         slog.New(slog.NewTextHandler(io.Discard, nil)),
 			}
 
 			r.sendUpdate(tt.linkInfo, "Ссылка обновлена")
@@ -146,6 +146,7 @@ func TestHandleIssueUpdates(t *testing.T) {
 		gitLink        scrapper.GithubLink
 		client         func() NetworkClient
 		repo           func() LinkRepository
+		sender         func() Sender
 		expectedResult time.Time
 	}{
 		{
@@ -166,7 +167,11 @@ func TestHandleIssueUpdates(t *testing.T) {
 						UpdatedAt: time.Date(2026, 3, 11, 10, 0, 0, 0, time.UTC).UTC(),
 					}}, nil)
 
-				client.EXPECT().
+				return client
+			},
+			sender: func() Sender {
+				sender := mocks.NewMockSender(ctrl)
+				sender.EXPECT().
 					SendLinkUpdate(pkg.LinkUpdate{Description: utils.FormatIssue(scrapper.GithubIssue{
 						Title:     "Issue",
 						Body:      "New commit",
@@ -176,7 +181,7 @@ func TestHandleIssueUpdates(t *testing.T) {
 						TgChatIDs: []int64{1, 2},
 						URL:       "https://github.com/golang/go"},
 					).Return(nil)
-				return client
+				return sender
 			},
 
 			repo: func() LinkRepository {
@@ -204,15 +209,19 @@ func TestHandleIssueUpdates(t *testing.T) {
 
 				return client
 			},
+			sender: func() Sender {
+				return mocks.NewMockSender(ctrl)
+			},
 			expectedResult: time.Time{}.UTC(),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := LinksRequester{
-				Client:     tt.client(),
-				Repo:       tt.repo(),
-				BaseLogger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+				Client:             tt.client(),
+				Repo:               tt.repo(),
+				NotificationSender: tt.sender(),
+				BaseLogger:         slog.New(slog.NewTextHandler(io.Discard, nil)),
 			}
 			resultTime := r.handleIssueUpdates(tt.gitLink, tt.linkInfo)
 
@@ -230,6 +239,7 @@ func TestHandlePullRequestsUpdates(t *testing.T) {
 		gitLink        scrapper.GithubLink
 		client         func() NetworkClient
 		repo           func() LinkRepository
+		sender         func() Sender
 		expectedResult time.Time
 	}{
 		{
@@ -250,7 +260,11 @@ func TestHandlePullRequestsUpdates(t *testing.T) {
 						UpdatedAt: time.Date(2026, 3, 11, 10, 0, 0, 0, time.UTC).UTC(),
 					}}, nil)
 
-				client.EXPECT().
+				return client
+			},
+			sender: func() Sender {
+				sender := mocks.NewMockSender(ctrl)
+				sender.EXPECT().
 					SendLinkUpdate(pkg.LinkUpdate{Description: utils.FormatPullRequest(scrapper.GithubPullRequest{
 						Title:     "Issue",
 						Body:      "New commit",
@@ -260,9 +274,8 @@ func TestHandlePullRequestsUpdates(t *testing.T) {
 						TgChatIDs: []int64{1, 2},
 						URL:       "https://github.com/golang/go"},
 					).Return(nil)
-				return client
+				return sender
 			},
-
 			repo: func() LinkRepository {
 				repo := mocks.NewMockLinkRepository(ctrl)
 				repo.EXPECT().GetChatIDsByLink(gomock.Any(), "https://github.com/golang/go").Return([]int64{1, 2}, nil)
@@ -288,15 +301,19 @@ func TestHandlePullRequestsUpdates(t *testing.T) {
 
 				return client
 			},
+			sender: func() Sender {
+				return mocks.NewMockSender(ctrl)
+			},
 			expectedResult: time.Time{}.UTC(),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := LinksRequester{
-				Client:     tt.client(),
-				Repo:       tt.repo(),
-				BaseLogger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+				Client:             tt.client(),
+				Repo:               tt.repo(),
+				NotificationSender: tt.sender(),
+				BaseLogger:         slog.New(slog.NewTextHandler(io.Discard, nil)),
 			}
 			resultTime := r.handlePullRequestsUpdates(tt.gitLink, tt.linkInfo)
 
@@ -314,6 +331,7 @@ func TestHandleRepositoryUpdates(t *testing.T) {
 		gitLink        scrapper.GithubLink
 		client         func() NetworkClient
 		repo           func() LinkRepository
+		sender         func() Sender
 		expectedResult time.Time
 	}{
 		{
@@ -329,14 +347,17 @@ func TestHandleRepositoryUpdates(t *testing.T) {
 				client.EXPECT().DoGithubRequest("https://api.github.com/repos/golang/go").
 					Return(scrapper.GitHubRepositoryResponse{UpdatedAt: time.Date(2026, 3, 11, 10, 0, 0, 0, time.UTC)}, nil)
 
-				client.EXPECT().
+				return client
+			},
+			sender: func() Sender {
+				sender := mocks.NewMockSender(ctrl)
+				sender.EXPECT().
 					SendLinkUpdate(pkg.LinkUpdate{Description: "Repository updated:",
 						TgChatIDs: []int64{1, 2},
 						URL:       "https://github.com/golang/go"},
 					).Return(nil)
-				return client
+				return sender
 			},
-
 			repo: func() LinkRepository {
 				repo := mocks.NewMockLinkRepository(ctrl)
 				repo.EXPECT().GetChatIDsByLink(gomock.Any(), "https://github.com/golang/go").Return([]int64{1, 2}, nil)
@@ -362,15 +383,19 @@ func TestHandleRepositoryUpdates(t *testing.T) {
 
 				return client
 			},
+			sender: func() Sender {
+				return mocks.NewMockSender(ctrl)
+			},
 			expectedResult: time.Time{}.UTC(),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := LinksRequester{
-				Client:     tt.client(),
-				Repo:       tt.repo(),
-				BaseLogger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+				Client:             tt.client(),
+				Repo:               tt.repo(),
+				NotificationSender: tt.sender(),
+				BaseLogger:         slog.New(slog.NewTextHandler(io.Discard, nil)),
 			}
 			resultTime := r.handleRepositoryUpdates(tt.gitLink, tt.linkInfo)
 
@@ -389,6 +414,7 @@ func TestHandleStackOverflowAnswers(t *testing.T) {
 		soLink         scrapper.StackOverflowLink
 		client         func() NetworkClient
 		repo           func() LinkRepository
+		sender         func() Sender
 		expectedResult time.Time
 	}{
 		{
@@ -409,15 +435,20 @@ func TestHandleStackOverflowAnswers(t *testing.T) {
 						},
 					}, nil)
 
-				c.EXPECT().
+				return c
+			},
+			sender: func() Sender {
+				sender := mocks.NewMockSender(ctrl)
+				sender.EXPECT().
 					SendLinkUpdate(pkg.LinkUpdate{Description: utils.FormatStackOverflowAnswer(scrapper.StackOverflowAnswer{
 						LastActivityDate: 2000,
 					}),
 						TgChatIDs: []int64{1, 2},
 						URL:       "https://stackoverflow.com/2.3/questions/123"},
 					).Return(nil)
-				return c
+				return sender
 			},
+
 			repo: func() LinkRepository {
 				repo := mocks.NewMockLinkRepository(ctrl)
 				repo.EXPECT().GetChatIDsByLink(gomock.Any(), "https://stackoverflow.com/2.3/questions/123").Return([]int64{1, 2}, nil)
@@ -446,6 +477,9 @@ func TestHandleStackOverflowAnswers(t *testing.T) {
 			repo: func() LinkRepository {
 				return mocks.NewMockLinkRepository(ctrl)
 			},
+			sender: func() Sender {
+				return mocks.NewMockSender(ctrl)
+			},
 			expectedResult: time.Unix(5000, 0).UTC(),
 		},
 		{
@@ -466,6 +500,9 @@ func TestHandleStackOverflowAnswers(t *testing.T) {
 			repo: func() LinkRepository {
 				return mocks.NewMockLinkRepository(ctrl)
 			},
+			sender: func() Sender {
+				return mocks.NewMockSender(ctrl)
+			},
 			expectedResult: time.Unix(5000, 0).UTC(),
 		},
 	}
@@ -473,9 +510,10 @@ func TestHandleStackOverflowAnswers(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := LinksRequester{
-				Client:     tt.client(),
-				BaseLogger: slog.New(slog.NewTextHandler(io.Discard, nil)),
-				Repo:       tt.repo(),
+				Client:             tt.client(),
+				NotificationSender: tt.sender(),
+				BaseLogger:         slog.New(slog.NewTextHandler(io.Discard, nil)),
+				Repo:               tt.repo(),
 			}
 
 			result := r.handleStackOverflowAnswers(tt.soLink, tt.linkInfo)
@@ -494,6 +532,7 @@ func TestHandleStackOverflowComments(t *testing.T) {
 		soLink         scrapper.StackOverflowLink
 		client         func() NetworkClient
 		repo           func() LinkRepository
+		sender         func() Sender
 		expectedResult time.Time
 	}{
 		{
@@ -514,19 +553,23 @@ func TestHandleStackOverflowComments(t *testing.T) {
 						},
 					}, nil)
 
-				c.EXPECT().
-					SendLinkUpdate(pkg.LinkUpdate{Description: utils.FormatStackOverflowComment(scrapper.StackOverflowComment{
-						CreationDate: 2000,
-					}),
-						TgChatIDs: []int64{1, 2},
-						URL:       "https://stackoverflow.com/2.3/questions/123"},
-					).Return(nil)
 				return c
 			},
 			repo: func() LinkRepository {
 				repo := mocks.NewMockLinkRepository(ctrl)
 				repo.EXPECT().GetChatIDsByLink(gomock.Any(), "https://stackoverflow.com/2.3/questions/123").Return([]int64{1, 2}, nil)
 				return repo
+			},
+			sender: func() Sender {
+				sender := mocks.NewMockSender(ctrl)
+				sender.EXPECT().
+					SendLinkUpdate(pkg.LinkUpdate{Description: utils.FormatStackOverflowComment(scrapper.StackOverflowComment{
+						CreationDate: 2000,
+					}),
+						TgChatIDs: []int64{1, 2},
+						URL:       "https://stackoverflow.com/2.3/questions/123"},
+					).Return(nil)
+				return sender
 			},
 			expectedResult: time.Unix(2000, 0).UTC(),
 		},
@@ -547,6 +590,9 @@ func TestHandleStackOverflowComments(t *testing.T) {
 					}, nil)
 
 				return c
+			},
+			sender: func() Sender {
+				return mocks.NewMockSender(ctrl)
 			},
 			repo: func() LinkRepository {
 				return mocks.NewMockLinkRepository(ctrl)
@@ -572,15 +618,19 @@ func TestHandleStackOverflowComments(t *testing.T) {
 				return mocks.NewMockLinkRepository(ctrl)
 			},
 			expectedResult: time.Unix(5000, 0).UTC(),
+			sender: func() Sender {
+				return mocks.NewMockSender(ctrl)
+			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := LinksRequester{
-				Client:     tt.client(),
-				BaseLogger: slog.New(slog.NewTextHandler(io.Discard, nil)),
-				Repo:       tt.repo(),
+				Client:             tt.client(),
+				BaseLogger:         slog.New(slog.NewTextHandler(io.Discard, nil)),
+				Repo:               tt.repo(),
+				NotificationSender: tt.sender(),
 			}
 
 			result := r.handleStackOverflowComments(tt.soLink, tt.linkInfo)
@@ -599,6 +649,7 @@ func TestHandleStackOverflowQuestion(t *testing.T) {
 		soLink         scrapper.StackOverflowLink
 		client         func() NetworkClient
 		repo           func() LinkRepository
+		sender         func() Sender
 		expectedResult time.Time
 	}{
 		{
@@ -621,15 +672,17 @@ func TestHandleStackOverflowQuestion(t *testing.T) {
 						},
 					}, nil)
 
-				c.EXPECT().
+				return c
+			},
+			sender: func() Sender {
+				sender := mocks.NewMockSender(ctrl)
+				sender.EXPECT().
 					SendLinkUpdate(pkg.LinkUpdate{Description: "Question updated:",
 						TgChatIDs: []int64{1, 2},
 						URL:       "https://stackoverflow.com/2.3/questions/123"},
 					).Return(nil)
-
-				return c
+				return sender
 			},
-
 			repo: func() LinkRepository {
 				repo := mocks.NewMockLinkRepository(ctrl)
 				repo.EXPECT().GetChatIDsByLink(gomock.Any(), "https://stackoverflow.com/2.3/questions/123").Return([]int64{1, 2}, nil)
@@ -652,6 +705,9 @@ func TestHandleStackOverflowQuestion(t *testing.T) {
 
 				return c
 			},
+			sender: func() Sender {
+				return mocks.NewMockSender(ctrl)
+			},
 			repo: func() LinkRepository {
 				return mocks.NewMockLinkRepository(ctrl)
 			},
@@ -662,9 +718,10 @@ func TestHandleStackOverflowQuestion(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := LinksRequester{
-				Client:     tt.client(),
-				Repo:       tt.repo(),
-				BaseLogger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+				Client:             tt.client(),
+				Repo:               tt.repo(),
+				BaseLogger:         slog.New(slog.NewTextHandler(io.Discard, nil)),
+				NotificationSender: tt.sender(),
 			}
 
 			result := r.handleStackOverflowQuestion(tt.soLink, tt.linkInfo)

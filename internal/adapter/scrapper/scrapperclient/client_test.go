@@ -296,7 +296,7 @@ func TestSendLinkUpdateSuccess(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := Client{
+	client := UpdatesClient{
 		Client: server.Client(),
 		Config: config.Config{BotServerAddr: server.URL},
 	}
@@ -320,7 +320,7 @@ func TestSendLinkUpdateBadStatus(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := Client{
+	client := UpdatesClient{
 		Client: server.Client(),
 		Config: config.Config{BotServerAddr: server.URL},
 	}

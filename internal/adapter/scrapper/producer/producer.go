@@ -90,12 +90,6 @@ func (p *KafkaProducer) StartProducerLoop(ctx context.Context) {
 	})
 }
 
-func (p *KafkaProducer) closeProducerOnes() {
-	p.closeOnce.Do(func() {
-		p.producer.AsyncClose()
-	})
-}
-
 func (p *KafkaProducer) SendLinkUpdate(update pkg.LinkUpdate) error {
 	bytes, err := json.Marshal(update)
 	if err != nil {
@@ -111,4 +105,10 @@ func (p *KafkaProducer) SendLinkUpdate(update pkg.LinkUpdate) error {
 
 func (p *KafkaProducer) Close() {
 	p.wg.Wait()
+}
+
+func (p *KafkaProducer) closeProducerOnes() {
+	p.closeOnce.Do(func() {
+		p.producer.AsyncClose()
+	})
 }
