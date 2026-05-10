@@ -12,6 +12,7 @@ import (
 
 	"github.com/go-co-op/gocron/v2"
 	"github.com/joho/godotenv"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/cache"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/senderfactory"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/pkg"
 
@@ -90,18 +91,21 @@ func StartScrapper(baseLogger *slog.Logger) error {
 	scrapperScheduler := scheduler.ScrapperScheduler{Scheduler: sched, LinksRequester: linksRequester}
 	scrapperScheduler.StartScrapperScheduler()
 
+	scrapperCache := cache.NewScrapperCacheClient(conf)
+
 	scrapperHandler := service.LinksService{
 		LinkRepo:   linkRepo,
 		ChatsRepo:  chatRepo,
 		Transactor: db,
 		BaseLogger: baseLogger,
+		CacheRepo:  scrapperCache,
 	}
 
 	scrapperServer := scrapperserver.NewScrapperHTTPServer(baseLogger, scrapperHandler)
 	_ = scrapperServer.Start(ctx)
 
 	<-ctx.Done()
-	shutdown(scrapperServer, baseLogger, sched, db, notificationsChan, sender)
+	shutdown(scrapperServer, baseLogger, sched, db, notificationsChan, sender, scrapperCache)
 	return nil
 }
 
@@ -112,7 +116,12 @@ func waitLinkRequester(wg *sync.WaitGroup, linksRequester service.LinksRequester
 	}()
 }
 
-func shutdown(server scrapperserver.ScrapperHTTPServer, baseLogger *slog.Logger, sched gocron.Scheduler, db *database.DB, updatedChan chan pkg.KafkaLinkUpdate, sender service.Sender) {
+func shutdown(server scrapperserver.ScrapperHTTPServer,
+	baseLogger *slog.Logger, sched gocron.Scheduler,
+	db *database.DB,
+	updatedChan chan pkg.KafkaLinkUpdate,
+	sender service.Sender,
+	cache cache.ScrapperCacheClient) {
 	if err := server.Shutdown(); err != nil {
 		baseLogger.Error("error shutting down scrapper http server", slog.String("error", err.Error()))
 	}
@@ -123,6 +132,10 @@ func shutdown(server scrapperserver.ScrapperHTTPServer, baseLogger *slog.Logger,
 	sender.Close()
 	close(updatedChan)
 	db.CloseConnectionPool()
+
+	if err := cache.Close(); err != nil {
+		baseLogger.Error("error closing cache", slog.String("error", err.Error()))
+	}
 }
 
 func parseConfigs() (config.Config, config.PostgresConfig, error) {

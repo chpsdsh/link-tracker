@@ -58,6 +58,10 @@ func TestParseConfig(t *testing.T) {
 					Password: "pass",
 					DBName:   "db",
 				},
+				ValkeyConfig: ValkeyConfig{
+					Addresses: []string{"valkey-0:6379", "valkey-1:6379"},
+					Password:  "pass",
+				},
 			},
 			expectedErr: nil,
 		},
@@ -151,6 +155,8 @@ func TestParseConfig(t *testing.T) {
 			t.Setenv(postgresUser, "user")
 			t.Setenv(postgresPassword, "pass")
 			t.Setenv(postgresDatabaseName, "db")
+			t.Setenv(valkeyAddressesEnv, "valkey-0:6379,valkey-1:6379")
+			t.Setenv(valkeyPasswordEnv, "pass")
 			cfg, err := ParseConfig()
 
 			if tt.expectedErr != nil {

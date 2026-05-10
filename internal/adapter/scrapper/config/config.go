@@ -52,9 +52,10 @@ type Config struct {
 	UpdatesSendType    string
 	KafkaConfig        KafkaConfig
 	PostgresConfig     PostgresConfig
+	ValkeyConfig       ValkeyConfig
 }
 
-func ParseConfig() (Config, error) {
+func ParseConfig() (Config, error) { //nolint:funlen // config parsing should be in ine method
 	githubToken := os.Getenv(githubAPIKey)
 	if githubToken == "" {
 		return Config{}, ErrNoTelegramToken
@@ -117,6 +118,11 @@ func ParseConfig() (Config, error) {
 		return Config{}, fmt.Errorf("parsing postgres config: %w", err)
 	}
 
+	valkeyConfig, err := ParseValkeyConfig()
+	if err != nil {
+		return Config{}, fmt.Errorf("parsing valkey config: %w", err)
+	}
+
 	return Config{GithubToken: githubToken,
 		StackoverflowToken: stackoverflowToken,
 		BotServerAddr:      botServAddr,
@@ -127,6 +133,7 @@ func ParseConfig() (Config, error) {
 		UpdatesSendType:    updatesSendTypeStr,
 		KafkaConfig:        kafkaConfig,
 		PostgresConfig:     postgresConfig,
+		ValkeyConfig:       valkeyConfig,
 	}, nil
 
 }

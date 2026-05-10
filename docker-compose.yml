@@ -145,6 +145,12 @@ services:
     volumes:
       - ./bot.env:/app/bot.env
 
+  valkey-node-0:
+    image: valkey/valkey:9.0.3
+    container_name: valkey
+    ports:
+      - "6379:6379"
+
 volumes:
   pgdata:
 

@@ -9,4 +9,5 @@ var (
 	ErrChatAlreadyExists          = errors.New("chat already exists")
 	ErrLinkNotExists              = errors.New("link not exists")
 	ErrInternalError              = errors.New("internal server error")
+	ErrCacheMiss                  = errors.New("cache miss")
 )
