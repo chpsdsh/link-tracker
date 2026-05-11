@@ -21,7 +21,7 @@ type NotificationsConsumer struct {
 	groupHandler      GroupHandler
 }
 
-func NewNotificationsConsumer(conf config.Config, logger *slog.Logger, tgHandler handler.TelegramBotHandler) (*NotificationsConsumer, error) {
+func NewNotificationsConsumer(conf config.Config, logger *slog.Logger, tgHandler handler.TelegramBotHandler, inboxRepo InboxRepository) (*NotificationsConsumer, error) {
 	saramaConf := sarama.NewConfig()
 
 	saramaConf.Version = sarama.V3_6_0_0
@@ -40,7 +40,7 @@ func NewNotificationsConsumer(conf config.Config, logger *slog.Logger, tgHandler
 		return nil, fmt.Errorf("creating dlq producer: %w", err)
 	}
 
-	groupHandler := NewGroupHandler(dlqProducer, tgHandler, logger)
+	groupHandler := NewGroupHandler(dlqProducer, tgHandler, inboxRepo, logger)
 
 	return &NotificationsConsumer{consumer: consumer,
 		notificationTopic: conf.KafkaConfig.NotificationsTopic,

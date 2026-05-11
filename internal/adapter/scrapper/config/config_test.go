@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	config2 "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/database/config"
 )
 
 func TestParseConfig(t *testing.T) {
@@ -51,7 +52,7 @@ func TestParseConfig(t *testing.T) {
 					User:               "user",
 					Password:           "pass",
 				},
-				PostgresConfig: PostgresConfig{
+				PostgresConfig: config2.PostgresConfig{
 					Host:     "localhost",
 					Port:     "5432",
 					User:     "user",
@@ -150,11 +151,11 @@ func TestParseConfig(t *testing.T) {
 			t.Setenv(kafkaTopic, "topic")
 			t.Setenv(kafkaBrokers, "localhost:9092")
 
-			t.Setenv(postgresHost, "localhost")
-			t.Setenv(postgresPort, "5432")
-			t.Setenv(postgresUser, "user")
-			t.Setenv(postgresPassword, "pass")
-			t.Setenv(postgresDatabaseName, "db")
+			t.Setenv("POSTGRES_HOST", "localhost")
+			t.Setenv("POSTGRES_PORT", "5432")
+			t.Setenv("POSTGRES_USER", "user")
+			t.Setenv("POSTGRES_PASSWORD", "pass")
+			t.Setenv("POSTGRES_DB", "db")
 			t.Setenv(valkeyAddressesEnv, "valkey-0:6379,valkey-1:6379")
 			t.Setenv(valkeyPasswordEnv, "pass")
 			cfg, err := ParseConfig()

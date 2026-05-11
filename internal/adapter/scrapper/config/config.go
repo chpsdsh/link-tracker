@@ -6,6 +6,8 @@ import (
 	"os"
 	"strconv"
 	"time"
+
+	config2 "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/database/config"
 )
 
 const (
@@ -51,7 +53,7 @@ type Config struct {
 	NumWorkers         int
 	UpdatesSendType    string
 	KafkaConfig        KafkaConfig
-	PostgresConfig     PostgresConfig
+	PostgresConfig     config2.PostgresConfig
 	ValkeyConfig       ValkeyConfig
 }
 
@@ -113,7 +115,7 @@ func ParseConfig() (Config, error) { //nolint:funlen // config parsing should be
 		return Config{}, fmt.Errorf("parsing kafka config: %w", err)
 	}
 
-	postgresConfig, err := ParsePostgresConfig()
+	postgresConfig, err := config2.ParsePostgresConfig()
 	if err != nil {
 		return Config{}, fmt.Errorf("parsing postgres config: %w", err)
 	}

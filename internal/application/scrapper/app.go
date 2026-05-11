@@ -38,7 +38,7 @@ func StartScrapper(baseLogger *slog.Logger) error {
 		return fmt.Errorf("loading .env file: %w", err)
 	}
 
-	conf, dbConf, err := parseConfigs()
+	conf, err := config.ParseConfig()
 	if err != nil {
 		baseLogger.Error("error parsing config", slog.String("err", err.Error()))
 		return fmt.Errorf("parsing config: %w", err)
@@ -52,7 +52,7 @@ func StartScrapper(baseLogger *slog.Logger) error {
 		return fmt.Errorf("creating scheduler: %w", err)
 	}
 
-	db, err := database.NewDB(dbConf)
+	db, err := database.NewDB(conf.PostgresConfig)
 	if err != nil {
 		baseLogger.Error("error connecting to database", slog.String("err", err.Error()))
 		return fmt.Errorf("connecting to database: %w", err)
@@ -147,17 +147,4 @@ func shutdown(server scrapperserver.ScrapperHTTPServer,
 	if err := cache.Close(); err != nil {
 		baseLogger.Error("error closing cache", slog.String("error", err.Error()))
 	}
-}
-
-func parseConfigs() (config.Config, config.PostgresConfig, error) {
-	conf, err := config.ParseConfig()
-	if err != nil {
-		return config.Config{}, config.PostgresConfig{}, fmt.Errorf("error parsing scrapper config: %w", err)
-	}
-
-	dbConf, err := config.ParsePostgresConfig()
-	if err != nil {
-		return config.Config{}, config.PostgresConfig{}, fmt.Errorf("error parsing postgres config: %w", err)
-	}
-	return conf, dbConf, nil
 }

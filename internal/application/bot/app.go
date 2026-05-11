@@ -15,7 +15,9 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/bot/botclient"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/bot/config"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/bot/receiverfactory"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/bot/repository"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/bot/telegram"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/database"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/bot/handler"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/bot/statestorage"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/integration"
@@ -27,7 +29,6 @@ const (
 )
 
 func StartBot(baseLogger *slog.Logger) error {
-
 	if err := godotenv.Load(envFilename); err != nil {
 		baseLogger.Error("error loading file", slog.String("file", envFilename), slog.String("err", err.Error()))
 		return fmt.Errorf("error loading file: %w", err)
@@ -63,7 +64,14 @@ func StartBot(baseLogger *slog.Logger) error {
 
 	telegramBot.Handler = telegramHandler
 
-	receiver, err := receiverfactory.NewReceiver(conf, telegramHandler, baseLogger)
+	db, err := database.NewDB(conf.PostgresConfig)
+	if err != nil {
+		baseLogger.Error("error connecting to database", slog.String("err", err.Error()))
+		return fmt.Errorf("connecting to database: %w", err)
+	}
+	inboxRepo := repository.NewInboxRepository(db.GetDBPool())
+
+	receiver, err := receiverfactory.NewReceiver(conf, telegramHandler, baseLogger, inboxRepo)
 	if err != nil {
 		baseLogger.Error("error creating telegram receiver", slog.String("err", err.Error()))
 		return fmt.Errorf("error creating telegram receiver: %w", err)
@@ -86,5 +94,7 @@ func StartBot(baseLogger *slog.Logger) error {
 		baseLogger.Error("shutdown error", slog.String("err", shutdownErr.Error()))
 	}
 	wg.Wait()
+
+	db.CloseConnectionPool()
 	return nil
 }

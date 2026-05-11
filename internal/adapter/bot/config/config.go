@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/database/config"
 )
 
 const (
@@ -27,6 +29,7 @@ type Config struct {
 	ScrapperServerAddress string
 	UpdatesReceiveType    string
 	KafkaConfig           KafkaConfig
+	PostgresConfig        config.PostgresConfig
 }
 
 func ParseConfig() (Config, error) {
@@ -56,10 +59,16 @@ func ParseConfig() (Config, error) {
 		return Config{}, fmt.Errorf("parsing kafka config: %w", err)
 	}
 
+	postgresConf, err := config.ParsePostgresConfig()
+	if err != nil {
+		return Config{}, fmt.Errorf("parsing postgres config: %w", err)
+	}
+
 	return Config{TelegramToken: token,
 		ScrapperServerAddress: scrapperAddr,
 		WithTelegramAPI:       withTgAPI,
 		KafkaConfig:           kafkaConf,
 		UpdatesReceiveType:    updatesReceiveTypeStr,
+		PostgresConfig:        postgresConf,
 	}, nil
 }
