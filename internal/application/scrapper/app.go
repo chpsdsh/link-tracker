@@ -13,6 +13,7 @@ import (
 	"github.com/go-co-op/gocron/v2"
 	"github.com/joho/godotenv"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/cache"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/repository/outboxrepo"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/senderfactory"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/pkg"
 
@@ -26,8 +27,7 @@ import (
 )
 
 const (
-	envFilename = "scrapper.env"
-
+	envFilename             = "scrapper.env"
 	clientTimeout           = 15 * time.Second
 	notificationChanBufSize = 10
 )
@@ -64,6 +64,8 @@ func StartScrapper(baseLogger *slog.Logger) error {
 		return fmt.Errorf("creating repository: %w", err)
 	}
 
+	outboxRepo := outboxrepo.NewOutboxRepository(db.GetDBPool())
+
 	notificationsChan := make(chan pkg.KafkaLinkUpdate, notificationChanBufSize)
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
@@ -78,6 +80,8 @@ func StartScrapper(baseLogger *slog.Logger) error {
 		scrapperclient.Client{Client: client, Config: conf},
 		sender,
 		linkRepo,
+		outboxRepo,
+		db,
 		conf.NumWorkers,
 		conf.BatchSize,
 		baseLogger,
@@ -88,7 +92,14 @@ func StartScrapper(baseLogger *slog.Logger) error {
 
 	waitLinkRequester(wg, linksRequester)
 
-	scrapperScheduler := scheduler.ScrapperScheduler{Scheduler: sched, LinksRequester: linksRequester}
+	updatesSender := service.UpdatesSender{
+		OutboxRepo:         outboxRepo,
+		Transactor:         db,
+		NotificationSender: sender,
+		BaseLogger:         baseLogger,
+	}
+
+	scrapperScheduler := scheduler.ScrapperScheduler{Scheduler: sched, LinksRequester: linksRequester, UpdatesSender: updatesSender}
 	scrapperScheduler.StartScrapperScheduler()
 
 	scrapperCache := cache.NewScrapperCacheClient(conf)

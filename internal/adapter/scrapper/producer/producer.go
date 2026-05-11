@@ -17,6 +17,7 @@ const (
 	producerRetryMax       = 10
 	producerFlushMessages  = 100
 	producerFlushFrequency = 500 * time.Millisecond
+	eventIDKeyName         = "event_id"
 )
 
 type KafkaProducer struct {
@@ -68,6 +69,11 @@ func (p *KafkaProducer) StartProducerLoop(ctx context.Context) {
 					Topic: p.NotificationTopic,
 					Key:   sarama.StringEncoder(update.Key),
 					Value: sarama.ByteEncoder(update.Value),
+					Headers: []sarama.RecordHeader{{
+						Key:   []byte(eventIDKeyName),
+						Value: []byte(update.EventID),
+					},
+					},
 				}
 
 				select {
@@ -90,14 +96,14 @@ func (p *KafkaProducer) StartProducerLoop(ctx context.Context) {
 	})
 }
 
-func (p *KafkaProducer) SendLinkUpdate(update pkg.LinkUpdate) error {
+func (p *KafkaProducer) SendLinkUpdate(update pkg.LinkUpdate, eventID string) error {
 	bytes, err := json.Marshal(update)
 	if err != nil {
 		p.logger.Error("marshalling error:", slog.String("error", err.Error()))
 		return fmt.Errorf("marshalling error: %w", err)
 	}
 
-	linkUpdate := pkg.KafkaLinkUpdate{Key: update.URL, Value: bytes}
+	linkUpdate := pkg.KafkaLinkUpdate{Key: update.URL, Value: bytes, EventID: eventID}
 
 	p.linkUpdatesChan <- linkUpdate
 	return nil

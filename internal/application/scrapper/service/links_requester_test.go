@@ -132,7 +132,7 @@ func TestLinksRequester_SendUpdate(t *testing.T) {
 				BaseLogger:         slog.New(slog.NewTextHandler(io.Discard, nil)),
 			}
 
-			r.sendUpdate(tt.linkInfo, "Ссылка обновлена")
+			r.sendFailureUpdate(tt.linkInfo, "Ссылка обновлена")
 		})
 	}
 }

@@ -27,7 +27,7 @@ func NewUpdatesClient(config config.Config) *UpdatesClient {
 	return &UpdatesClient{Client: client, Config: config}
 }
 
-func (c UpdatesClient) SendLinkUpdate(update pkg.LinkUpdate) error {
+func (c UpdatesClient) SendLinkUpdate(update pkg.LinkUpdate, _ string) error {
 	data, err := json.Marshal(update)
 	if err != nil {
 		return fmt.Errorf("error marshalling JSON: %w", err)
