@@ -256,3 +256,69 @@ func (mr *MockTransactorMockRecorder) TransactionWithReturn(ctx, txFunc interfac
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TransactionWithReturn", reflect.TypeOf((*MockTransactor)(nil).TransactionWithReturn), ctx, txFunc)
 }
+
+// MockCacheRepository is a mock of CacheRepository interface.
+type MockCacheRepository struct {
+	ctrl     *gomock.Controller
+	recorder *MockCacheRepositoryMockRecorder
+}
+
+// MockCacheRepositoryMockRecorder is the mock recorder for MockCacheRepository.
+type MockCacheRepositoryMockRecorder struct {
+	mock *MockCacheRepository
+}
+
+// NewMockCacheRepository creates a new mock instance.
+func NewMockCacheRepository(ctrl *gomock.Controller) *MockCacheRepository {
+	mock := &MockCacheRepository{ctrl: ctrl}
+	mock.recorder = &MockCacheRepositoryMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockCacheRepository) EXPECT() *MockCacheRepositoryMockRecorder {
+	return m.recorder
+}
+
+// DeleteUserLinks mocks base method.
+func (m *MockCacheRepository) DeleteUserLinks(ctx context.Context, chatID int64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteUserLinks", ctx, chatID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteUserLinks indicates an expected call of DeleteUserLinks.
+func (mr *MockCacheRepositoryMockRecorder) DeleteUserLinks(ctx, chatID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteUserLinks", reflect.TypeOf((*MockCacheRepository)(nil).DeleteUserLinks), ctx, chatID)
+}
+
+// GetUserLinks mocks base method.
+func (m *MockCacheRepository) GetUserLinks(ctx context.Context, chatID int64, loader func(context.Context, string) (*[]pkg.LinkInfo, error)) ([]pkg.LinkInfo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetUserLinks", ctx, chatID, loader)
+	ret0, _ := ret[0].([]pkg.LinkInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetUserLinks indicates an expected call of GetUserLinks.
+func (mr *MockCacheRepositoryMockRecorder) GetUserLinks(ctx, chatID, loader interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserLinks", reflect.TypeOf((*MockCacheRepository)(nil).GetUserLinks), ctx, chatID, loader)
+}
+
+// SetUserLinks mocks base method.
+func (m *MockCacheRepository) SetUserLinks(ctx context.Context, id int64, links []pkg.LinkInfo) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetUserLinks", ctx, id, links)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetUserLinks indicates an expected call of SetUserLinks.
+func (mr *MockCacheRepositoryMockRecorder) SetUserLinks(ctx, id, links interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetUserLinks", reflect.TypeOf((*MockCacheRepository)(nil).SetUserLinks), ctx, id, links)
+}

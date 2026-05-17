@@ -2,43 +2,79 @@ package cache
 
 import (
 	"context"
-	"errors"
 	"fmt"
+	"time"
 
 	"github.com/goccy/go-json"
-	"github.com/redis/go-redis/v9"
+	"github.com/valkey-io/valkey-go"
+	"github.com/valkey-io/valkey-go/valkeyaside"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/config"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/pkg"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/scrapper"
 )
 
 type ScrapperCacheClient struct {
-	client *redis.Client
+	baseClient  valkey.Client
+	asideClient valkeyaside.TypedCacheAsideClient[[]pkg.LinkInfo]
+	ttl         time.Duration
 }
 
-func NewScrapperCacheClient(conf config.Config) ScrapperCacheClient {
-	client := redis.NewClient(&redis.Options{
-		Addr:     conf.ValkeyConfig.Addresses[0],
-		Password: conf.ValkeyConfig.Password,
+func NewScrapperCacheClient(conf config.Config) (ScrapperCacheClient, error) {
+	baseClient, err := valkey.NewClient(valkey.ClientOption{
+		InitAddress: conf.ValkeyConfig.Addresses,
+		Password:    conf.ValkeyConfig.Password,
 	})
-	return ScrapperCacheClient{client: client}
+	if err != nil {
+		return ScrapperCacheClient{}, fmt.Errorf("create valkey client: %w", err)
+	}
+
+	client, err := valkeyaside.NewClient(valkeyaside.ClientOption{
+		ClientOption: valkey.ClientOption{
+			InitAddress: []string{conf.ValkeyConfig.Addresses[0]},
+			Password:    conf.ValkeyConfig.Password,
+		},
+	})
+	if err != nil {
+		return ScrapperCacheClient{}, fmt.Errorf("create valkey client: %w", err)
+	}
+
+	serializer := func(links *[]pkg.LinkInfo) (string, error) {
+		data, errUnmarshal := json.Marshal(*links)
+		if errUnmarshal != nil {
+			return "", errUnmarshal
+		}
+		return string(data), nil
+	}
+
+	deserializer := func(data string) (*[]pkg.LinkInfo, error) {
+		var links []pkg.LinkInfo
+		if errUnmarshal := json.Unmarshal([]byte(data), &links); errUnmarshal != nil {
+			return nil, err
+		}
+		return &links, nil
+	}
+	asideClient := valkeyaside.NewTypedCacheAsideClient(
+		client,
+		serializer,
+		deserializer,
+	)
+	if err != nil {
+		return ScrapperCacheClient{}, fmt.Errorf("error creating cache client: %w", err)
+	}
+
+	return ScrapperCacheClient{baseClient: baseClient, asideClient: asideClient, ttl: conf.ValkeyConfig.ValkeyTTl}, nil
 }
 
-func (c ScrapperCacheClient) GetUserLinks(ctx context.Context, chatID int64) ([]pkg.LinkInfo, error) {
+func (c ScrapperCacheClient) GetUserLinks(ctx context.Context, chatID int64, loader func(ctx context.Context, key string) (*[]pkg.LinkInfo, error)) ([]pkg.LinkInfo, error) {
 	key := userLinksCacheKey(chatID)
-	links, err := c.client.Get(ctx, key).Result()
+	links, err := c.asideClient.Get(ctx, c.ttl, key, loader)
 	if err != nil {
-		if errors.Is(err, redis.Nil) {
-			return nil, scrapper.ErrCacheMiss
-		}
 		return nil, fmt.Errorf("failed to get links from cache: %w", err)
 	}
 
-	var linksArray []pkg.LinkInfo
-	if err = json.Unmarshal([]byte(links), &linksArray); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal links: %w", err)
+	if links == nil {
+		return nil, fmt.Errorf("get user links with cache-aside: nil links")
 	}
-	return linksArray, nil
+	return *links, nil
 }
 
 func (c ScrapperCacheClient) SetUserLinks(ctx context.Context, chatID int64, linksArr []pkg.LinkInfo) error {
@@ -47,22 +83,35 @@ func (c ScrapperCacheClient) SetUserLinks(ctx context.Context, chatID int64, lin
 	if err != nil {
 		return fmt.Errorf("failed to marshal links: %w", err)
 	}
-	if err = c.client.Set(ctx, key, links, 0).Err(); err != nil {
+
+	if err = c.baseClient.Do(
+		ctx,
+		c.baseClient.B().
+			Set().
+			Key(key).
+			Value(string(links)).
+			Build(),
+	).Error(); err != nil {
 		return fmt.Errorf("failed to set links: %w", err)
 	}
 	return nil
 }
 
 func (c ScrapperCacheClient) Close() error {
-	if err := c.client.Close(); err != nil {
-		return fmt.Errorf("failed to close redis client: %w", err)
-	}
+	c.baseClient.Close()
+	c.asideClient.Client().Close()
 	return nil
 }
 
 func (c ScrapperCacheClient) DeleteUserLinks(ctx context.Context, chatID int64) error {
 	key := userLinksCacheKey(chatID)
-	if err := c.client.Del(ctx, key).Err(); err != nil {
+	if err := c.baseClient.Do(ctx,
+		c.baseClient.
+			B().
+			Del().
+			Key(key).
+			Build(),
+	).Error(); err != nil {
 		return fmt.Errorf("failed to delete user links cache: %w", err)
 	}
 	return nil

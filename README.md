@@ -33,3 +33,5 @@
    KAFKA_PASSWORD=user1-secret
    KAFKA_TOPIC=notification-topic
    KAFKA_BROKERS=kafka1:9092,kafka2:9092,kafka3:9092
+   VALKEY_PASSWORD=valkey
+   VALKEY_ADDRESSES=valkey-node-0:6379

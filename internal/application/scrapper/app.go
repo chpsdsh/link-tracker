@@ -102,7 +102,10 @@ func StartScrapper(baseLogger *slog.Logger) error {
 	scrapperScheduler := scheduler.ScrapperScheduler{Scheduler: sched, LinksRequester: linksRequester, UpdatesSender: updatesSender}
 	scrapperScheduler.StartScrapperScheduler()
 
-	scrapperCache := cache.NewScrapperCacheClient(conf)
+	scrapperCache, err := cache.NewScrapperCacheClient(conf)
+	if err != nil {
+		cancel()
+	}
 
 	scrapperHandler := service.LinksService{
 		LinkRepo:   linkRepo,
