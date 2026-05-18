@@ -4,6 +4,8 @@ import (
 	"errors"
 	"reflect"
 	"testing"
+
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/database/config"
 )
 
 func TestParseConfig(t *testing.T) {
@@ -33,6 +35,13 @@ func TestParseConfig(t *testing.T) {
 					ConsumerGroup:      "group",
 					User:               "user",
 					Password:           "pass",
+				},
+				PostgresConfig: config.PostgresConfig{
+					Host:     "POSTGRES_HOST",
+					Port:     "POSTGRES_PORT",
+					User:     "POSTGRES_USER",
+					Password: "POSTGRES_PASSWORD",
+					DBName:   "POSTGRES_DB",
 				},
 			},
 			expectedError: nil,
@@ -75,6 +84,12 @@ func TestParseConfig(t *testing.T) {
 			t.Setenv(kafkaDLQTopic, "dlq")
 			t.Setenv(kafkaBrokers, "localhost:9092")
 			t.Setenv(kafkaConsumerGroup, "group")
+			t.Setenv("POSTGRES_HOST", "POSTGRES_HOST")
+			t.Setenv("POSTGRES_PORT", "POSTGRES_PORT")
+			t.Setenv("POSTGRES_USER", "POSTGRES_USER")
+			t.Setenv("POSTGRES_PASSWORD", "POSTGRES_PASSWORD")
+			t.Setenv("POSTGRES_DB", "POSTGRES_DB")
+
 			cfg, err := ParseConfig()
 
 			if !errors.Is(err, tt.expectedError) {

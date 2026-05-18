@@ -33,6 +33,7 @@ const (
 	dbPassword            = "password"
 	dbName                = "mydb"
 	exposedPort           = "5432/tcp"
+	valkeyPort            = "6379/tcp"
 	dbPort                = "5432"
 	dbHost                = "postgres"
 	postgresHost          = "POSTGRES_HOST"
@@ -48,6 +49,9 @@ const (
 	kafkaTopicEnv         = "KAFKA_TOPIC"
 	kafkaBrokersEnv       = "KAFKA_BROKERS"
 	kafkaDLQTopicEnv      = "KAFKA_DLQ_TOPIC"
+	valkeyPasswordEnv     = "VALKEY_PASSWORD"
+	valkeyAddressesEnv    = "VALKEY_ADDRESSES"
+	valkeyTTLMinutesEnv   = "VALKEY_TTL_MINUTES"
 	updatesSendType       = "http"
 	kafkaUser             = "user1"
 	kafkaPassword         = "user1-secret"
@@ -55,6 +59,9 @@ const (
 	kafkaDLQTopic         = "notification-dlq-topic"
 	kafkaConsumerGroup    = "kafka-consumer-group"
 	kafkaBrokers          = "kafka1:9092,kafka2:9092,kafka3:9092"
+	valkeyPassword        = "valkey"
+	valkeyAddresses       = "valkey-node-0:6379"
+	valkeyTTLMinutes      = "5"
 )
 
 type Suite struct {
@@ -62,6 +69,7 @@ type Suite struct {
 	botContainer      testcontainers.Container
 	scrapperContainer testcontainers.Container
 	dbContainer       testcontainers.Container
+	valkeyContainer   testcontainers.Container
 	network           *testcontainers.DockerNetwork
 	scrapperURL       string
 	botURL            string
@@ -73,6 +81,8 @@ func (s *Suite) SetupSuite() {
 	s.setupNetwork(ctx)
 
 	s.setupPostgres(ctx)
+
+	s.setupValkey(ctx)
 
 	s.setupScrapper(ctx)
 
@@ -114,6 +124,14 @@ func (s *Suite) TearDownSuite() {
 			return
 		}
 	}
+
+	if s.valkeyContainer != nil {
+		err := s.valkeyContainer.Terminate(context.Background())
+		if err != nil {
+			return
+		}
+	}
+
 	if s.network != nil {
 		err := s.network.Remove(context.Background())
 		if err != nil {
@@ -140,6 +158,11 @@ func (s *Suite) setupBot(ctx context.Context) {
 			kafkaDLQTopicEnv:      kafkaDLQTopic,
 			kafkaConsumerGroupEnv: kafkaConsumerGroup,
 			kafkaBrokersEnv:       kafkaBrokers,
+			postgresHost:          dbHost,
+			postgresPort:          dbPort,
+			postgresUser:          dbUser,
+			postgresPassword:      dbPassword,
+			postgresDatabase:      dbName,
 		},
 		Networks: []string{s.network.Name},
 		NetworkAliases: map[string][]string{
@@ -184,6 +207,9 @@ func (s *Suite) setupScrapper(ctx context.Context) {
 			kafkaPasswordEnv:         kafkaPassword,
 			kafkaTopicEnv:            kafkaTopic,
 			kafkaBrokersEnv:          kafkaBrokers,
+			valkeyPasswordEnv:        valkeyPassword,
+			valkeyAddressesEnv:       valkeyAddresses,
+			valkeyTTLMinutesEnv:      valkeyTTLMinutes,
 		},
 		Networks: []string{s.network.Name},
 		NetworkAliases: map[string][]string{
@@ -226,6 +252,29 @@ func (s *Suite) setupPostgres(ctx context.Context) {
 	})
 	s.Require().NoError(err)
 	s.dbContainer = dbC
+}
+
+func (s *Suite) setupValkey(ctx context.Context) {
+	valkeyReq := testcontainers.ContainerRequest{
+		Image:        "valkey/valkey:9.0.3",
+		ExposedPorts: []string{valkeyPort},
+		Cmd: []string{
+			"valkey-server",
+			"--requirepass", valkeyPassword,
+			"--protected-mode", "no",
+		},
+		Networks: []string{s.network.Name},
+		NetworkAliases: map[string][]string{
+			s.network.Name: {"valkey-node-0"},
+		},
+		WaitingFor: wait.ForListeningPort(valkeyPort),
+	}
+	valkeyC, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+		ContainerRequest: valkeyReq,
+		Started:          true,
+	})
+	s.Require().NoError(err)
+	s.valkeyContainer = valkeyC
 
 }
 

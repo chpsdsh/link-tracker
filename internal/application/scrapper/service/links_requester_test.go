@@ -1073,7 +1073,7 @@ func TestHandleStackOverflowAnswers(t *testing.T) {
 				UpdateTime: newTime,
 				Events: []pkg.LinkUpdate{
 					{
-						Description: "Repository updated:",
+						Description: "Ответ\n\nАвтор: \nСоздан: 1970-01-01T00:25:00Z\n\nanswer body",
 						URL:         "https://stackoverflow.com/questions/123/test",
 						TgChatIDs:   []int64{1, 2},
 					},
@@ -1251,7 +1251,7 @@ func TestHandleStackOverflowComments(t *testing.T) {
 				UpdateTime: newTime,
 				Events: []pkg.LinkUpdate{
 					{
-						Description: "Repository updated:",
+						Description: "Комментарий\n\nАвтор: \nСоздан: 1970-01-01T00:33:20Z\n\ncomment body",
 						URL:         "https://stackoverflow.com/questions/123/test",
 						TgChatIDs:   []int64{1, 2},
 					},
@@ -1427,7 +1427,7 @@ func TestHandleStackOverflowQuestion(t *testing.T) {
 				UpdateTime: newTime,
 				Events: []pkg.LinkUpdate{
 					{
-						Description: "Repository updated:",
+						Description: "Question updated:",
 						URL:         "https://stackoverflow.com/questions/123/test",
 						TgChatIDs:   []int64{1, 2},
 					},

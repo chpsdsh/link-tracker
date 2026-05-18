@@ -22,6 +22,7 @@ func TestParseConfig(t *testing.T) {
 		interval   string
 		batchSize  string
 		numWorkers string
+		valkeyTTL  string
 
 		expectedCfg Config
 		expectedErr error
@@ -37,6 +38,7 @@ func TestParseConfig(t *testing.T) {
 			batchSize:       "100",
 			numWorkers:      "4",
 			updateSendType:  "http",
+			valkeyTTL:       "5",
 			expectedCfg: Config{
 				GithubToken:        "github_token",
 				StackoverflowToken: "stack_token",
@@ -62,6 +64,7 @@ func TestParseConfig(t *testing.T) {
 				ValkeyConfig: ValkeyConfig{
 					Addresses: []string{"valkey-0:6379", "valkey-1:6379"},
 					Password:  "pass",
+					ValkeyTTL: 5 * time.Minute,
 				},
 			},
 			expectedErr: nil,
@@ -158,6 +161,7 @@ func TestParseConfig(t *testing.T) {
 			t.Setenv("POSTGRES_DB", "db")
 			t.Setenv(valkeyAddressesEnv, "valkey-0:6379,valkey-1:6379")
 			t.Setenv(valkeyPasswordEnv, "pass")
+			t.Setenv(valkeyTTLEnv, tt.valkeyTTL)
 			cfg, err := ParseConfig()
 
 			if tt.expectedErr != nil {
