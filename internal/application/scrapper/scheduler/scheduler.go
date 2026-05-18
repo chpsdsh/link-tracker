@@ -9,12 +9,14 @@ import (
 )
 
 const (
-	linkTrackInterval = time.Second * 10
+	linkTrackInterval         = time.Second * 10
+	notificationCheckInterval = time.Second * 5
 )
 
 type ScrapperScheduler struct {
 	Scheduler      gocron.Scheduler
 	LinksRequester service.LinksRequester
+	UpdatesSender  service.UpdatesSender
 }
 
 func (r ScrapperScheduler) StartScrapperScheduler() {
@@ -24,6 +26,17 @@ func (r ScrapperScheduler) StartScrapperScheduler() {
 		),
 		gocron.NewTask(
 			r.LinksRequester.HandleLinks,
+		),
+	)
+	if err != nil {
+		return
+	}
+	_, err = r.Scheduler.NewJob(
+		gocron.DurationJob(
+			notificationCheckInterval,
+		),
+		gocron.NewTask(
+			r.UpdatesSender.SendUpdates,
 		),
 	)
 	if err != nil {

@@ -3,6 +3,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"sync"
 	"time"
@@ -21,23 +22,45 @@ type NetworkClient interface {
 	DoGithubRequest(url string) (scrapper.GitHubRepositoryResponse, error)
 	DoGithubIssueRequest(url string) ([]scrapper.GithubIssue, error)
 	DoGithubPullRequestRequest(url string) ([]scrapper.GithubPullRequest, error)
-	SendLinkUpdate(update pkg.LinkUpdate) error
 	DoStackOverflowQuestionRequest(url string) (scrapper.StackOverflowQuestionResponse, error)
 	DoStackOverflowAnswersRequest(url string) (scrapper.StackOverflowAnswersResponse, error)
 	DoStackOverflowCommentsRequest(url string) (scrapper.StackOverflowCommentsResponse, error)
 }
 
-type LinksRequester struct {
-	Client     NetworkClient
-	Repo       LinkRepository
-	LinksPool  LinksPool
-	BaseLogger *slog.Logger
-	BatchSize  int
+type OutboxRepository interface {
+	SaveUpdate(ctx context.Context, update pkg.LinkUpdate) error
+	GetUpdates(ctx context.Context) ([]scrapper.OutboxEvent, error)
+	UpdateSendTime(ctx context.Context, id int64) error
 }
 
-func NewLinkRequester(client NetworkClient, repo LinkRepository, numWorkers, batchSize int, logger *slog.Logger) LinksRequester {
+type LinksRequester struct {
+	Client             NetworkClient
+	NotificationSender Sender
+	Repo               LinkRepository
+	LinksPool          LinksPool
+	BaseLogger         *slog.Logger
+	OutboxRepo         OutboxRepository
+	Transactor         Transactor
+	BatchSize          int
+}
+
+func NewLinkRequester(
+	client NetworkClient,
+	sender Sender,
+	repo LinkRepository,
+	outboxRepo OutboxRepository,
+	transactor Transactor,
+	numWorkers, batchSize int,
+	logger *slog.Logger) LinksRequester {
 	workerPool := NewLinksPool(numWorkers)
-	return LinksRequester{Client: client, Repo: repo, LinksPool: workerPool, BatchSize: batchSize, BaseLogger: logger}
+	return LinksRequester{Client: client,
+		NotificationSender: sender,
+		Repo:               repo,
+		LinksPool:          workerPool,
+		BatchSize:          batchSize,
+		Transactor:         transactor,
+		OutboxRepo:         outboxRepo,
+		BaseLogger:         logger}
 }
 
 func (r LinksRequester) HandleLinks() {
@@ -83,7 +106,7 @@ func (r LinksRequester) linksIteration(offset int) bool {
 		}
 		r.LinksPool.LinksChan <- links[startOffset:endOffset]
 
-		startOffset = endOffset + 1
+		startOffset = endOffset
 		if startOffset > len(links) {
 			break
 		}
@@ -108,7 +131,7 @@ func (r LinksRequester) worker(ctx context.Context) {
 				case scrapper.StackOverflowLinkType:
 					r.handleStackOverflowLink(link)
 				case scrapper.UnknownLinkType:
-					r.sendUpdate(link, "Only github and stackOverflow links are supported")
+					r.sendFailureUpdate(link, "Only github and stackOverflow links are supported")
 				}
 			}
 
@@ -118,182 +141,30 @@ func (r LinksRequester) worker(ctx context.Context) {
 	}
 }
 
-func (r LinksRequester) handleGithubLink(link pkg.LinkInfo) {
-	gitLink, err := utils.ParseGithubLink(link.Link)
-	if err != nil {
-		r.BaseLogger.Error("error parsing github link", slog.String("error", err.Error()))
-		r.sendUpdate(link, "Error parsing github link")
-		return
-	}
-
-	timeToUpdate := link.LastUpdateTime
-
-	issueLastUpdateTime := r.handleIssueUpdates(gitLink, link)
-	if issueLastUpdateTime.After(timeToUpdate) {
-		timeToUpdate = issueLastUpdateTime
-	}
-
-	pullRequestUpdateTime := r.handlePullRequestsUpdates(gitLink, link)
-	if pullRequestUpdateTime.After(timeToUpdate) {
-		timeToUpdate = pullRequestUpdateTime
-	}
-
-	repoUpdateTime := r.handleRepositoryUpdates(gitLink, link)
-	if repoUpdateTime.After(timeToUpdate) {
-		timeToUpdate = repoUpdateTime
-	}
-
+func (r LinksRequester) updateTimeAndSendToOutbox(link pkg.LinkInfo, processingResult scrapper.LinkProcessingResult) {
 	ctx, cancel := context.WithTimeout(context.Background(), repositoryRequestDuration)
 	defer cancel()
 
-	if timeToUpdate.After(link.LastUpdateTime) {
-		if err = r.Repo.UpdateLinksTime(ctx, timeToUpdate, link.Link); err != nil {
-			r.BaseLogger.Error("error updating github link", slog.String("error", err.Error()))
-		}
-	}
-}
-
-func (r LinksRequester) handleIssueUpdates(gitLink scrapper.GithubLink, link pkg.LinkInfo) time.Time {
-	issueUpdate, err := r.Client.DoGithubIssueRequest(gitLink.ConvertToURL(scrapper.GithubLinkOptionIssue))
-	if err != nil {
-		r.BaseLogger.Error("error requesting issues:", slog.String("error", err.Error()))
-		return link.LastUpdateTime
-	}
-	newUpdateTime := link.LastUpdateTime
-
-	for _, item := range issueUpdate {
-		if item.UpdatedAt.After(link.LastUpdateTime) {
-			r.sendUpdate(link, utils.FormatIssue(item))
-			if item.UpdatedAt.After(newUpdateTime) {
-				newUpdateTime = item.UpdatedAt
+	if processingResult.UpdateTime.After(link.LastUpdateTime) {
+		if err := r.Transactor.Transaction(ctx, func(ctx context.Context) error {
+			if err := r.Repo.UpdateLinksTime(ctx, processingResult.UpdateTime, link.Link); err != nil {
+				r.BaseLogger.Error("error updating link time", slog.String("error", err.Error()))
+				return fmt.Errorf("error updating link time: %w", err)
 			}
-		}
-	}
-
-	return newUpdateTime
-}
-
-func (r LinksRequester) handlePullRequestsUpdates(gitLink scrapper.GithubLink, link pkg.LinkInfo) time.Time {
-	pullRequestUpdate, err := r.Client.DoGithubPullRequestRequest(gitLink.ConvertToURL(scrapper.GithubLinkPullRequest))
-	if err != nil {
-		r.BaseLogger.Error("error requesting issues:", slog.String("error", err.Error()))
-		return link.LastUpdateTime
-	}
-
-	newUpdateTime := link.LastUpdateTime
-
-	for _, item := range pullRequestUpdate {
-		if item.UpdatedAt.After(link.LastUpdateTime) {
-			r.sendUpdate(link, utils.FormatPullRequest(item))
-			if item.UpdatedAt.After(newUpdateTime) {
-				newUpdateTime = item.UpdatedAt
+			for _, event := range processingResult.Events {
+				if err := r.OutboxRepo.SaveUpdate(ctx, event); err != nil {
+					r.BaseLogger.Error("error saving link update to outbox", slog.String("error", err.Error()))
+					return fmt.Errorf("error saving link to outbox table: %w", err)
+				}
 			}
-		}
-	}
-
-	return newUpdateTime
-}
-
-func (r LinksRequester) handleRepositoryUpdates(gitLink scrapper.GithubLink, link pkg.LinkInfo) time.Time {
-	gitUpdate, err := r.Client.DoGithubRequest(gitLink.ConvertToURL(scrapper.GithubLinkOptionRepository))
-	if err != nil {
-		r.BaseLogger.Error("error during github query", slog.String("error", err.Error()))
-		return link.LastUpdateTime
-	}
-	if gitUpdate.UpdatedAt.After(link.LastUpdateTime) {
-		r.sendUpdate(link, "Repository updated:")
-	}
-	return gitUpdate.UpdatedAt
-}
-
-func (r LinksRequester) handleStackOverflowLink(link pkg.LinkInfo) {
-
-	stackOverflowLink, err := utils.ParseStackOverflowLink(link.Link)
-	if err != nil {
-		r.sendUpdate(link, "Error parsing stackOverflow link")
-		return
-	}
-
-	timeToUpdate := link.LastUpdateTime
-
-	answerTimeToUpdate := r.handleStackOverflowAnswers(stackOverflowLink, link)
-	if answerTimeToUpdate.After(timeToUpdate) {
-		timeToUpdate = answerTimeToUpdate
-	}
-	commentsTimeToUpdate := r.handleStackOverflowComments(stackOverflowLink, link)
-	if commentsTimeToUpdate.After(timeToUpdate) {
-		timeToUpdate = commentsTimeToUpdate
-	}
-	questionTimeToUpdate := r.handleStackOverflowQuestion(stackOverflowLink, link)
-	if questionTimeToUpdate.After(timeToUpdate) {
-		timeToUpdate = questionTimeToUpdate
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), repositoryRequestDuration)
-	defer cancel()
-
-	if timeToUpdate.After(link.LastUpdateTime) {
-		if err = r.Repo.UpdateLinksTime(ctx, timeToUpdate, link.Link); err != nil {
-			r.BaseLogger.Error("error updating github link", slog.String("error", err.Error()))
+			return nil
+		}); err != nil {
+			r.BaseLogger.Error("error saving link updates to outbox table", slog.String("error", err.Error()))
 		}
 	}
 }
 
-func (r LinksRequester) handleStackOverflowAnswers(stackOverflowLink scrapper.StackOverflowLink, link pkg.LinkInfo) time.Time {
-	stackUpdate, err := r.Client.DoStackOverflowAnswersRequest(stackOverflowLink.ConvertToURL(scrapper.StackOverflowLinkAnswer))
-	timeToUpdate := link.LastUpdateTime
-	if err != nil {
-		r.BaseLogger.Error("error querying stack overflow", slog.String("error", err.Error()))
-		return timeToUpdate
-	}
-
-	for _, item := range stackUpdate.Items {
-		updateTime := time.Unix(item.LastActivityDate, 0).UTC()
-		if updateTime.After(timeToUpdate) {
-			r.sendUpdate(link, utils.FormatStackOverflowAnswer(item))
-			timeToUpdate = updateTime
-		}
-	}
-	return timeToUpdate
-}
-
-func (r LinksRequester) handleStackOverflowComments(stackOverflowLink scrapper.StackOverflowLink, link pkg.LinkInfo) time.Time {
-	stackUpdate, err := r.Client.DoStackOverflowCommentsRequest(stackOverflowLink.ConvertToURL(scrapper.StackOverflowLinkComment))
-	timeToUpdate := link.LastUpdateTime
-	if err != nil {
-		r.BaseLogger.Error("error querying stack overflow", slog.String("error", err.Error()))
-		return timeToUpdate
-	}
-
-	for _, item := range stackUpdate.Items {
-		updateTime := time.Unix(item.CreationDate, 0).UTC()
-		if updateTime.After(timeToUpdate) {
-			r.sendUpdate(link, utils.FormatStackOverflowComment(item))
-			timeToUpdate = updateTime
-		}
-	}
-	return timeToUpdate
-}
-
-func (r LinksRequester) handleStackOverflowQuestion(stackOverflowLink scrapper.StackOverflowLink, link pkg.LinkInfo) time.Time {
-	stackUpdate, err := r.Client.DoStackOverflowQuestionRequest(stackOverflowLink.ConvertToURL(scrapper.StackOverflowLinkQuestion))
-	timeToUpdate := link.LastUpdateTime
-	if err != nil {
-		r.BaseLogger.Error("error querying stack overflow", slog.String("error", err.Error()))
-		return timeToUpdate
-	}
-
-	for _, item := range stackUpdate.Items {
-		updateTime := time.Unix(item.LastActivityDate, 0).UTC()
-		if updateTime.After(timeToUpdate) {
-			r.sendUpdate(link, "Question updated:")
-			timeToUpdate = updateTime
-		}
-	}
-	return timeToUpdate
-}
-
-func (r LinksRequester) sendUpdate(linkInfo pkg.LinkInfo, description string) {
+func (r LinksRequester) sendFailureUpdate(linkInfo pkg.LinkInfo, description string) {
 	ctx, cancel := context.WithTimeout(context.Background(), repositoryRequestDuration)
 	defer cancel()
 
@@ -305,9 +176,204 @@ func (r LinksRequester) sendUpdate(linkInfo pkg.LinkInfo, description string) {
 
 	update := pkg.LinkUpdate{Description: description, TgChatIDs: chatIDs, URL: linkInfo.Link}
 
-	if err = r.Client.SendLinkUpdate(update); err != nil {
+	if err = r.OutboxRepo.SaveUpdate(ctx, update); err != nil {
 		r.BaseLogger.Error("error sending link update", slog.String("error", err.Error()))
 		return
 	}
 	r.BaseLogger.Info("link is sent to chats", slog.String("link", linkInfo.Link), slog.Any("chats", chatIDs))
+}
+
+func (r LinksRequester) handleGithubLink(link pkg.LinkInfo) {
+	gitLink, err := utils.ParseGithubLink(link.Link)
+	if err != nil {
+		r.BaseLogger.Error("error parsing github link", slog.String("error", err.Error()))
+		r.sendFailureUpdate(link, "Error parsing github link")
+		return
+	}
+
+	var processingResult scrapper.LinkProcessingResult
+	processingResult = r.handleIssueUpdates(gitLink, link, processingResult)
+	processingResult = r.handlePullRequestsUpdates(gitLink, link, processingResult)
+	processingResult = r.handleRepositoryUpdates(gitLink, link, processingResult)
+
+	r.updateTimeAndSendToOutbox(link, processingResult)
+}
+
+func (r LinksRequester) handleIssueUpdates(gitLink scrapper.GithubLink, link pkg.LinkInfo, processingResult scrapper.LinkProcessingResult) scrapper.LinkProcessingResult {
+	issueUpdate, err := r.Client.DoGithubIssueRequest(gitLink.ConvertToURL(scrapper.GithubLinkOptionIssue))
+	if err != nil {
+		r.BaseLogger.Error("error requesting issues:", slog.String("error", err.Error()))
+		return processingResult
+	}
+
+	return handleAPIItems(
+		r,
+		issueUpdate,
+		link,
+		processingResult,
+		func(item scrapper.GithubIssue) time.Time {
+			return item.UpdatedAt
+		},
+		utils.FormatIssue,
+	)
+}
+
+func (r LinksRequester) handlePullRequestsUpdates(gitLink scrapper.GithubLink, link pkg.LinkInfo, processingResult scrapper.LinkProcessingResult) scrapper.LinkProcessingResult {
+	pullRequestUpdate, err := r.Client.DoGithubPullRequestRequest(gitLink.ConvertToURL(scrapper.GithubLinkPullRequest))
+	if err != nil {
+		r.BaseLogger.Error("error requesting issues:", slog.String("error", err.Error()))
+		return processingResult
+	}
+
+	return handleAPIItems(
+		r,
+		pullRequestUpdate,
+		link,
+		processingResult,
+		func(item scrapper.GithubPullRequest) time.Time {
+			return item.UpdatedAt
+		},
+		utils.FormatPullRequest,
+	)
+}
+
+func (r LinksRequester) handleRepositoryUpdates(gitLink scrapper.GithubLink, link pkg.LinkInfo, processingResult scrapper.LinkProcessingResult) scrapper.LinkProcessingResult {
+	repoUpdate, err := r.Client.DoGithubRequest(gitLink.ConvertToURL(scrapper.GithubLinkOptionRepository))
+	if err != nil {
+		r.BaseLogger.Error("error during github query", slog.String("error", err.Error()))
+		return processingResult
+	}
+
+	if repoUpdate.UpdatedAt.After(link.LastUpdateTime) {
+		if repoUpdate.UpdatedAt.After(processingResult.UpdateTime) {
+			processingResult.UpdateTime = repoUpdate.UpdatedAt
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), repositoryRequestDuration)
+		defer cancel()
+
+		chatIDs, chatIDsErr := r.Repo.GetChatIDsByLink(ctx, link.Link)
+		if chatIDsErr != nil {
+			r.BaseLogger.Error("error getting chatIDs", slog.String("error", chatIDsErr.Error()))
+			return processingResult
+		}
+
+		processingResult.Events = append(processingResult.Events, pkg.LinkUpdate{Description: "Repository updated:", URL: link.Link, TgChatIDs: chatIDs})
+	}
+	return processingResult
+}
+
+func (r LinksRequester) handleStackOverflowLink(link pkg.LinkInfo) {
+
+	stackOverflowLink, err := utils.ParseStackOverflowLink(link.Link)
+	if err != nil {
+		r.sendFailureUpdate(link, "Error parsing stackOverflow link")
+		return
+	}
+
+	var processingResult scrapper.LinkProcessingResult
+	processingResult = r.handleStackOverflowAnswers(stackOverflowLink, link, processingResult)
+	processingResult = r.handleStackOverflowComments(stackOverflowLink, link, processingResult)
+	processingResult = r.handleStackOverflowQuestion(stackOverflowLink, link, processingResult)
+
+	r.updateTimeAndSendToOutbox(link, processingResult)
+}
+
+func (r LinksRequester) handleStackOverflowAnswers(stackOverflowLink scrapper.StackOverflowLink, link pkg.LinkInfo, processingResult scrapper.LinkProcessingResult) scrapper.LinkProcessingResult {
+	stackAnswers, err := r.Client.DoStackOverflowAnswersRequest(stackOverflowLink.ConvertToURL(scrapper.StackOverflowLinkAnswer))
+	if err != nil {
+		r.BaseLogger.Error("error querying stack overflow", slog.String("error", err.Error()))
+		return processingResult
+	}
+
+	return handleAPIItems(
+		r,
+		stackAnswers.Items,
+		link,
+		processingResult,
+		func(item scrapper.StackOverflowAnswer) time.Time {
+			return time.Unix(item.LastActivityDate, 0).UTC()
+		},
+		utils.FormatStackOverflowAnswer,
+	)
+}
+
+func (r LinksRequester) handleStackOverflowComments(stackOverflowLink scrapper.StackOverflowLink, link pkg.LinkInfo, processingResult scrapper.LinkProcessingResult) scrapper.LinkProcessingResult {
+	stackComments, err := r.Client.DoStackOverflowCommentsRequest(stackOverflowLink.ConvertToURL(scrapper.StackOverflowLinkComment))
+	if err != nil {
+		r.BaseLogger.Error("error querying stack overflow", slog.String("error", err.Error()))
+		return processingResult
+	}
+
+	return handleAPIItems(
+		r,
+		stackComments.Items,
+		link,
+		processingResult,
+		func(item scrapper.StackOverflowComment) time.Time {
+			return time.Unix(item.CreationDate, 0).UTC()
+		},
+		utils.FormatStackOverflowComment,
+	)
+}
+
+func (r LinksRequester) handleStackOverflowQuestion(stackOverflowLink scrapper.StackOverflowLink, link pkg.LinkInfo, processingResult scrapper.LinkProcessingResult) scrapper.LinkProcessingResult {
+	stackQuestions, err := r.Client.DoStackOverflowQuestionRequest(stackOverflowLink.ConvertToURL(scrapper.StackOverflowLinkQuestion))
+	if err != nil {
+		r.BaseLogger.Error("error querying stack overflow", slog.String("error", err.Error()))
+		return processingResult
+	}
+
+	return handleAPIItems(
+		r,
+		stackQuestions.Items,
+		link,
+		processingResult,
+		func(item scrapper.StackOverflowQuestion) time.Time {
+			return time.Unix(item.LastActivityDate, 0).UTC()
+		},
+		func(_ scrapper.StackOverflowQuestion) string {
+			return "Question updated:"
+		},
+	)
+}
+
+func handleAPIItems[T any](
+	r LinksRequester,
+	items []T,
+	link pkg.LinkInfo,
+	processingResult scrapper.LinkProcessingResult,
+	getUpdateTime func(T) time.Time,
+	formatDescription func(T) string,
+) scrapper.LinkProcessingResult {
+	for _, item := range items {
+		updateTime := getUpdateTime(item)
+
+		if !updateTime.After(link.LastUpdateTime) {
+			continue
+		}
+
+		if updateTime.After(processingResult.UpdateTime) {
+			processingResult.UpdateTime = updateTime
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), repositoryRequestDuration)
+
+		chatIDs, err := r.Repo.GetChatIDsByLink(ctx, link.Link)
+		cancel()
+
+		if err != nil {
+			r.BaseLogger.Error("error getting chatIDs", slog.String("error", err.Error()))
+			cancel()
+			return processingResult
+		}
+
+		processingResult.Events = append(processingResult.Events, pkg.LinkUpdate{
+			Description: formatDescription(item),
+			URL:         link.Link,
+			TgChatIDs:   chatIDs,
+		})
+	}
+
+	return processingResult
 }

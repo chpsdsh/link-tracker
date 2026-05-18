@@ -296,12 +296,12 @@ func TestSendLinkUpdateSuccess(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := Client{
+	client := UpdatesClient{
 		Client: server.Client(),
 		Config: config.Config{BotServerAddr: server.URL},
 	}
 
-	err := client.SendLinkUpdate(update)
+	err := client.SendLinkUpdate(update, "")
 
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
@@ -320,12 +320,12 @@ func TestSendLinkUpdateBadStatus(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := Client{
+	client := UpdatesClient{
 		Client: server.Client(),
 		Config: config.Config{BotServerAddr: server.URL},
 	}
 
-	err := client.SendLinkUpdate(update)
+	err := client.SendLinkUpdate(update, "")
 
 	if !errors.Is(err, scrapper.ErrIncorrectRequestParameters) {
 		t.Fatalf("expected ErrIncorrectRequestParameters, got %v", err)

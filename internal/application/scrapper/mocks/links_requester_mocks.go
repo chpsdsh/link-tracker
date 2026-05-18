@@ -5,6 +5,7 @@
 package mocks
 
 import (
+	context "context"
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
@@ -125,16 +126,68 @@ func (mr *MockNetworkClientMockRecorder) DoStackOverflowQuestionRequest(url inte
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DoStackOverflowQuestionRequest", reflect.TypeOf((*MockNetworkClient)(nil).DoStackOverflowQuestionRequest), url)
 }
 
-// SendLinkUpdate mocks base method.
-func (m *MockNetworkClient) SendLinkUpdate(update pkg.LinkUpdate) error {
+// MockOutboxRepository is a mock of OutboxRepository interface.
+type MockOutboxRepository struct {
+	ctrl     *gomock.Controller
+	recorder *MockOutboxRepositoryMockRecorder
+}
+
+// MockOutboxRepositoryMockRecorder is the mock recorder for MockOutboxRepository.
+type MockOutboxRepositoryMockRecorder struct {
+	mock *MockOutboxRepository
+}
+
+// NewMockOutboxRepository creates a new mock instance.
+func NewMockOutboxRepository(ctrl *gomock.Controller) *MockOutboxRepository {
+	mock := &MockOutboxRepository{ctrl: ctrl}
+	mock.recorder = &MockOutboxRepositoryMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockOutboxRepository) EXPECT() *MockOutboxRepositoryMockRecorder {
+	return m.recorder
+}
+
+// GetUpdates mocks base method.
+func (m *MockOutboxRepository) GetUpdates(ctx context.Context) ([]scrapper.OutboxEvent, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SendLinkUpdate", update)
+	ret := m.ctrl.Call(m, "GetUpdates", ctx)
+	ret0, _ := ret[0].([]scrapper.OutboxEvent)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetUpdates indicates an expected call of GetUpdates.
+func (mr *MockOutboxRepositoryMockRecorder) GetUpdates(ctx interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUpdates", reflect.TypeOf((*MockOutboxRepository)(nil).GetUpdates), ctx)
+}
+
+// SaveUpdate mocks base method.
+func (m *MockOutboxRepository) SaveUpdate(ctx context.Context, update pkg.LinkUpdate) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SaveUpdate", ctx, update)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// SendLinkUpdate indicates an expected call of SendLinkUpdate.
-func (mr *MockNetworkClientMockRecorder) SendLinkUpdate(update interface{}) *gomock.Call {
+// SaveUpdate indicates an expected call of SaveUpdate.
+func (mr *MockOutboxRepositoryMockRecorder) SaveUpdate(ctx, update interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendLinkUpdate", reflect.TypeOf((*MockNetworkClient)(nil).SendLinkUpdate), update)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveUpdate", reflect.TypeOf((*MockOutboxRepository)(nil).SaveUpdate), ctx, update)
+}
+
+// UpdateSendTime mocks base method.
+func (m *MockOutboxRepository) UpdateSendTime(ctx context.Context, id int64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateSendTime", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateSendTime indicates an expected call of UpdateSendTime.
+func (mr *MockOutboxRepositoryMockRecorder) UpdateSendTime(ctx, id interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateSendTime", reflect.TypeOf((*MockOutboxRepository)(nil).UpdateSendTime), ctx, id)
 }

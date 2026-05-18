@@ -34,10 +34,17 @@ type Transactor interface {
 	TransactionWithReturn(ctx context.Context, txFunc func(ctx context.Context) (any, error)) (any, error)
 }
 
+type CacheRepository interface {
+	GetUserLinks(ctx context.Context, chatID int64, loader func(ctx context.Context, key string) (*[]pkg.LinkInfo, error)) ([]pkg.LinkInfo, error)
+	SetUserLinks(ctx context.Context, id int64, links []pkg.LinkInfo) error
+	DeleteUserLinks(ctx context.Context, chatID int64) error
+}
+
 type LinksService struct {
 	LinkRepo   LinkRepository
 	ChatsRepo  ChatRepository
 	Transactor Transactor
+	CacheRepo  CacheRepository
 	BaseLogger *slog.Logger
 }
 
@@ -72,34 +79,41 @@ func (h LinksService) DeleteChat(ctx context.Context, chatID int64) error {
 }
 
 func (h LinksService) GetLinks(ctx context.Context, chatID int64) ([]pkg.LinkInfo, error) {
-	links, err := h.Transactor.TransactionWithReturn(ctx, func(ctx context.Context) (any, error) {
-		ctx, cancel := context.WithTimeout(ctx, requestTimeout)
-		defer cancel()
-		exists, err := h.ChatsRepo.ChatExists(ctx, chatID)
+	cacheLinks, cacheErr := h.CacheRepo.GetUserLinks(ctx, chatID, func(ctx context.Context, _ string) (*[]pkg.LinkInfo, error) {
+		links, err := h.Transactor.TransactionWithReturn(ctx, func(ctx context.Context) (any, error) {
+			ctx, cancel := context.WithTimeout(ctx, requestTimeout)
+			defer cancel()
+			exists, err := h.ChatsRepo.ChatExists(ctx, chatID)
+			if err != nil {
+				return nil, errors.Join(err, scrapper.ErrInternalError)
+			}
+			if !exists {
+				return nil, scrapper.ErrChatNotFound
+			}
+
+			links, err := h.LinkRepo.GetUserLinks(ctx, chatID)
+			if err != nil {
+				return nil, errors.Join(err, scrapper.ErrInternalError)
+			}
+			return links, nil
+		})
 		if err != nil {
 			return nil, errors.Join(err, scrapper.ErrInternalError)
-		}
-		if !exists {
-			return nil, scrapper.ErrChatNotFound
 		}
 
-		links, err := h.LinkRepo.GetUserLinks(ctx, chatID)
-		if err != nil {
-			return nil, errors.Join(err, scrapper.ErrInternalError)
+		linksArr, ok := links.([]pkg.LinkInfo)
+		if !ok {
+			return nil, errors.Join(scrapper.ErrInternalError)
 		}
-		return links, nil
+		return &linksArr, nil
 	})
 
-	if err != nil {
-		return nil, errors.Join(err, scrapper.ErrInternalError)
+	if cacheErr != nil {
+		h.BaseLogger.Error("Failed to get links", "error", cacheErr)
+		return nil, errors.Join(cacheErr, scrapper.ErrInternalError)
 	}
 
-	linksArr, ok := links.([]pkg.LinkInfo)
-	if !ok {
-		return nil, errors.Join(scrapper.ErrInternalError)
-	}
-
-	return linksArr, nil
+	return cacheLinks, nil
 }
 
 func (h LinksService) AddLink(ctx context.Context, chatID int64, linkRequest pkg.AddLinkRequest) error {
@@ -110,6 +124,11 @@ func (h LinksService) AddLink(ctx context.Context, chatID int64, linkRequest pkg
 		if err := h.LinkRepo.AddLink(ctx, chatID, trackedLink); err != nil {
 			return errors.Join(err, scrapper.ErrInternalError)
 		}
+
+		if err := h.CacheRepo.DeleteUserLinks(ctx, chatID); err != nil {
+			h.BaseLogger.Error("error deleting links from cache", slog.String("err", err.Error()))
+		}
+
 		return nil
 	})
 }
@@ -138,6 +157,11 @@ func (h LinksService) DeleteLink(ctx context.Context, chatID int64, link string)
 		if err != nil {
 			return pkg.LinkInfo{}, errors.Join(err, scrapper.ErrInternalError)
 		}
+
+		if err = h.CacheRepo.DeleteUserLinks(ctx, chatID); err != nil {
+			h.BaseLogger.Error("error deleting links from cache", slog.String("err", err.Error()))
+		}
+
 		return linkInfo, nil
 	})
 	if err != nil {
