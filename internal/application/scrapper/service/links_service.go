@@ -79,7 +79,7 @@ func (h LinksService) DeleteChat(ctx context.Context, chatID int64) error {
 }
 
 func (h LinksService) GetLinks(ctx context.Context, chatID int64) ([]pkg.LinkInfo, error) {
-	cacheLinks, cacheErr := h.CacheRepo.GetUserLinks(ctx, chatID, func(ctx context.Context, key string) (*[]pkg.LinkInfo, error) {
+	cacheLinks, cacheErr := h.CacheRepo.GetUserLinks(ctx, chatID, func(ctx context.Context, _ string) (*[]pkg.LinkInfo, error) {
 		links, err := h.Transactor.TransactionWithReturn(ctx, func(ctx context.Context) (any, error) {
 			ctx, cancel := context.WithTimeout(ctx, requestTimeout)
 			defer cancel()

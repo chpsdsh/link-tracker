@@ -90,11 +90,15 @@ func StartBot(baseLogger *slog.Logger) error {
 	<-ctx.Done()
 
 	defer cancel()
+	shutdown(baseLogger, receiver, wg, db)
+	return nil
+}
+
+func shutdown(baseLogger *slog.Logger, receiver receiverfactory.Receiver, wg *sync.WaitGroup, db *database.DB) {
 	if shutdownErr := receiver.Shutdown(); shutdownErr != nil {
 		baseLogger.Error("shutdown error", slog.String("err", shutdownErr.Error()))
 	}
 	wg.Wait()
 
 	db.CloseConnectionPool()
-	return nil
 }

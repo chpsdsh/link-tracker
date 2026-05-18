@@ -32,122 +32,264 @@ const (
 	notificationChanBufSize = 10
 )
 
+type App struct {
+	logger *slog.Logger
+	conf   config.Config
+
+	ctx    context.Context
+	cancel context.CancelFunc
+
+	httpClient *http.Client
+
+	db *database.DB
+
+	chatRepo   service.ChatRepository
+	linkRepo   service.LinkRepository
+	outboxRepo *outboxrepo.OutboxRepository
+
+	sender service.Sender
+	cache  cache.ScrapperCacheClient
+
+	linksRequester service.LinksRequester
+	updatesSender  service.UpdatesSender
+
+	scheduler gocron.Scheduler
+	server    scrapperserver.ScrapperHTTPServer
+
+	notificationsChan chan pkg.KafkaLinkUpdate
+	wg                sync.WaitGroup
+}
+
 func StartScrapper(baseLogger *slog.Logger) error {
+	app, err := NewApp(baseLogger)
+	if err != nil {
+		return err
+	}
+
+	return app.Run()
+}
+
+func NewApp(logger *slog.Logger) (*App, error) {
 	if err := godotenv.Load(envFilename); err != nil {
-		baseLogger.Error("error loading file", slog.String("file", envFilename), slog.String("err", err.Error()))
-		return fmt.Errorf("loading .env file: %w", err)
+		logger.Error("error loading file", slog.String("file", envFilename), slog.String("err", err.Error()))
+		return nil, fmt.Errorf("loading .env file: %w", err)
 	}
 
 	conf, err := config.ParseConfig()
 	if err != nil {
-		baseLogger.Error("error parsing config", slog.String("err", err.Error()))
-		return fmt.Errorf("parsing config: %w", err)
+		logger.Error("error parsing config", slog.String("err", err.Error()))
+		return nil, fmt.Errorf("parsing config: %w", err)
 	}
 
-	client := &http.Client{Timeout: clientTimeout}
-
-	sched, err := gocron.NewScheduler()
-	if err != nil {
-		baseLogger.Error("error creating scheduler", slog.String("err", err.Error()))
-		return fmt.Errorf("creating scheduler: %w", err)
-	}
-
-	db, err := database.NewDB(conf.PostgresConfig)
-	if err != nil {
-		baseLogger.Error("error connecting to database", slog.String("err", err.Error()))
-		return fmt.Errorf("connecting to database: %w", err)
-	}
-
-	chatRepo, linkRepo, err := repository.CreateRepositories(db.GetDBPool(), conf.AssetType)
-	if err != nil {
-		baseLogger.Error("error creating repository", slog.String("err", err.Error()))
-		return fmt.Errorf("creating repository: %w", err)
-	}
-
-	outboxRepo := outboxrepo.NewOutboxRepository(db.GetDBPool())
-
-	notificationsChan := make(chan pkg.KafkaLinkUpdate, notificationChanBufSize)
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer cancel()
 
-	sender, err := senderfactory.NewSender(ctx, conf, baseLogger, notificationsChan)
-	if err != nil {
-		baseLogger.Error("error creating sender", slog.String("err", err.Error()))
-		return fmt.Errorf("creating sender: %w", err)
+	app := &App{
+		logger:            logger,
+		conf:              conf,
+		ctx:               ctx,
+		cancel:            cancel,
+		httpClient:        &http.Client{Timeout: clientTimeout},
+		notificationsChan: make(chan pkg.KafkaLinkUpdate, notificationChanBufSize),
 	}
 
-	linksRequester := service.NewLinkRequester(
-		scrapperclient.Client{Client: client, Config: conf},
-		sender,
-		linkRepo,
-		outboxRepo,
-		db,
-		conf.NumWorkers,
-		conf.BatchSize,
-		baseLogger,
-	)
-
-	wg := &sync.WaitGroup{}
-	linksRequester.Start(ctx, wg)
-
-	waitLinkRequester(wg, linksRequester)
-
-	updatesSender := service.UpdatesSender{
-		OutboxRepo:         outboxRepo,
-		Transactor:         db,
-		NotificationSender: sender,
-		BaseLogger:         baseLogger,
+	if err = app.initDB(); err != nil {
+		cancel()
+		return nil, err
 	}
 
-	scrapperScheduler := scheduler.ScrapperScheduler{Scheduler: sched, LinksRequester: linksRequester, UpdatesSender: updatesSender}
+	if err = app.initRepositories(); err != nil {
+		cancel()
+		app.closeDB()
+		return nil, err
+	}
+
+	if err = app.initSender(); err != nil {
+		cancel()
+		app.closeDB()
+		return nil, err
+	}
+
+	if err = app.initCache(); err != nil {
+		cancel()
+		app.closeSender()
+		app.closeDB()
+		return nil, err
+	}
+
+	if err = app.initScheduler(); err != nil {
+		cancel()
+		app.closeCache()
+		app.closeSender()
+		app.closeDB()
+		return nil, err
+	}
+
+	app.initServices()
+	app.initServer()
+
+	return app, nil
+}
+
+func (a *App) Run() error {
+	a.linksRequester.Start(a.ctx, &a.wg)
+
+	go func() {
+		a.wg.Wait()
+		close(a.linksRequester.LinksPool.LinksChan)
+	}()
+
+	scrapperScheduler := scheduler.ScrapperScheduler{
+		Scheduler:      a.scheduler,
+		LinksRequester: a.linksRequester,
+		UpdatesSender:  a.updatesSender,
+	}
 	scrapperScheduler.StartScrapperScheduler()
 
-	scrapperCache, err := cache.NewScrapperCacheClient(conf)
-	if err != nil {
-		cancel()
+	if err := a.server.Start(a.ctx); err != nil {
+		a.logger.Error("error starting server", slog.String("err", err.Error()))
+		return fmt.Errorf("starting scrapper server: %w", err)
 	}
 
-	scrapperHandler := service.LinksService{
-		LinkRepo:   linkRepo,
-		ChatsRepo:  chatRepo,
-		Transactor: db,
-		BaseLogger: baseLogger,
-		CacheRepo:  scrapperCache,
-	}
+	<-a.ctx.Done()
 
-	scrapperServer := scrapperserver.NewScrapperHTTPServer(baseLogger, scrapperHandler)
-	_ = scrapperServer.Start(ctx)
-
-	<-ctx.Done()
-	shutdown(scrapperServer, baseLogger, sched, db, notificationsChan, sender, scrapperCache)
+	a.Shutdown()
 	return nil
 }
 
-func waitLinkRequester(wg *sync.WaitGroup, linksRequester service.LinksRequester) {
-	go func() {
-		wg.Wait()
-		close(linksRequester.LinksPool.LinksChan)
-	}()
+func (a *App) Shutdown() {
+	a.cancel()
+
+	if err := a.server.Shutdown(); err != nil {
+		a.logger.Error("error shutting down scrapper http server", slog.String("error", err.Error()))
+	}
+
+	if err := a.scheduler.Shutdown(); err != nil {
+		a.logger.Error("error shutting down scheduler", slog.String("error", err.Error()))
+	}
+
+	a.closeSender()
+
+	close(a.notificationsChan)
+
+	a.closeCache()
+	a.closeDB()
 }
 
-func shutdown(server scrapperserver.ScrapperHTTPServer,
-	baseLogger *slog.Logger, sched gocron.Scheduler,
-	db *database.DB,
-	updatedChan chan pkg.KafkaLinkUpdate,
-	sender service.Sender,
-	cache cache.ScrapperCacheClient) {
-	if err := server.Shutdown(); err != nil {
-		baseLogger.Error("error shutting down scrapper http server", slog.String("error", err.Error()))
+func (a *App) initDB() error {
+	db, err := database.NewDB(a.conf.PostgresConfig)
+	if err != nil {
+		a.logger.Error("error connecting to database", slog.String("err", err.Error()))
+		return fmt.Errorf("connecting to database: %w", err)
 	}
 
-	if err := sched.Shutdown(); err != nil {
-		baseLogger.Error("error shutting down scheduler", slog.String("error", err.Error()))
-	}
-	sender.Close()
-	close(updatedChan)
-	db.CloseConnectionPool()
+	a.db = db
+	return nil
+}
 
-	if err := cache.Close(); err != nil {
-		baseLogger.Error("error closing cache", slog.String("error", err.Error()))
+func (a *App) initRepositories() error {
+	chatRepo, linkRepo, err := repository.CreateRepositories(
+		a.db.GetDBPool(),
+		a.conf.AssetType,
+	)
+	if err != nil {
+		a.logger.Error("error creating repository", slog.String("err", err.Error()))
+		return fmt.Errorf("creating repository: %w", err)
+	}
+
+	a.chatRepo = chatRepo
+	a.linkRepo = linkRepo
+	a.outboxRepo = outboxrepo.NewOutboxRepository(a.db.GetDBPool())
+
+	return nil
+}
+
+func (a *App) initSender() error {
+	sender, err := senderfactory.NewSender(
+		a.ctx,
+		a.conf,
+		a.logger,
+		a.notificationsChan,
+	)
+	if err != nil {
+		a.logger.Error("error creating sender", slog.String("err", err.Error()))
+		return fmt.Errorf("creating sender: %w", err)
+	}
+
+	a.sender = sender
+	return nil
+}
+
+func (a *App) initCache() error {
+	scrapperCache, err := cache.NewScrapperCacheClient(a.conf)
+	if err != nil {
+		a.logger.Error("error creating cache", slog.String("err", err.Error()))
+		return fmt.Errorf("creating cache: %w", err)
+	}
+
+	a.cache = scrapperCache
+	return nil
+}
+
+func (a *App) initScheduler() error {
+	sched, err := gocron.NewScheduler()
+	if err != nil {
+		a.logger.Error("error creating scheduler", slog.String("err", err.Error()))
+		return fmt.Errorf("creating scheduler: %w", err)
+	}
+
+	a.scheduler = sched
+	return nil
+}
+
+func (a *App) initServices() {
+	a.linksRequester = service.NewLinkRequester(
+		scrapperclient.Client{
+			Client: a.httpClient,
+			Config: a.conf,
+		},
+		a.sender,
+		a.linkRepo,
+		a.outboxRepo,
+		a.db,
+		a.conf.NumWorkers,
+		a.conf.BatchSize,
+		a.logger,
+	)
+
+	a.updatesSender = service.UpdatesSender{
+		OutboxRepo:         a.outboxRepo,
+		Transactor:         a.db,
+		NotificationSender: a.sender,
+		BaseLogger:         a.logger,
+	}
+}
+
+func (a *App) initServer() {
+	scrapperHandler := service.LinksService{
+		LinkRepo:   a.linkRepo,
+		ChatsRepo:  a.chatRepo,
+		Transactor: a.db,
+		BaseLogger: a.logger,
+		CacheRepo:  a.cache,
+	}
+
+	a.server = scrapperserver.NewScrapperHTTPServer(a.logger, scrapperHandler)
+}
+
+func (a *App) closeSender() {
+	if a.sender != nil {
+		a.sender.Close()
+	}
+}
+
+func (a *App) closeCache() {
+	if err := a.cache.Close(); err != nil {
+		a.logger.Error("error closing cache", slog.String("error", err.Error()))
+	}
+}
+
+func (a *App) closeDB() {
+	if a.db != nil {
+		a.db.CloseConnectionPool()
 	}
 }

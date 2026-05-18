@@ -119,7 +119,7 @@ func (h GroupHandler) deduplicateMessage(sess sarama.ConsumerGroupSession, msg *
 		if errors.Is(err, repository.ErrNotificationAlreadySent) {
 			sess.MarkMessage(msg, "")
 			sess.Commit()
-			return eventID, err
+			return eventID, fmt.Errorf("notification already sent %w", err)
 		}
 
 		if err = h.dlqProducer.SendToDLQ(msg, ErrNoEventIDInHeader); err != nil {

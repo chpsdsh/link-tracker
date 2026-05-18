@@ -24,7 +24,7 @@ const (
 type ValkeyConfig struct {
 	Addresses []string
 	Password  string
-	ValkeyTTl time.Duration
+	ValkeyTTL time.Duration
 }
 
 func ParseValkeyConfig() (ValkeyConfig, error) {
@@ -44,5 +44,5 @@ func ParseValkeyConfig() (ValkeyConfig, error) {
 	if err != nil {
 		return ValkeyConfig{}, ErrInvalidValkeyTTL
 	}
-	return ValkeyConfig{Addresses: strings.Split(valkeyAddresses, ","), Password: valkeyPassword, ValkeyTTl: time.Duration(valkeyTTL) * time.Minute}, nil
+	return ValkeyConfig{Addresses: strings.Split(valkeyAddresses, ","), Password: valkeyPassword, ValkeyTTL: time.Duration(valkeyTTL) * time.Minute}, nil
 }

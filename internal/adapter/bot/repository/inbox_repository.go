@@ -23,7 +23,7 @@ func NewInboxRepository(db *pgxpool.Pool) *InboxRepository {
 
 func (r *InboxRepository) Save(ctx context.Context, eventID string) error {
 	q := database.GetQuerier(ctx, r.db)
-	tag, err := q.Exec(ctx, `
+	_, err := q.Exec(ctx, `
 		INSERT INTO inbox(event_id) 
 		VALUES ($1)
 		ON CONFLICT (event_id) DO NOTHING`, eventID)
@@ -32,7 +32,6 @@ func (r *InboxRepository) Save(ctx context.Context, eventID string) error {
 			return ErrNotificationAlreadySent
 		}
 	}
-	tag.RowsAffected()
 	return nil
 }
 

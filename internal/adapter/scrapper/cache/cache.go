@@ -2,6 +2,7 @@ package cache
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -10,6 +11,12 @@ import (
 	"github.com/valkey-io/valkey-go/valkeyaside"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/config"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/pkg"
+)
+
+var (
+	ErrSerializingLinks   = errors.New("error serializing links")
+	ErrDeserializingLinks = errors.New("error deserializing links")
+	ErrNilLinks           = errors.New("get user links with cache-aside: nil links")
 )
 
 type ScrapperCacheClient struct {
@@ -38,9 +45,9 @@ func NewScrapperCacheClient(conf config.Config) (ScrapperCacheClient, error) {
 	}
 
 	serializer := func(links *[]pkg.LinkInfo) (string, error) {
-		data, errUnmarshal := json.Marshal(*links)
-		if errUnmarshal != nil {
-			return "", errUnmarshal
+		data, errMarshal := json.Marshal(*links)
+		if errMarshal != nil {
+			return "", errors.Join(errMarshal, ErrSerializingLinks)
 		}
 		return string(data), nil
 	}
@@ -48,20 +55,18 @@ func NewScrapperCacheClient(conf config.Config) (ScrapperCacheClient, error) {
 	deserializer := func(data string) (*[]pkg.LinkInfo, error) {
 		var links []pkg.LinkInfo
 		if errUnmarshal := json.Unmarshal([]byte(data), &links); errUnmarshal != nil {
-			return nil, err
+			return nil, errors.Join(errUnmarshal, ErrDeserializingLinks)
 		}
 		return &links, nil
 	}
+
 	asideClient := valkeyaside.NewTypedCacheAsideClient(
 		client,
 		serializer,
 		deserializer,
 	)
-	if err != nil {
-		return ScrapperCacheClient{}, fmt.Errorf("error creating cache client: %w", err)
-	}
 
-	return ScrapperCacheClient{baseClient: baseClient, asideClient: asideClient, ttl: conf.ValkeyConfig.ValkeyTTl}, nil
+	return ScrapperCacheClient{baseClient: baseClient, asideClient: asideClient, ttl: conf.ValkeyConfig.ValkeyTTL}, nil
 }
 
 func (c ScrapperCacheClient) GetUserLinks(ctx context.Context, chatID int64, loader func(ctx context.Context, key string) (*[]pkg.LinkInfo, error)) ([]pkg.LinkInfo, error) {
@@ -72,7 +77,7 @@ func (c ScrapperCacheClient) GetUserLinks(ctx context.Context, chatID int64, loa
 	}
 
 	if links == nil {
-		return nil, fmt.Errorf("get user links with cache-aside: nil links")
+		return nil, ErrNilLinks
 	}
 	return *links, nil
 }
