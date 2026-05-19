@@ -43,20 +43,21 @@ const (
 )
 
 type Config struct {
-	GithubToken        string
-	StackoverflowToken string
-	BotServerAddr      string
-	PostgresURL        string
-	AssetType          AssetType
-	ScrapperInterval   time.Duration
-	BatchSize          int
-	NumWorkers         int
-	UpdatesSendType    string
-	KafkaConfig        KafkaConfig
-	PostgresConfig     config2.PostgresConfig
-	ValkeyConfig       ValkeyConfig
-	HTTPClientConfig   HTTPClientConfig
-	RetryConfig        RetryConfig
+	GithubToken          string
+	StackoverflowToken   string
+	BotServerAddr        string
+	PostgresURL          string
+	AssetType            AssetType
+	ScrapperInterval     time.Duration
+	BatchSize            int
+	NumWorkers           int
+	UpdatesSendType      string
+	KafkaConfig          KafkaConfig
+	PostgresConfig       config2.PostgresConfig
+	ValkeyConfig         ValkeyConfig
+	HTTPClientConfig     HTTPClientConfig
+	RetryConfig          RetryConfig
+	CircuitBreakerConfig CircuitBreakerConfig
 }
 
 func ParseConfig() (Config, error) { //nolint:funlen // config parsing should be in ine method
@@ -136,19 +137,25 @@ func ParseConfig() (Config, error) { //nolint:funlen // config parsing should be
 	if err != nil {
 		return Config{}, fmt.Errorf("parsing retry config: %w", err)
 	}
+
+	circuitBreakerConfig, err := ParseCircuitBreakerConfig()
+	if err != nil {
+		return Config{}, fmt.Errorf("parsing circuit breaker config: %w", err)
+	}
 	return Config{GithubToken: githubToken,
-		StackoverflowToken: stackoverflowToken,
-		BotServerAddr:      botServAddr,
-		AssetType:          asset,
-		ScrapperInterval:   time.Duration(scrapperInterval) * time.Second,
-		BatchSize:          batchSize,
-		NumWorkers:         numWorkers,
-		UpdatesSendType:    updatesSendTypeStr,
-		KafkaConfig:        kafkaConfig,
-		PostgresConfig:     postgresConfig,
-		ValkeyConfig:       valkeyConfig,
-		HTTPClientConfig:   httpClientConfig,
-		RetryConfig:        retryConfig,
+		StackoverflowToken:   stackoverflowToken,
+		BotServerAddr:        botServAddr,
+		AssetType:            asset,
+		ScrapperInterval:     time.Duration(scrapperInterval) * time.Second,
+		BatchSize:            batchSize,
+		NumWorkers:           numWorkers,
+		UpdatesSendType:      updatesSendTypeStr,
+		KafkaConfig:          kafkaConfig,
+		PostgresConfig:       postgresConfig,
+		ValkeyConfig:         valkeyConfig,
+		HTTPClientConfig:     httpClientConfig,
+		RetryConfig:          retryConfig,
+		CircuitBreakerConfig: circuitBreakerConfig,
 	}, nil
 
 }

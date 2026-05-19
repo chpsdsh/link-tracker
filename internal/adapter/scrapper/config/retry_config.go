@@ -58,7 +58,7 @@ func ParseRetryConfig() (RetryConfig, error) {
 
 	statuses, err := parseRetryableStatuses(statusesStr)
 	if err != nil {
-		return RetryConfig{}, fmt.Errorf("%w: %v", ErrInvalidRetryableStatuses, err)
+		return RetryConfig{}, fmt.Errorf("%w: %w", ErrInvalidRetryableStatuses, err)
 	}
 
 	return RetryConfig{
