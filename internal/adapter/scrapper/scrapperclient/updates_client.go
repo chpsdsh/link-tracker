@@ -23,7 +23,7 @@ type UpdatesClient struct {
 }
 
 func NewUpdatesClient(config config.Config) *UpdatesClient {
-	client := &http.Client{Timeout: clientTimeout}
+	client := &http.Client{Timeout: config.HTTPClientConfig.Timeout}
 	return &UpdatesClient{Client: client, Config: config}
 }
 

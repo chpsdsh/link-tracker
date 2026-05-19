@@ -8,7 +8,6 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
-	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/joho/godotenv"
@@ -24,8 +23,7 @@ import (
 )
 
 const (
-	envFilename   = "bot.env"
-	clientTimeout = 15 * time.Second
+	envFilename = "bot.env"
 )
 
 func StartBot(baseLogger *slog.Logger) error {
@@ -55,7 +53,7 @@ func StartBot(baseLogger *slog.Logger) error {
 
 	wg := &sync.WaitGroup{}
 
-	client := &http.Client{Timeout: clientTimeout}
+	client := &http.Client{Timeout: conf.HTTPClientConfig.Timeout}
 
 	telegramHandler := handler.TelegramHandler{MsgSender: telegramBot,
 		Session:    statestorage.NewStateStorage(),

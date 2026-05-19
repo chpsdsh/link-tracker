@@ -24,6 +24,7 @@
    POSTGRES_USER=user
    POSTGRES_PASSWORD=password
    POSTGRES_DB=mydb
+   HTTP_CLIENT_TIMEOUT_SEC=10
 ```
  
 2) **Создать файл "scrapper.env" с полями:**
@@ -48,4 +49,5 @@
    VALKEY_PASSWORD=valkey
    VALKEY_ADDRESSES=valkey-node-0:6379
    VALKEY_TTL_MINUTES=5
+   HTTP_CLIENT_TIMEOUT_SEC=10
 ```

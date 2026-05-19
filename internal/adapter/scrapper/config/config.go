@@ -55,6 +55,7 @@ type Config struct {
 	KafkaConfig        KafkaConfig
 	PostgresConfig     config2.PostgresConfig
 	ValkeyConfig       ValkeyConfig
+	HTTPClientConfig   HTTPClientConfig
 }
 
 func ParseConfig() (Config, error) { //nolint:funlen // config parsing should be in ine method
@@ -125,6 +126,11 @@ func ParseConfig() (Config, error) { //nolint:funlen // config parsing should be
 		return Config{}, fmt.Errorf("parsing valkey config: %w", err)
 	}
 
+	httpClientConfig, err := ParseHTTPClientConfig()
+	if err != nil {
+		return Config{}, fmt.Errorf("parsing http client config: %w", err)
+	}
+
 	return Config{GithubToken: githubToken,
 		StackoverflowToken: stackoverflowToken,
 		BotServerAddr:      botServAddr,
@@ -136,6 +142,7 @@ func ParseConfig() (Config, error) { //nolint:funlen // config parsing should be
 		KafkaConfig:        kafkaConfig,
 		PostgresConfig:     postgresConfig,
 		ValkeyConfig:       valkeyConfig,
+		HTTPClientConfig:   httpClientConfig,
 	}, nil
 
 }

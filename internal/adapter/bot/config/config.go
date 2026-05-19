@@ -30,6 +30,7 @@ type Config struct {
 	UpdatesReceiveType    string
 	KafkaConfig           KafkaConfig
 	PostgresConfig        config.PostgresConfig
+	HTTPClientConfig      HTTPClientConfig
 }
 
 func ParseConfig() (Config, error) {
@@ -64,11 +65,17 @@ func ParseConfig() (Config, error) {
 		return Config{}, fmt.Errorf("parsing postgres config: %w", err)
 	}
 
+	timeoutConf, err := ParseHTTPClientConfig()
+	if err != nil {
+		return Config{}, fmt.Errorf("parsing http client config: %w", err)
+	}
+
 	return Config{TelegramToken: token,
 		ScrapperServerAddress: scrapperAddr,
 		WithTelegramAPI:       withTgAPI,
 		KafkaConfig:           kafkaConf,
 		UpdatesReceiveType:    updatesReceiveTypeStr,
 		PostgresConfig:        postgresConf,
+		HTTPClientConfig:      timeoutConf,
 	}, nil
 }

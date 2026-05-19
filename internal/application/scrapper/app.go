@@ -8,7 +8,6 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
-	"time"
 
 	"github.com/go-co-op/gocron/v2"
 	"github.com/joho/godotenv"
@@ -28,7 +27,6 @@ import (
 
 const (
 	envFilename             = "scrapper.env"
-	clientTimeout           = 15 * time.Second
 	notificationChanBufSize = 10
 )
 
@@ -88,7 +86,7 @@ func NewApp(logger *slog.Logger) (*App, error) {
 		conf:              conf,
 		ctx:               ctx,
 		cancel:            cancel,
-		httpClient:        &http.Client{Timeout: clientTimeout},
+		httpClient:        &http.Client{Timeout: conf.HTTPClientConfig.Timeout},
 		notificationsChan: make(chan pkg.KafkaLinkUpdate, notificationChanBufSize),
 	}
 
