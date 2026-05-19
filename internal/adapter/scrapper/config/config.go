@@ -56,6 +56,7 @@ type Config struct {
 	PostgresConfig     config2.PostgresConfig
 	ValkeyConfig       ValkeyConfig
 	HTTPClientConfig   HTTPClientConfig
+	RetryConfig        RetryConfig
 }
 
 func ParseConfig() (Config, error) { //nolint:funlen // config parsing should be in ine method
@@ -131,6 +132,10 @@ func ParseConfig() (Config, error) { //nolint:funlen // config parsing should be
 		return Config{}, fmt.Errorf("parsing http client config: %w", err)
 	}
 
+	retryConfig, err := ParseRetryConfig()
+	if err != nil {
+		return Config{}, fmt.Errorf("parsing retry config: %w", err)
+	}
 	return Config{GithubToken: githubToken,
 		StackoverflowToken: stackoverflowToken,
 		BotServerAddr:      botServAddr,
@@ -143,6 +148,7 @@ func ParseConfig() (Config, error) { //nolint:funlen // config parsing should be
 		PostgresConfig:     postgresConfig,
 		ValkeyConfig:       valkeyConfig,
 		HTTPClientConfig:   httpClientConfig,
+		RetryConfig:        retryConfig,
 	}, nil
 
 }

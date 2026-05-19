@@ -3,7 +3,6 @@ package config
 import (
 	"errors"
 	"os"
-	"strconv"
 	"time"
 )
 
@@ -14,7 +13,7 @@ var (
 )
 
 const (
-	clientTimeout = "HTTP_CLIENT_TIMEOUT_SEC"
+	clientTimeout = "HTTP_CLIENT_TIMEOUT"
 )
 
 type HTTPClientConfig struct {
@@ -26,12 +25,12 @@ func ParseHTTPClientConfig() (HTTPClientConfig, error) {
 	if timeoutStr == "" {
 		return HTTPClientConfig{}, ErrNoTimeout
 	}
-	timeout, err := strconv.Atoi(timeoutStr)
+	timeout, err := time.ParseDuration(timeoutStr)
 	if err != nil {
 		return HTTPClientConfig{}, ErrInvalidTimeout
 	}
 	if timeout < 0 {
 		return HTTPClientConfig{}, ErrNegativeTimeout
 	}
-	return HTTPClientConfig{Timeout: time.Duration(timeout) * time.Second}, nil
+	return HTTPClientConfig{Timeout: timeout * time.Second}, nil
 }

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"net/http"
 	"os/signal"
 	"sync"
 	"syscall"
@@ -36,8 +35,6 @@ type App struct {
 
 	ctx    context.Context
 	cancel context.CancelFunc
-
-	httpClient *http.Client
 
 	db *database.DB
 
@@ -86,7 +83,6 @@ func NewApp(logger *slog.Logger) (*App, error) {
 		conf:              conf,
 		ctx:               ctx,
 		cancel:            cancel,
-		httpClient:        &http.Client{Timeout: conf.HTTPClientConfig.Timeout},
 		notificationsChan: make(chan pkg.KafkaLinkUpdate, notificationChanBufSize),
 	}
 
@@ -241,10 +237,7 @@ func (a *App) initScheduler() error {
 
 func (a *App) initServices() {
 	a.linksRequester = service.NewLinkRequester(
-		scrapperclient.Client{
-			Client: a.httpClient,
-			Config: a.conf,
-		},
+		scrapperclient.NewScrapperClient(a.conf),
 		a.sender,
 		a.linkRepo,
 		a.outboxRepo,

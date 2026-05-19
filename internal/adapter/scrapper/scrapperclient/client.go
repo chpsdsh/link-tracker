@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/avast/retry-go/v5"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/config"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/scrapper"
 )
@@ -24,22 +25,37 @@ const (
 )
 
 type Client struct {
-	Client *http.Client
-	Config config.Config
+	Client  *http.Client
+	Config  config.Config
+	Retrier *retry.Retrier
+}
+
+func NewScrapperClient(conf config.Config) Client {
+	client := &http.Client{Timeout: conf.HTTPClientConfig.Timeout}
+	retrier := retry.New(
+		retry.Attempts(conf.RetryConfig.MaxAttempts),
+		retry.Delay(conf.RetryConfig.Delay),
+		retry.DelayType(retry.FixedDelay),
+	)
+	return Client{Client: client, Config: conf, Retrier: retrier}
 }
 
 func (c Client) DoGithubRequest(url string) (scrapper.GitHubRepositoryResponse, error) {
-	resp, err := c.doGithubAPIRequest(url)
+	resp, err := c.doRequestWithRetry(url, c.doGithubAPIRequest)
+	defer func() {
+		if resp != nil && resp.Body != nil {
+			_ = resp.Body.Close()
+		}
+	}()
 	if err != nil {
-		return scrapper.GitHubRepositoryResponse{}, fmt.Errorf("error requesting github API: %w", err)
+		return scrapper.GitHubRepositoryResponse{}, fmt.Errorf("github request error: %w", err)
 	}
-
-	defer func() { _ = resp.Body.Close() }()
 
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return scrapper.GitHubRepositoryResponse{}, fmt.Errorf("error reading response body: %w", err)
 	}
+
 	gitUpdate := scrapper.GitHubRepositoryResponse{}
 	if err = json.Unmarshal(data, &gitUpdate); err != nil {
 		return scrapper.GitHubRepositoryResponse{}, errors.Join(err, ErrUnmarshallingJSON)
@@ -48,11 +64,17 @@ func (c Client) DoGithubRequest(url string) (scrapper.GitHubRepositoryResponse, 
 }
 
 func (c Client) DoGithubIssueRequest(url string) ([]scrapper.GithubIssue, error) {
-	resp, err := c.doGithubAPIRequest(url)
+	resp, err := c.doRequestWithRetry(url, c.doGithubAPIRequest)
+	defer func() {
+		if resp != nil && resp.Body != nil {
+			_ = resp.Body.Close()
+		}
+	}()
+
 	if err != nil {
-		return nil, fmt.Errorf("error requesting github API: %w", err)
+		return nil, fmt.Errorf("error doing github api request: %w", err)
 	}
-	defer func() { _ = resp.Body.Close() }()
+
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("error reading response body: %w", err)
@@ -66,11 +88,17 @@ func (c Client) DoGithubIssueRequest(url string) ([]scrapper.GithubIssue, error)
 }
 
 func (c Client) DoGithubPullRequestRequest(url string) ([]scrapper.GithubPullRequest, error) {
-	resp, err := c.doGithubAPIRequest(url)
+	resp, err := c.doRequestWithRetry(url, c.doGithubAPIRequest)
+	defer func() {
+		if resp != nil && resp.Body != nil {
+			_ = resp.Body.Close()
+		}
+	}()
+
 	if err != nil {
 		return nil, fmt.Errorf("error requesting github API: %w", err)
 	}
-	defer func() { _ = resp.Body.Close() }()
+
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("error reading response body: %w", err)
@@ -83,15 +111,18 @@ func (c Client) DoGithubPullRequestRequest(url string) ([]scrapper.GithubPullReq
 }
 
 func (c Client) DoStackOverflowQuestionRequest(url string) (scrapper.StackOverflowQuestionResponse, error) {
-	resp, err := c.doStackoverflowAPIRequest(url)
+	resp, err := c.doRequestWithRetry(url, c.doStackoverflowAPIRequest)
+	defer func() {
+		if resp != nil && resp.Body != nil {
+			_ = resp.Body.Close()
+		}
+	}()
+
 	if err != nil {
 		return scrapper.StackOverflowQuestionResponse{}, fmt.Errorf("error requesting stackOverflow API: %w", err)
 	}
 
-	defer func() { _ = resp.Body.Close() }()
-
 	data, err := io.ReadAll(resp.Body)
-
 	if err != nil {
 		return scrapper.StackOverflowQuestionResponse{}, fmt.Errorf("error reading response body: %w", err)
 	}
@@ -105,14 +136,18 @@ func (c Client) DoStackOverflowQuestionRequest(url string) (scrapper.StackOverfl
 }
 
 func (c Client) DoStackOverflowAnswersRequest(url string) (scrapper.StackOverflowAnswersResponse, error) {
-	resp, err := c.doStackoverflowAPIRequest(url)
+	resp, err := c.doRequestWithRetry(url, c.doStackoverflowAPIRequest)
+	defer func() {
+		if resp != nil && resp.Body != nil {
+			_ = resp.Body.Close()
+		}
+	}()
+
 	if err != nil {
 		return scrapper.StackOverflowAnswersResponse{}, fmt.Errorf("error requesting stackOverflow API: %w", err)
 	}
-	defer func() { _ = resp.Body.Close() }()
 
 	data, err := io.ReadAll(resp.Body)
-
 	if err != nil {
 		return scrapper.StackOverflowAnswersResponse{}, fmt.Errorf("error reading response body: %w", err)
 	}
@@ -126,14 +161,17 @@ func (c Client) DoStackOverflowAnswersRequest(url string) (scrapper.StackOverflo
 }
 
 func (c Client) DoStackOverflowCommentsRequest(url string) (scrapper.StackOverflowCommentsResponse, error) {
-	resp, err := c.doStackoverflowAPIRequest(url)
+	resp, err := c.doRequestWithRetry(url, c.doStackoverflowAPIRequest)
+	defer func() {
+		if resp != nil && resp.Body != nil {
+			_ = resp.Body.Close()
+		}
+	}()
 	if err != nil {
 		return scrapper.StackOverflowCommentsResponse{}, fmt.Errorf("error requesting stackOverflow API: %w", err)
 	}
-	defer func() { _ = resp.Body.Close() }()
 
 	data, err := io.ReadAll(resp.Body)
-
 	if err != nil {
 		return scrapper.StackOverflowCommentsResponse{}, fmt.Errorf("error reading response body: %w", err)
 	}
@@ -144,6 +182,39 @@ func (c Client) DoStackOverflowCommentsRequest(url string) (scrapper.StackOverfl
 	}
 
 	return stackOverflowComments, nil
+}
+
+func (c Client) doRequestWithRetry(url string, queryFunc func(url string) (*http.Response, error)) (*http.Response, error) {
+	var resp *http.Response
+
+	err := c.Retrier.Do(func() error {
+		var err error
+		resp, err = queryFunc(url)
+		if err != nil {
+			if resp != nil && resp.Body != nil {
+				_ = resp.Body.Close()
+			}
+			return err
+		}
+
+		if c.isRetryableStatus(resp.StatusCode) {
+			_ = resp.Body.Close()
+			return fmt.Errorf("retriable status code %d", resp.StatusCode)
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("request with retry failed: %w", err)
+	}
+
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		_ = resp.Body.Close()
+		return nil, fmt.Errorf("unexpected status code %d", resp.StatusCode)
+	}
+
+	return resp, nil
 }
 
 func (c Client) doGithubAPIRequest(url string) (*http.Response, error) {
@@ -175,4 +246,13 @@ func (c Client) doStackoverflowAPIRequest(url string) (*http.Response, error) {
 	}
 
 	return resp, nil
+}
+
+func (c Client) isRetryableStatus(status int) bool {
+	for _, retryableStatus := range c.Config.RetryConfig.RetryableStatuses {
+		if status == retryableStatus {
+			return true
+		}
+	}
+	return false
 }
