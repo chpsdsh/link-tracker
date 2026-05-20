@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	config2 "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/database/config"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/pkg/config"
 )
 
 const (
@@ -53,11 +53,12 @@ type Config struct {
 	NumWorkers           int
 	UpdatesSendType      string
 	KafkaConfig          KafkaConfig
-	PostgresConfig       config2.PostgresConfig
+	PostgresConfig       config.PostgresConfig
 	ValkeyConfig         ValkeyConfig
-	HTTPClientConfig     HTTPClientConfig
-	RetryConfig          RetryConfig
-	CircuitBreakerConfig CircuitBreakerConfig
+	HTTPClientConfig     config.HTTPClientConfig
+	RetryConfig          config.RetryConfig
+	CircuitBreakerConfig config.CircuitBreakerConfig
+	RateLimitConfig      config.RateLimitConfig
 }
 
 func ParseConfig() (Config, error) { //nolint:funlen // config parsing should be in ine method
@@ -118,7 +119,7 @@ func ParseConfig() (Config, error) { //nolint:funlen // config parsing should be
 		return Config{}, fmt.Errorf("parsing kafka config: %w", err)
 	}
 
-	postgresConfig, err := config2.ParsePostgresConfig()
+	postgresConfig, err := config.ParsePostgresConfig()
 	if err != nil {
 		return Config{}, fmt.Errorf("parsing postgres config: %w", err)
 	}
@@ -128,19 +129,24 @@ func ParseConfig() (Config, error) { //nolint:funlen // config parsing should be
 		return Config{}, fmt.Errorf("parsing valkey config: %w", err)
 	}
 
-	httpClientConfig, err := ParseHTTPClientConfig()
+	httpClientConfig, err := config.ParseHTTPClientConfig()
 	if err != nil {
 		return Config{}, fmt.Errorf("parsing http client config: %w", err)
 	}
 
-	retryConfig, err := ParseRetryConfig()
+	retryConfig, err := config.ParseRetryConfig()
 	if err != nil {
 		return Config{}, fmt.Errorf("parsing retry config: %w", err)
 	}
 
-	circuitBreakerConfig, err := ParseCircuitBreakerConfig()
+	circuitBreakerConfig, err := config.ParseCircuitBreakerConfig()
 	if err != nil {
 		return Config{}, fmt.Errorf("parsing circuit breaker config: %w", err)
+	}
+
+	rateLimitConfig, err := config.ParseRateLimitConfig()
+	if err != nil {
+		return Config{}, fmt.Errorf("parsing rate limit config: %w", err)
 	}
 	return Config{GithubToken: githubToken,
 		StackoverflowToken:   stackoverflowToken,
@@ -156,6 +162,7 @@ func ParseConfig() (Config, error) { //nolint:funlen // config parsing should be
 		HTTPClientConfig:     httpClientConfig,
 		RetryConfig:          retryConfig,
 		CircuitBreakerConfig: circuitBreakerConfig,
+		RateLimitConfig:      rateLimitConfig,
 	}, nil
 
 }

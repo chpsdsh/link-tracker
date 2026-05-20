@@ -264,7 +264,7 @@ func (a *App) initServer() {
 		CacheRepo:  a.cache,
 	}
 
-	a.server = scrapperserver.NewScrapperHTTPServer(a.logger, scrapperHandler)
+	a.server = scrapperserver.NewScrapperHTTPServer(a.logger, scrapperHandler, a.conf)
 }
 
 func (a *App) closeSender() {

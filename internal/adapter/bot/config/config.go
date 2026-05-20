@@ -6,7 +6,7 @@ import (
 	"os"
 	"strconv"
 
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/database/config"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/pkg/config"
 )
 
 const (
@@ -30,9 +30,10 @@ type Config struct {
 	UpdatesReceiveType    string
 	KafkaConfig           KafkaConfig
 	PostgresConfig        config.PostgresConfig
-	HTTPClientConfig      HTTPClientConfig
-	CircuitBreakerConfig  CircuitBreakerConfig
-	RetryConfig           RetryConfig
+	HTTPClientConfig      config.HTTPClientConfig
+	CircuitBreakerConfig  config.CircuitBreakerConfig
+	RetryConfig           config.RetryConfig
+	RateLimitConfig       config.RateLimitConfig
 }
 
 func ParseConfig() (Config, error) {
@@ -67,18 +68,23 @@ func ParseConfig() (Config, error) {
 		return Config{}, fmt.Errorf("parsing postgres config: %w", err)
 	}
 
-	timeoutConf, err := ParseHTTPClientConfig()
+	timeoutConf, err := config.ParseHTTPClientConfig()
 	if err != nil {
 		return Config{}, fmt.Errorf("parsing http client config: %w", err)
 	}
 
-	circuitBreakerConf, err := ParseCircuitBreakerConfig()
+	circuitBreakerConf, err := config.ParseCircuitBreakerConfig()
 	if err != nil {
 		return Config{}, fmt.Errorf("parsing circuit breaker config: %w", err)
 	}
-	retryConf, err := ParseRetryConfig()
+	retryConf, err := config.ParseRetryConfig()
 	if err != nil {
 		return Config{}, fmt.Errorf("parsing retry config: %w", err)
+	}
+
+	rateLimitConf, err := config.ParseRateLimitConfig()
+	if err != nil {
+		return Config{}, fmt.Errorf("parsing rate limit config: %w", err)
 	}
 
 	return Config{TelegramToken: token,
@@ -90,5 +96,6 @@ func ParseConfig() (Config, error) {
 		HTTPClientConfig:      timeoutConf,
 		CircuitBreakerConfig:  circuitBreakerConf,
 		RetryConfig:           retryConf,
+		RateLimitConfig:       rateLimitConf,
 	}, nil
 }

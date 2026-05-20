@@ -32,14 +32,14 @@ func NewReceiver(conf config.Config, telegramHandler handler.TelegramHandler, lo
 		}
 		return notificationConsumer, nil
 	case httpReceiverType:
-		server := botserver.NewBotHTTPServer(logger, telegramHandler)
+		server := botserver.NewBotHTTPServer(logger, telegramHandler, conf)
 		return server, nil
 	case fallbackReceiverType:
 		notificationConsumer, err := consumer.NewNotificationsConsumer(conf, logger, telegramHandler, repository)
 		if err != nil {
 			return nil, fmt.Errorf("error creating kafka notifications consumer: %w", err)
 		}
-		botServer := botserver.NewBotHTTPServer(logger, telegramHandler)
+		botServer := botserver.NewBotHTTPServer(logger, telegramHandler, conf)
 		return fallbackreceiver.NewFallbackReceiver(notificationConsumer, botServer), nil
 	}
 	return nil, fmt.Errorf("unknown receiver type: %s", conf.UpdatesReceiveType)
