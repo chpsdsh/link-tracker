@@ -6,8 +6,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/goccy/go-json"
+	conf2 "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/pkg/config"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/config"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/pkg"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/scrapper"
@@ -49,10 +51,10 @@ func TestSendLinkUpdateSuccess(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := UpdatesClient{
-		Client: server.Client(),
-		Config: config.Config{BotServerAddr: server.URL},
-	}
+	conf := config.Config{BotServerAddr: server.URL, RetryConfig: conf2.RetryConfig{MaxAttempts: 3,
+		Delay: 10 * time.Second, RetryableStatuses: []int{500}},
+		CircuitBreakerConfig: conf2.CircuitBreakerConfig{Interval: 10 * time.Second, Timeout: 10 * time.Second, MaxRequests: 10, FailureRatio: 0.5}}
+	client := NewUpdatesClient(conf)
 
 	err := client.SendLinkUpdate(update, "")
 
@@ -73,10 +75,10 @@ func TestSendLinkUpdateBadStatus(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := UpdatesClient{
-		Client: server.Client(),
-		Config: config.Config{BotServerAddr: server.URL},
-	}
+	conf := config.Config{BotServerAddr: server.URL, RetryConfig: conf2.RetryConfig{MaxAttempts: 3,
+		Delay: 10 * time.Second, RetryableStatuses: []int{500}},
+		CircuitBreakerConfig: conf2.CircuitBreakerConfig{Interval: 10 * time.Second, Timeout: 10 * time.Second, MaxRequests: 10, FailureRatio: 0.5}}
+	client := NewUpdatesClient(conf)
 
 	err := client.SendLinkUpdate(update, "")
 

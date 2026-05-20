@@ -107,7 +107,7 @@ func (r LinksRequester) linksIteration(offset int) bool {
 		r.LinksPool.LinksChan <- links[startOffset:endOffset]
 
 		startOffset = endOffset
-		if startOffset > len(links) {
+		if startOffset >= len(links) {
 			break
 		}
 

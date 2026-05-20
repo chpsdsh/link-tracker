@@ -32,5 +32,5 @@ func ParseHTTPClientConfig() (HTTPClientConfig, error) {
 	if timeout < 0 {
 		return HTTPClientConfig{}, ErrNegativeTimeout
 	}
-	return HTTPClientConfig{Timeout: timeout * time.Second}, nil
+	return HTTPClientConfig{Timeout: timeout}, nil
 }

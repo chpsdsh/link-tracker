@@ -10,58 +10,93 @@ import (
 )
 
 const (
-	scrapperDockerfile    = "scrapper.Dockerfile"
-	botDockerfile         = "bot.Dockerfile"
-	scrapperPort          = "8081/tcp"
-	botPort               = "8080/tcp"
-	scrapperAlias         = "scrapper"
-	botAlias              = "bot"
+	scrapperDockerfile = "scrapper.Dockerfile"
+	botDockerfile      = "bot.Dockerfile"
+	scrapperPort       = "8081/tcp"
+	botPort            = "8080/tcp"
+	scrapperAlias      = "scrapper"
+	botAlias           = "bot"
+
 	telegramAPIKey        = "APP_TELEGRAM_TOKEN"
 	scrapperServerAddress = "SCRAPPER_SERVER_ADDRESS"
 	githubAPIKey          = "GITHUB_API_KEY"
 	stackoverflowAPIKey   = "STACKOVERFLOW_API_KEY"
 	botServerAddress      = "BOT_SERVER_ADDRESS"
 	botAPIFlag            = "WITH_TELEGRAM_API"
-	APIToken              = "API_TOKEN"
-	botServerAddr         = "http://bot:8080"
-	scrapperServerAddr    = "http://scrapper:8081"
-	withTelegramAPI       = "false"
-	pathToDockerfile      = "../../"
-	assetType             = "ASSET_TYPE"
-	assetTypeBuilder      = "BUILDER"
-	dbUser                = "user"
-	dbPassword            = "password"
-	dbName                = "mydb"
-	exposedPort           = "5432/tcp"
-	valkeyPort            = "6379/tcp"
-	dbPort                = "5432"
-	dbHost                = "postgres"
-	postgresHost          = "POSTGRES_HOST"
-	postgresPort          = "POSTGRES_PORT"
-	postgresUser          = "POSTGRES_USER"
-	postgresPassword      = "POSTGRES_PASSWORD"
-	postgresDatabase      = "POSTGRES_DB"
-	updatesSendTypeEnv    = "UPDATES_SEND_TYPE"
-	updatesReceiveTypeEnv = "UPDATES_HANDLE_TYPE"
+
+	APIToken           = "API_TOKEN"
+	botServerAddr      = "http://bot:8080"
+	scrapperServerAddr = "http://scrapper:8081"
+	withTelegramAPI    = "false"
+
+	pathToDockerfile = "../../"
+	assetType        = "ASSET_TYPE"
+	assetTypeBuilder = "BUILDER"
+
+	dbUser      = "user"
+	dbPassword  = "password"
+	dbName      = "mydb"
+	exposedPort = "5432/tcp"
+	valkeyPort  = "6379/tcp"
+	dbPort      = "5432"
+	dbHost      = "postgres"
+
+	postgresHost     = "POSTGRES_HOST"
+	postgresPort     = "POSTGRES_PORT"
+	postgresUser     = "POSTGRES_USER"
+	postgresPassword = "POSTGRES_PASSWORD"
+	postgresDatabase = "POSTGRES_DB"
+
+	updatesHandleTypeEnv = "UPDATES_HANDLE_TYPE"
+	updatesHandleType    = "http"
+
 	kafkaConsumerGroupEnv = "KAFKA_CONSUMER_GROUP"
 	kafkaUserEnv          = "KAFKA_USER"
 	kafkaPasswordEnv      = "KAFKA_PASSWORD"
 	kafkaTopicEnv         = "KAFKA_TOPIC"
 	kafkaBrokersEnv       = "KAFKA_BROKERS"
 	kafkaDLQTopicEnv      = "KAFKA_DLQ_TOPIC"
-	valkeyPasswordEnv     = "VALKEY_PASSWORD"
-	valkeyAddressesEnv    = "VALKEY_ADDRESSES"
-	valkeyTTLMinutesEnv   = "VALKEY_TTL_MINUTES"
-	updatesSendType       = "http"
-	kafkaUser             = "user1"
-	kafkaPassword         = "user1-secret"
-	kafkaTopic            = "notification-topic"
-	kafkaDLQTopic         = "notification-dlq-topic"
-	kafkaConsumerGroup    = "kafka-consumer-group"
-	kafkaBrokers          = "kafka1:9092,kafka2:9092,kafka3:9092"
-	valkeyPassword        = "valkey"
-	valkeyAddresses       = "valkey-node-0:6379"
-	valkeyTTLMinutes      = "5"
+
+	kafkaUser          = "user1"
+	kafkaPassword      = "user1-secret"
+	kafkaTopic         = "notification-topic"
+	kafkaDLQTopic      = "notification-dlq"
+	kafkaConsumerGroup = "notification-consumers"
+	kafkaBrokers       = "kafka1:9092,kafka2:9092,kafka3:9092"
+
+	valkeyPasswordEnv   = "VALKEY_PASSWORD"
+	valkeyAddressesEnv  = "VALKEY_ADDRESSES"
+	valkeyTTLMinutesEnv = "VALKEY_TTL_MINUTES"
+
+	valkeyPassword   = "valkey"
+	valkeyAddresses  = "valkey-node-0:6379"
+	valkeyTTLMinutes = "5"
+
+	httpClientTimeoutEnv = "HTTP_CLIENT_TIMEOUT"
+	retryMaxAttemptsEnv  = "RETRY_MAX_ATTEMPTS"
+	retryDelayEnv        = "RETRY_DELAY"
+	retryableStatusesEnv = "RETRYABLE_STATUSES"
+
+	httpClientTimeout = "10s"
+	retryMaxAttempts  = "3"
+	retryDelay        = "500ms"
+	retryableStatuses = "500,502,503,504"
+
+	circuitBreakerIntervalEnv     = "CIRCUIT_BREAKER_INTERVAL"
+	circuitBreakerTimeoutEnv      = "CIRCUIT_BREAKER_TIMEOUT"
+	circuitBreakerMaxRequestsEnv  = "CIRCUIT_BREAKER_MAX_REQUESTS"
+	circuitBreakerFailureRatioEnv = "CIRCUIT_BREAKER_FAILURE_RATIO"
+
+	circuitBreakerInterval     = "10s"
+	circuitBreakerTimeout      = "5s"
+	circuitBreakerMaxRequests  = "3"
+	circuitBreakerFailureRatio = "0.6"
+
+	rateLimitRPSEnv   = "RATE_LIMIT_RPS"
+	rateLimitBurstEnv = "RATE_LIMIT_BURST"
+
+	rateLimitRPS   = "20"
+	rateLimitBurst = "20"
 )
 
 type Suite struct {
@@ -148,21 +183,37 @@ func (s *Suite) setupBot(ctx context.Context) {
 		},
 		ExposedPorts: []string{botPort},
 		Env: map[string]string{
-			botAPIFlag:            withTelegramAPI,
 			telegramAPIKey:        APIToken,
 			scrapperServerAddress: scrapperServerAddr,
-			updatesReceiveTypeEnv: updatesSendType,
+			botAPIFlag:            withTelegramAPI,
+
+			updatesHandleTypeEnv: updatesHandleType,
+
 			kafkaUserEnv:          kafkaUser,
 			kafkaPasswordEnv:      kafkaPassword,
 			kafkaTopicEnv:         kafkaTopic,
 			kafkaDLQTopicEnv:      kafkaDLQTopic,
 			kafkaConsumerGroupEnv: kafkaConsumerGroup,
 			kafkaBrokersEnv:       kafkaBrokers,
-			postgresHost:          dbHost,
-			postgresPort:          dbPort,
-			postgresUser:          dbUser,
-			postgresPassword:      dbPassword,
-			postgresDatabase:      dbName,
+
+			postgresHost:     dbHost,
+			postgresPort:     dbPort,
+			postgresUser:     dbUser,
+			postgresPassword: dbPassword,
+			postgresDatabase: dbName,
+
+			httpClientTimeoutEnv: httpClientTimeout,
+			retryMaxAttemptsEnv:  retryMaxAttempts,
+			retryDelayEnv:        retryDelay,
+			retryableStatusesEnv: retryableStatuses,
+
+			circuitBreakerIntervalEnv:     circuitBreakerInterval,
+			circuitBreakerTimeoutEnv:      circuitBreakerTimeout,
+			circuitBreakerMaxRequestsEnv:  circuitBreakerMaxRequests,
+			circuitBreakerFailureRatioEnv: circuitBreakerFailureRatio,
+
+			rateLimitRPSEnv:   rateLimitRPS,
+			rateLimitBurstEnv: rateLimitBurst,
 		},
 		Networks: []string{s.network.Name},
 		NetworkAliases: map[string][]string{
@@ -190,26 +241,36 @@ func (s *Suite) setupScrapper(ctx context.Context) {
 		},
 		ExposedPorts: []string{scrapperPort},
 		Env: map[string]string{
-			githubAPIKey:             APIToken,
-			stackoverflowAPIKey:      APIToken,
-			botServerAddress:         botServerAddr,
-			assetType:                assetTypeBuilder,
-			"SCRAPPER_TIME_INTERVAL": "10",
-			"LINKS_BATCH_SIZE":       "20",
-			"SCHEDULER_NUM_WORKERS":  "5",
-			postgresHost:             dbHost,
-			postgresPort:             dbPort,
-			postgresUser:             dbUser,
-			postgresPassword:         dbPassword,
-			postgresDatabase:         dbName,
-			updatesSendTypeEnv:       updatesSendType,
-			kafkaUserEnv:             kafkaUser,
-			kafkaPasswordEnv:         kafkaPassword,
-			kafkaTopicEnv:            kafkaTopic,
-			kafkaBrokersEnv:          kafkaBrokers,
-			valkeyPasswordEnv:        valkeyPassword,
-			valkeyAddressesEnv:       valkeyAddresses,
-			valkeyTTLMinutesEnv:      valkeyTTLMinutes,
+			githubAPIKey:                  APIToken,
+			stackoverflowAPIKey:           APIToken,
+			botServerAddress:              botServerAddr,
+			"SCRAPPER_TIME_INTERVAL":      "10",
+			"LINKS_BATCH_SIZE":            "20",
+			"SCHEDULER_NUM_WORKERS":       "5",
+			assetType:                     assetTypeBuilder,
+			postgresHost:                  dbHost,
+			postgresPort:                  dbPort,
+			postgresUser:                  dbUser,
+			postgresPassword:              dbPassword,
+			postgresDatabase:              dbName,
+			updatesHandleTypeEnv:          updatesHandleType,
+			kafkaUserEnv:                  kafkaUser,
+			kafkaPasswordEnv:              kafkaPassword,
+			kafkaTopicEnv:                 kafkaTopic,
+			kafkaBrokersEnv:               kafkaBrokers,
+			valkeyPasswordEnv:             valkeyPassword,
+			valkeyAddressesEnv:            valkeyAddresses,
+			valkeyTTLMinutesEnv:           valkeyTTLMinutes,
+			httpClientTimeoutEnv:          httpClientTimeout,
+			retryMaxAttemptsEnv:           retryMaxAttempts,
+			retryDelayEnv:                 retryDelay,
+			retryableStatusesEnv:          retryableStatuses,
+			circuitBreakerIntervalEnv:     circuitBreakerInterval,
+			circuitBreakerTimeoutEnv:      circuitBreakerTimeout,
+			circuitBreakerMaxRequestsEnv:  circuitBreakerMaxRequests,
+			circuitBreakerFailureRatioEnv: circuitBreakerFailureRatio,
+			rateLimitRPSEnv:               rateLimitRPS,
+			rateLimitBurstEnv:             rateLimitBurst,
 		},
 		Networks: []string{s.network.Name},
 		NetworkAliases: map[string][]string{
@@ -250,6 +311,7 @@ func (s *Suite) setupPostgres(ctx context.Context) {
 		ContainerRequest: dbReq,
 		Started:          true,
 	})
+
 	s.Require().NoError(err)
 	s.dbContainer = dbC
 }

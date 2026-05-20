@@ -28,7 +28,6 @@ func TestParseConfig(t *testing.T) {
 		expectedErr error
 	}{
 		{
-
 			name:            "success",
 			githubToken:     "github_token",
 			stackToken:      "stack_token",
@@ -65,6 +64,27 @@ func TestParseConfig(t *testing.T) {
 					Addresses: []string{"valkey-0:6379", "valkey-1:6379"},
 					Password:  "pass",
 					ValkeyTTL: 5 * time.Minute,
+				},
+				HTTPClientConfig: config2.HTTPClientConfig{
+					Timeout: 10 * time.Second,
+				},
+
+				RetryConfig: config2.RetryConfig{
+					MaxAttempts:       3,
+					Delay:             500 * time.Millisecond,
+					RetryableStatuses: []int{500, 502, 503, 504},
+				},
+
+				CircuitBreakerConfig: config2.CircuitBreakerConfig{
+					Interval:     10 * time.Second,
+					Timeout:      5 * time.Second,
+					MaxRequests:  3,
+					FailureRatio: 0.6,
+				},
+
+				RateLimitConfig: config2.RateLimitConfig{
+					RPS:   5,
+					Burst: 10,
 				},
 			},
 			expectedErr: nil,
@@ -162,6 +182,17 @@ func TestParseConfig(t *testing.T) {
 			t.Setenv(valkeyAddressesEnv, "valkey-0:6379,valkey-1:6379")
 			t.Setenv(valkeyPasswordEnv, "pass")
 			t.Setenv(valkeyTTLEnv, tt.valkeyTTL)
+			t.Setenv("HTTP_CLIENT_TIMEOUT", "10s")
+			t.Setenv("RETRY_MAX_ATTEMPTS", "3")
+			t.Setenv("RETRY_DELAY", "500ms")
+			t.Setenv("RETRYABLE_STATUSES", "500,502,503,504")
+			t.Setenv("CIRCUIT_BREAKER_INTERVAL", "10s")
+			t.Setenv("CIRCUIT_BREAKER_TIMEOUT", "5s")
+			t.Setenv("CIRCUIT_BREAKER_MAX_REQUESTS", "3")
+			t.Setenv("CIRCUIT_BREAKER_FAILURE_RATIO", "0.6")
+			t.Setenv("RATE_LIMIT_RPS", "5")
+			t.Setenv("RATE_LIMIT_BURST", "10")
+
 			cfg, err := ParseConfig()
 
 			if tt.expectedErr != nil {

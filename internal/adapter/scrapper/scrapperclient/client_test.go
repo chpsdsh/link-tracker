@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	conf2 "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/pkg/config"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/config"
 )
 
@@ -31,12 +32,10 @@ func TestDoGithubRequestSuccess(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := Client{
-		Client: server.Client(),
-		Config: config.Config{
-			GithubToken: "token",
-		},
-	}
+	conf := config.Config{BotServerAddr: server.URL, RetryConfig: conf2.RetryConfig{MaxAttempts: 3,
+		Delay: 10 * time.Second, RetryableStatuses: []int{500}},
+		CircuitBreakerConfig: conf2.CircuitBreakerConfig{Interval: 10 * time.Second, Timeout: 10 * time.Second, MaxRequests: 10, FailureRatio: 0.5}}
+	client := NewScrapperClient(conf)
 
 	resp, err := client.DoGithubRequest(server.URL)
 
@@ -55,12 +54,10 @@ func TestDoGithubRequestInvalidJSON(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := Client{
-		Client: server.Client(),
-		Config: config.Config{
-			GithubToken: "token",
-		},
-	}
+	conf := config.Config{BotServerAddr: server.URL, RetryConfig: conf2.RetryConfig{MaxAttempts: 3,
+		Delay: 10 * time.Second, RetryableStatuses: []int{500}},
+		CircuitBreakerConfig: conf2.CircuitBreakerConfig{Interval: 10 * time.Second, Timeout: 10 * time.Second, MaxRequests: 10, FailureRatio: 0.5}}
+	client := NewScrapperClient(conf)
 
 	_, err := client.DoGithubRequest(server.URL)
 
@@ -96,12 +93,10 @@ func TestDoGithubIssueRequestSuccess(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := Client{
-		Client: server.Client(),
-		Config: config.Config{
-			GithubToken: "token",
-		},
-	}
+	conf := config.Config{BotServerAddr: server.URL, RetryConfig: conf2.RetryConfig{MaxAttempts: 3,
+		Delay: 10 * time.Second, RetryableStatuses: []int{500}},
+		CircuitBreakerConfig: conf2.CircuitBreakerConfig{Interval: 10 * time.Second, Timeout: 10 * time.Second, MaxRequests: 10, FailureRatio: 0.5}}
+	client := NewScrapperClient(conf)
 
 	resp, err := client.DoGithubIssueRequest(server.URL)
 
@@ -129,12 +124,10 @@ func TestDoGithubIssueRequest_BadJSON(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := Client{
-		Client: server.Client(),
-		Config: config.Config{
-			GithubToken: "token",
-		},
-	}
+	conf := config.Config{BotServerAddr: server.URL, RetryConfig: conf2.RetryConfig{MaxAttempts: 3,
+		Delay: 10 * time.Second, RetryableStatuses: []int{500}},
+		CircuitBreakerConfig: conf2.CircuitBreakerConfig{Interval: 10 * time.Second, Timeout: 10 * time.Second, MaxRequests: 10, FailureRatio: 0.5}}
+	client := NewScrapperClient(conf)
 
 	_, err := client.DoGithubIssueRequest(server.URL)
 
@@ -170,12 +163,10 @@ func TestDoGithubPullRequestRequestSuccess(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := Client{
-		Client: server.Client(),
-		Config: config.Config{
-			GithubToken: "token",
-		},
-	}
+	conf := config.Config{BotServerAddr: server.URL, RetryConfig: conf2.RetryConfig{MaxAttempts: 3,
+		Delay: 10 * time.Second, RetryableStatuses: []int{500}},
+		CircuitBreakerConfig: conf2.CircuitBreakerConfig{Interval: 10 * time.Second, Timeout: 10 * time.Second, MaxRequests: 10, FailureRatio: 0.5}}
+	client := NewScrapperClient(conf)
 
 	resp, err := client.DoGithubPullRequestRequest(server.URL)
 
@@ -214,12 +205,10 @@ func TestDoStackOverflowRequestSuccess(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := Client{
-		Client: server.Client(),
-		Config: config.Config{
-			StackoverflowToken: "token",
-		},
-	}
+	conf := config.Config{BotServerAddr: server.URL, RetryConfig: conf2.RetryConfig{MaxAttempts: 3,
+		Delay: 10 * time.Second, RetryableStatuses: []int{500}},
+		CircuitBreakerConfig: conf2.CircuitBreakerConfig{Interval: 10 * time.Second, Timeout: 10 * time.Second, MaxRequests: 10, FailureRatio: 0.5}}
+	client := NewScrapperClient(conf)
 
 	resp, err := client.DoStackOverflowQuestionRequest(server.URL + "?site=stackoverflow")
 	if err != nil {
@@ -241,12 +230,10 @@ func TestDoStackOverflowRequestInvalidJSON(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := Client{
-		Client: server.Client(),
-		Config: config.Config{
-			StackoverflowToken: "token",
-		},
-	}
+	conf := config.Config{BotServerAddr: server.URL, RetryConfig: conf2.RetryConfig{MaxAttempts: 3,
+		Delay: 10 * time.Second, RetryableStatuses: []int{500}},
+		CircuitBreakerConfig: conf2.CircuitBreakerConfig{Interval: 10 * time.Second, Timeout: 10 * time.Second, MaxRequests: 10, FailureRatio: 0.5}}
+	client := NewScrapperClient(conf)
 
 	_, err := client.DoStackOverflowQuestionRequest(server.URL + "?site=stackoverflow")
 
@@ -278,12 +265,10 @@ func TestDoStackOverflowAnswersRequestSuccess(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := Client{
-		Client: server.Client(),
-		Config: config.Config{
-			StackoverflowToken: "token",
-		},
-	}
+	conf := config.Config{BotServerAddr: server.URL, RetryConfig: conf2.RetryConfig{MaxAttempts: 3,
+		Delay: 10 * time.Second, RetryableStatuses: []int{500}},
+		CircuitBreakerConfig: conf2.CircuitBreakerConfig{Interval: 10 * time.Second, Timeout: 10 * time.Second, MaxRequests: 10, FailureRatio: 0.5}}
+	client := NewScrapperClient(conf)
 
 	resp, err := client.DoStackOverflowAnswersRequest(server.URL + "?site=stackoverflow")
 	require.NoError(t, err)
@@ -301,12 +286,10 @@ func TestDoStackOverflowAnswersRequest_BadJSON(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := Client{
-		Client: server.Client(),
-		Config: config.Config{
-			StackoverflowToken: "token",
-		},
-	}
+	conf := config.Config{BotServerAddr: server.URL, RetryConfig: conf2.RetryConfig{MaxAttempts: 3,
+		Delay: 10 * time.Second, RetryableStatuses: []int{500}},
+		CircuitBreakerConfig: conf2.CircuitBreakerConfig{Interval: 10 * time.Second, Timeout: 10 * time.Second, MaxRequests: 10, FailureRatio: 0.5}}
+	client := NewScrapperClient(conf)
 
 	_, err := client.DoStackOverflowAnswersRequest(server.URL + "?site=stackoverflow")
 
@@ -337,12 +320,10 @@ func TestDoStackOverflowCommentsRequestSuccess(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := Client{
-		Client: server.Client(),
-		Config: config.Config{
-			StackoverflowToken: "token",
-		},
-	}
+	conf := config.Config{BotServerAddr: server.URL, RetryConfig: conf2.RetryConfig{MaxAttempts: 3,
+		Delay: 10 * time.Second, RetryableStatuses: []int{500}},
+		CircuitBreakerConfig: conf2.CircuitBreakerConfig{Interval: 10 * time.Second, Timeout: 10 * time.Second, MaxRequests: 10, FailureRatio: 0.5}}
+	client := NewScrapperClient(conf)
 
 	resp, err := client.DoStackOverflowCommentsRequest(server.URL + "?site=stackoverflow")
 	require.NoError(t, err)
