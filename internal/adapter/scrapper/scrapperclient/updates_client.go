@@ -57,16 +57,15 @@ func (c UpdatesClient) SendLinkUpdate(update pkg.LinkUpdate, _ string) error {
 		var status int
 		retryErr := c.Retrier.Do(func() error {
 			resp, reqErr := c.doLinkUpdateRequest(data)
-
 			if reqErr != nil {
 				if resp != nil && resp.Body != nil {
 					_ = resp.Body.Close()
 				}
 				return fmt.Errorf("error sending link update: %w", err)
 			}
+			defer func() { _ = resp.Body.Close() }()
 
 			if c.isRetryableStatus(resp.StatusCode) {
-				_ = resp.Body.Close()
 				return fmt.Errorf("retriable status code %d", resp.StatusCode)
 			}
 			status = resp.StatusCode

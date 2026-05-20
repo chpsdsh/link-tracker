@@ -31,6 +31,8 @@ type Config struct {
 	KafkaConfig           KafkaConfig
 	PostgresConfig        config.PostgresConfig
 	HTTPClientConfig      HTTPClientConfig
+	CircuitBreakerConfig  CircuitBreakerConfig
+	RetryConfig           RetryConfig
 }
 
 func ParseConfig() (Config, error) {
@@ -70,6 +72,15 @@ func ParseConfig() (Config, error) {
 		return Config{}, fmt.Errorf("parsing http client config: %w", err)
 	}
 
+	circuitBreakerConf, err := ParseCircuitBreakerConfig()
+	if err != nil {
+		return Config{}, fmt.Errorf("parsing circuit breaker config: %w", err)
+	}
+	retryConf, err := ParseRetryConfig()
+	if err != nil {
+		return Config{}, fmt.Errorf("parsing retry config: %w", err)
+	}
+
 	return Config{TelegramToken: token,
 		ScrapperServerAddress: scrapperAddr,
 		WithTelegramAPI:       withTgAPI,
@@ -77,5 +88,7 @@ func ParseConfig() (Config, error) {
 		UpdatesReceiveType:    updatesReceiveTypeStr,
 		PostgresConfig:        postgresConf,
 		HTTPClientConfig:      timeoutConf,
+		CircuitBreakerConfig:  circuitBreakerConf,
+		RetryConfig:           retryConf,
 	}, nil
 }

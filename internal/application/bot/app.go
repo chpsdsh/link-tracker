@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"net/http"
 	"os/signal"
 	"sync"
 	"syscall"
@@ -53,12 +52,12 @@ func StartBot(baseLogger *slog.Logger) error {
 
 	wg := &sync.WaitGroup{}
 
-	client := &http.Client{Timeout: conf.HTTPClientConfig.Timeout}
+	client := botclient.NewBotClient(conf)
 
 	telegramHandler := handler.TelegramHandler{MsgSender: telegramBot,
 		Session:    statestorage.NewStateStorage(),
 		BaseLogger: baseLogger,
-		Client:     botclient.Client{Client: client, Config: conf}}
+		Client:     client}
 
 	telegramBot.Handler = telegramHandler
 
