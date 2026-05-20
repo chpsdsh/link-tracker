@@ -147,7 +147,7 @@ func TestParseConfig(t *testing.T) {
 			t.Setenv(scrapperTimeInterval, tt.interval)
 			t.Setenv(linksBatchSize, tt.batchSize)
 			t.Setenv(schedulerNumWorkers, tt.numWorkers)
-			t.Setenv(updatesSendType, tt.updateSendType)
+			t.Setenv(updatesHandleType, tt.updateSendType)
 
 			t.Setenv(kafkaUser, "user")
 			t.Setenv(kafkaPassword, "pass")

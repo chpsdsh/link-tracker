@@ -12,7 +12,7 @@
    APP_TELEGRAM_TOKEN=key
    SCRAPPER_SERVER_ADDRESS=http://scrapper:8081
    WITH_TELEGRAM_API=true
-   UPDATES_RECEIVER_TYPE=kafka
+   UPDATES_HANDLE_TYPE=(kafka/http/fallback)
    KAFKA_USER=user1
    KAFKA_PASSWORD=user1-secret
    KAFKA_TOPIC=notification-topic
@@ -48,7 +48,7 @@
    POSTGRES_USER=user
    POSTGRES_PASSWORD=password
    POSTGRES_DB=mydb
-   UPDATES_SEND_TYPE=kafka
+   UPDATES_HANDLE_TYPE=(kafka/http/fallback)
    KAFKA_USER=user1
    KAFKA_PASSWORD=user1-secret
    KAFKA_TOPIC=notification-topic

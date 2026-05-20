@@ -76,7 +76,7 @@ func TestParseConfig(t *testing.T) {
 			t.Setenv(telegramAPIKey, tt.token)
 			t.Setenv(scrapperServerAddress, tt.scrapperAddr)
 			t.Setenv(withTelegramAPI, tt.withAPIFlag)
-			t.Setenv(updatesReceiverType, "kafka")
+			t.Setenv(updatesHandleType, "kafka")
 
 			t.Setenv(kafkaUser, "user")
 			t.Setenv(kafkaPassword, "pass")

@@ -13,14 +13,14 @@ const (
 	telegramAPIKey        = "APP_TELEGRAM_TOKEN"
 	scrapperServerAddress = "SCRAPPER_SERVER_ADDRESS"
 	withTelegramAPI       = "WITH_TELEGRAM_API"
-	updatesReceiverType   = "UPDATES_RECEIVER_TYPE"
+	updatesHandleType     = "UPDATES_HANDLE_TYPE"
 )
 
 var (
 	ErrNoTelegramAPIFlag    = errors.New("telegram API flag should be set up with " + withTelegramAPI + " environment variable")
 	ErrNoTelegramToken      = errors.New("telegram token should be set up with " + telegramAPIKey + " environment variable")
 	ErrNoScrapperAddress    = errors.New("scrapper server address should be set up with " + scrapperServerAddress + " environment variable")
-	ErrNoUpdatesReceiveType = errors.New("updates receive type should be set up with " + updatesReceiverType + " environment variable")
+	ErrNoUpdatesReceiveType = errors.New("updates handle type should be set up with " + updatesHandleType + " environment variable")
 )
 
 type Config struct {
@@ -52,7 +52,7 @@ func ParseConfig() (Config, error) {
 		return Config{}, ErrNoTelegramAPIFlag
 	}
 
-	updatesReceiveTypeStr := os.Getenv(updatesReceiverType)
+	updatesReceiveTypeStr := os.Getenv(updatesHandleType)
 	if updatesReceiveTypeStr == "" {
 		return Config{}, ErrNoUpdatesReceiveType
 	}

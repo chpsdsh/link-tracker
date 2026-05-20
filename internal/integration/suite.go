@@ -42,7 +42,7 @@ const (
 	postgresPassword      = "POSTGRES_PASSWORD"
 	postgresDatabase      = "POSTGRES_DB"
 	updatesSendTypeEnv    = "UPDATES_SEND_TYPE"
-	updatesReceiveTypeEnv = "UPDATES_RECEIVER_TYPE"
+	updatesReceiveTypeEnv = "UPDATES_HANDLE_TYPE"
 	kafkaConsumerGroupEnv = "KAFKA_CONSUMER_GROUP"
 	kafkaUserEnv          = "KAFKA_USER"
 	kafkaPasswordEnv      = "KAFKA_PASSWORD"

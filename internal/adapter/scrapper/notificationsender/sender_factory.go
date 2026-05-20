@@ -1,4 +1,4 @@
-package senderfactory
+package notificationsender
 
 import (
 	"context"
@@ -7,8 +7,9 @@ import (
 	"log/slog"
 
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/config"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/producer"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/scrapperclient"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/notificationsender/fallbacksender"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/notificationsender/httpsender"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/notificationsender/producer"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/scrapper/service"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/pkg"
 )
@@ -16,8 +17,9 @@ import (
 var ErrNotValidSenderType = errors.New("not valid kafka sender type")
 
 const (
-	kafkaSender = "kafka"
-	httpSender  = "http"
+	kafkaSender    = "kafka"
+	httpSender     = "http"
+	fallbackSender = "fallback"
 )
 
 func NewSender(ctx context.Context, conf config.Config, logger *slog.Logger, updatesChan chan pkg.KafkaLinkUpdate) (service.Sender, error) {
@@ -30,7 +32,15 @@ func NewSender(ctx context.Context, conf config.Config, logger *slog.Logger, upd
 		notificationProducer.StartProducerLoop(ctx)
 		return notificationProducer, nil
 	case httpSender:
-		return scrapperclient.NewUpdatesClient(conf), nil
+		return httpsender.NewUpdatesClient(conf), nil
+	case fallbackSender:
+		notificationProducer, err := producer.NewKafkaProducer(conf, logger, updatesChan)
+		if err != nil {
+			return nil, fmt.Errorf("error creating kafka producer: %w", err)
+		}
+		notificationProducer.StartProducerLoop(ctx)
+		httpClient := httpsender.NewUpdatesClient(conf)
+		return fallbacksender.NewFallbackSender(notificationProducer, httpClient), nil
 	default:
 		return nil, ErrNotValidSenderType
 	}

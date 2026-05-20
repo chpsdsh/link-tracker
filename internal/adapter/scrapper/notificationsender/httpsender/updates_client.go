@@ -1,4 +1,4 @@
-package scrapperclient
+package httpsender
 
 import (
 	"bytes"
@@ -14,7 +14,12 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/scrapper"
 )
 
-const updatesBreakerName = "updates-breaker"
+const (
+	updatesBreakerName  = "updates-breaker"
+	botPostEndpoint     = "/updates"
+	contentTypeKey      = "Content-Type"
+	typeApplicationJSON = "application/json"
+)
 
 type UpdatesClient struct {
 	Client  *http.Client

@@ -12,7 +12,7 @@ import (
 	"github.com/joho/godotenv"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/bot/botclient"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/bot/config"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/bot/receiverfactory"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/bot/receiver"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/bot/repository"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/bot/telegram"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/database"
@@ -68,7 +68,7 @@ func StartBot(baseLogger *slog.Logger) error {
 	}
 	inboxRepo := repository.NewInboxRepository(db.GetDBPool())
 
-	receiver, err := receiverfactory.NewReceiver(conf, telegramHandler, baseLogger, inboxRepo)
+	botReceiver, err := receiver.NewReceiver(conf, telegramHandler, baseLogger, inboxRepo)
 	if err != nil {
 		baseLogger.Error("error creating telegram receiver", slog.String("err", err.Error()))
 		return fmt.Errorf("error creating telegram receiver: %w", err)
@@ -77,7 +77,7 @@ func StartBot(baseLogger *slog.Logger) error {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
-	if receiverStartErr := receiver.Start(ctx); receiverStartErr != nil {
+	if receiverStartErr := botReceiver.Start(ctx); receiverStartErr != nil {
 		baseLogger.Error("error starting receiver", slog.String("err", receiverStartErr.Error()))
 		cancel()
 	}
@@ -87,11 +87,11 @@ func StartBot(baseLogger *slog.Logger) error {
 	<-ctx.Done()
 
 	defer cancel()
-	shutdown(baseLogger, receiver, wg, db)
+	shutdown(baseLogger, botReceiver, wg, db)
 	return nil
 }
 
-func shutdown(baseLogger *slog.Logger, receiver receiverfactory.Receiver, wg *sync.WaitGroup, db *database.DB) {
+func shutdown(baseLogger *slog.Logger, receiver receiver.Receiver, wg *sync.WaitGroup, db *database.DB) {
 	if shutdownErr := receiver.Shutdown(); shutdownErr != nil {
 		baseLogger.Error("shutdown error", slog.String("err", shutdownErr.Error()))
 	}

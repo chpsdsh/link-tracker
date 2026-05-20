@@ -18,7 +18,7 @@ const (
 	scrapperTimeInterval = "SCRAPPER_TIME_INTERVAL"
 	linksBatchSize       = "LINKS_BATCH_SIZE"
 	schedulerNumWorkers  = "SCHEDULER_NUM_WORKERS"
-	updatesSendType      = "UPDATES_SEND_TYPE"
+	updatesHandleType    = "UPDATES_HANDLE_TYPE"
 )
 
 var (
@@ -32,7 +32,7 @@ var (
 	ErrInvalidBachSize             = errors.New(linksBatchSize + "should be integer")
 	ErrNoNumWorkers                = errors.New("scrapper num workers should be set with " + schedulerNumWorkers + " environment variable")
 	ErrInvalidNumWorkers           = errors.New(schedulerNumWorkers + "should be integer")
-	ErrNoUpdatesSendType           = errors.New("updates send type should be set with " + updatesSendType + " environment variable")
+	ErrNoUpdatesSendType           = errors.New("updates send type should be set with " + updatesHandleType + " environment variable")
 )
 
 type AssetType int
@@ -108,7 +108,7 @@ func ParseConfig() (Config, error) { //nolint:funlen // config parsing should be
 		return Config{}, ErrInvalidNumWorkers
 	}
 
-	updatesSendTypeStr := os.Getenv(updatesSendType)
+	updatesSendTypeStr := os.Getenv(updatesHandleType)
 	if updatesSendTypeStr == "" {
 		return Config{}, ErrNoUpdatesSendType
 	}

@@ -11,8 +11,8 @@ import (
 	"github.com/go-co-op/gocron/v2"
 	"github.com/joho/godotenv"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/cache"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/notificationsender"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/repository/outboxrepo"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/senderfactory"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/pkg"
 
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/database"
@@ -198,7 +198,7 @@ func (a *App) initRepositories() error {
 }
 
 func (a *App) initSender() error {
-	sender, err := senderfactory.NewSender(
+	sender, err := notificationsender.NewSender(
 		a.ctx,
 		a.conf,
 		a.logger,

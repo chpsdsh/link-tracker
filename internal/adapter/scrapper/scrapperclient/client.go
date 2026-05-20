@@ -17,14 +17,11 @@ import (
 var ErrUnmarshallingJSON = errors.New("json unmarshalling error")
 
 const (
-	botPostEndpoint     = "/updates"
-	contentTypeKey      = "Content-Type"
-	typeApplicationJSON = "application/json"
-	applicationType     = "application/vnd.github.v3+json"
-	version             = "2026-03-10"
-	stackOverflowKey    = "&key="
-	gitBreakerName      = "git-breaker"
-	stackBreakerName    = "stack-overflow-breaker"
+	applicationType  = "application/vnd.github.v3+json"
+	version          = "2026-03-10"
+	stackOverflowKey = "&key="
+	gitBreakerName   = "git-breaker"
+	stackBreakerName = "stack-overflow-breaker"
 )
 
 type Client struct {
