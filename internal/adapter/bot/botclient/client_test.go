@@ -59,7 +59,7 @@ func TestClientRegisterChat(t *testing.T) {
 				w.WriteHeader(tt.status)
 			}))
 			defer server.Close()
-			conf := config.Config{ScrapperServerAddress: server.URL, RetryConfig: conf2.RetryConfig{MaxAttempts: 3,
+			conf := config.BotConfig{ScrapperServerAddress: server.URL, RetryConfig: conf2.RetryConfig{MaxAttempts: 3,
 				Delay: 10 * time.Second, RetryableStatuses: []int{500}},
 				CircuitBreakerConfig: conf2.CircuitBreakerConfig{Interval: 10 * time.Second, Timeout: 10 * time.Second, MaxRequests: 10, FailureRatio: 0.5}}
 			client := NewBotClient(conf)
@@ -117,7 +117,7 @@ func TestClientUnregisterChat(t *testing.T) {
 			}))
 			defer server.Close()
 
-			conf := config.Config{ScrapperServerAddress: server.URL, RetryConfig: conf2.RetryConfig{MaxAttempts: 3,
+			conf := config.BotConfig{ScrapperServerAddress: server.URL, RetryConfig: conf2.RetryConfig{MaxAttempts: 3,
 				Delay: 10 * time.Second, RetryableStatuses: []int{500}},
 				CircuitBreakerConfig: conf2.CircuitBreakerConfig{Interval: 10 * time.Second, Timeout: 10 * time.Second, MaxRequests: 10, FailureRatio: 0.5}}
 			client := NewBotClient(conf)
@@ -196,7 +196,7 @@ func TestClientGetLinks(t *testing.T) {
 			}))
 			defer server.Close()
 
-			conf := config.Config{ScrapperServerAddress: server.URL, RetryConfig: conf2.RetryConfig{MaxAttempts: 3,
+			conf := config.BotConfig{ScrapperServerAddress: server.URL, RetryConfig: conf2.RetryConfig{MaxAttempts: 3,
 				Delay: 10 * time.Second, RetryableStatuses: []int{500}},
 				CircuitBreakerConfig: conf2.CircuitBreakerConfig{Interval: 10 * time.Second, Timeout: 10 * time.Second, MaxRequests: 10, FailureRatio: 0.5}}
 			client := NewBotClient(conf)
@@ -263,7 +263,7 @@ func TestClientAddLink(t *testing.T) {
 			}))
 			defer server.Close()
 
-			conf := config.Config{ScrapperServerAddress: server.URL, RetryConfig: conf2.RetryConfig{MaxAttempts: 3,
+			conf := config.BotConfig{ScrapperServerAddress: server.URL, RetryConfig: conf2.RetryConfig{MaxAttempts: 3,
 				Delay: 10 * time.Second, RetryableStatuses: []int{500}},
 				CircuitBreakerConfig: conf2.CircuitBreakerConfig{Interval: 10 * time.Second, Timeout: 10 * time.Second, MaxRequests: 10, FailureRatio: 0.5}}
 			client := NewBotClient(conf)
@@ -370,7 +370,7 @@ func TestClientRemoveLink(t *testing.T) {
 			}))
 			defer server.Close()
 
-			conf := config.Config{ScrapperServerAddress: server.URL, RetryConfig: conf2.RetryConfig{MaxAttempts: 3,
+			conf := config.BotConfig{ScrapperServerAddress: server.URL, RetryConfig: conf2.RetryConfig{MaxAttempts: 3,
 				Delay: 10 * time.Second, RetryableStatuses: []int{500}},
 				CircuitBreakerConfig: conf2.CircuitBreakerConfig{Interval: 10 * time.Second, Timeout: 10 * time.Second, MaxRequests: 10, FailureRatio: 0.5}}
 			client := NewBotClient(conf)

@@ -29,7 +29,7 @@ type KafkaProducer struct {
 	linkUpdatesChan   chan pkg.KafkaLinkUpdate
 }
 
-func NewKafkaProducer(conf config.Config, logger *slog.Logger, linkUpdatesChan chan pkg.KafkaLinkUpdate) (*KafkaProducer, error) {
+func NewKafkaProducer(conf config.ScrapperConfig, logger *slog.Logger, linkUpdatesChan chan pkg.KafkaLinkUpdate) (*KafkaProducer, error) {
 	saramaConf := sarama.NewConfig()
 
 	saramaConf.Version = sarama.V3_6_0_0

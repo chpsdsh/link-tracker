@@ -23,7 +23,7 @@ var (
 	ErrNoUpdatesReceiveType = errors.New("updates handle type should be set up with " + updatesHandleType + " environment variable")
 )
 
-type Config struct {
+type BotConfig struct {
 	WithTelegramAPI       bool
 	TelegramToken         string
 	ScrapperServerAddress string
@@ -36,58 +36,58 @@ type Config struct {
 	RateLimitConfig       config.RateLimitConfig
 }
 
-func ParseConfig() (Config, error) {
+func ParseConfig() (BotConfig, error) {
 	token := os.Getenv(telegramAPIKey)
 	if token == "" {
-		return Config{}, ErrNoTelegramToken
+		return BotConfig{}, ErrNoTelegramToken
 	}
 
 	scrapperAddr := os.Getenv(scrapperServerAddress)
 	if scrapperAddr == "" {
-		return Config{}, ErrNoScrapperAddress
+		return BotConfig{}, ErrNoScrapperAddress
 	}
 
 	withTgAPIEnv := os.Getenv(withTelegramAPI)
 	withTgAPI, err := strconv.ParseBool(withTgAPIEnv)
 	if err != nil {
-		return Config{}, ErrNoTelegramAPIFlag
+		return BotConfig{}, ErrNoTelegramAPIFlag
 	}
 
 	updatesReceiveTypeStr := os.Getenv(updatesHandleType)
 	if updatesReceiveTypeStr == "" {
-		return Config{}, ErrNoUpdatesReceiveType
+		return BotConfig{}, ErrNoUpdatesReceiveType
 	}
 
 	kafkaConf, err := ParseKafkaConfig()
 	if err != nil {
-		return Config{}, fmt.Errorf("parsing kafka config: %w", err)
+		return BotConfig{}, fmt.Errorf("parsing kafka config: %w", err)
 	}
 
 	postgresConf, err := config.ParsePostgresConfig()
 	if err != nil {
-		return Config{}, fmt.Errorf("parsing postgres config: %w", err)
+		return BotConfig{}, fmt.Errorf("parsing postgres config: %w", err)
 	}
 
 	timeoutConf, err := config.ParseHTTPClientConfig()
 	if err != nil {
-		return Config{}, fmt.Errorf("parsing http client config: %w", err)
+		return BotConfig{}, fmt.Errorf("parsing http client config: %w", err)
 	}
 
 	circuitBreakerConf, err := config.ParseCircuitBreakerConfig()
 	if err != nil {
-		return Config{}, fmt.Errorf("parsing circuit breaker config: %w", err)
+		return BotConfig{}, fmt.Errorf("parsing circuit breaker config: %w", err)
 	}
 	retryConf, err := config.ParseRetryConfig()
 	if err != nil {
-		return Config{}, fmt.Errorf("parsing retry config: %w", err)
+		return BotConfig{}, fmt.Errorf("parsing retry config: %w", err)
 	}
 
 	rateLimitConf, err := config.ParseRateLimitConfig()
 	if err != nil {
-		return Config{}, fmt.Errorf("parsing rate limit config: %w", err)
+		return BotConfig{}, fmt.Errorf("parsing rate limit config: %w", err)
 	}
 
-	return Config{TelegramToken: token,
+	return BotConfig{TelegramToken: token,
 		ScrapperServerAddress: scrapperAddr,
 		WithTelegramAPI:       withTgAPI,
 		KafkaConfig:           kafkaConf,

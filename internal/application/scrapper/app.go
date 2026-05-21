@@ -31,7 +31,7 @@ const (
 
 type App struct {
 	logger *slog.Logger
-	conf   config.Config
+	conf   config.ScrapperConfig
 
 	ctx    context.Context
 	cancel context.CancelFunc

@@ -42,7 +42,7 @@ const (
 	AssetTypeBuilder
 )
 
-type Config struct {
+type ScrapperConfig struct {
 	GithubToken          string
 	StackoverflowToken   string
 	BotServerAddr        string
@@ -61,94 +61,94 @@ type Config struct {
 	RateLimitConfig      config.RateLimitConfig
 }
 
-func ParseConfig() (Config, error) { //nolint:funlen // config parsing should be in ine method
+func ParseConfig() (ScrapperConfig, error) { //nolint:funlen // config parsing should be in ine method
 	githubToken := os.Getenv(githubAPIKey)
 	if githubToken == "" {
-		return Config{}, ErrNoTelegramToken
+		return ScrapperConfig{}, ErrNoTelegramToken
 	}
 
 	stackoverflowToken := os.Getenv(stackoverflowAPIKey)
 	if stackoverflowToken == "" {
-		return Config{}, ErrNoStackOverflowToken
+		return ScrapperConfig{}, ErrNoStackOverflowToken
 	}
 
 	botServAddr := os.Getenv(botServerAddress)
 	if botServAddr == "" {
-		return Config{}, ErrNoBotServerAddress
+		return ScrapperConfig{}, ErrNoBotServerAddress
 	}
 
 	asset, err := findAssetType(os.Getenv(assetType))
 	if err != nil {
-		return Config{}, ErrNoAssetType
+		return ScrapperConfig{}, ErrNoAssetType
 	}
 
 	scrapperIntervalStr := os.Getenv(scrapperTimeInterval)
 	if scrapperIntervalStr == "" {
-		return Config{}, ErrNoScrapperTimeInterval
+		return ScrapperConfig{}, ErrNoScrapperTimeInterval
 	}
 	scrapperInterval, err := strconv.Atoi(scrapperIntervalStr)
 	if err != nil {
-		return Config{}, ErrInvalidScrapperTimeInterval
+		return ScrapperConfig{}, ErrInvalidScrapperTimeInterval
 	}
 
 	batchSizeStr := os.Getenv(linksBatchSize)
 	if batchSizeStr == "" {
-		return Config{}, ErrNoLinksBatchSize
+		return ScrapperConfig{}, ErrNoLinksBatchSize
 	}
 	batchSize, err := strconv.Atoi(batchSizeStr)
 	if err != nil {
-		return Config{}, ErrInvalidBachSize
+		return ScrapperConfig{}, ErrInvalidBachSize
 	}
 
 	numWorkersStr := os.Getenv(schedulerNumWorkers)
 	if numWorkersStr == "" {
-		return Config{}, ErrNoNumWorkers
+		return ScrapperConfig{}, ErrNoNumWorkers
 	}
 	numWorkers, err := strconv.Atoi(numWorkersStr)
 	if err != nil {
-		return Config{}, ErrInvalidNumWorkers
+		return ScrapperConfig{}, ErrInvalidNumWorkers
 	}
 
 	updatesSendTypeStr := os.Getenv(updatesHandleType)
 	if updatesSendTypeStr == "" {
-		return Config{}, ErrNoUpdatesSendType
+		return ScrapperConfig{}, ErrNoUpdatesSendType
 	}
 
 	kafkaConfig, err := ParseKafkaConfig()
 	if err != nil {
-		return Config{}, fmt.Errorf("parsing kafka config: %w", err)
+		return ScrapperConfig{}, fmt.Errorf("parsing kafka config: %w", err)
 	}
 
 	postgresConfig, err := config.ParsePostgresConfig()
 	if err != nil {
-		return Config{}, fmt.Errorf("parsing postgres config: %w", err)
+		return ScrapperConfig{}, fmt.Errorf("parsing postgres config: %w", err)
 	}
 
 	valkeyConfig, err := ParseValkeyConfig()
 	if err != nil {
-		return Config{}, fmt.Errorf("parsing valkey config: %w", err)
+		return ScrapperConfig{}, fmt.Errorf("parsing valkey config: %w", err)
 	}
 
 	httpClientConfig, err := config.ParseHTTPClientConfig()
 	if err != nil {
-		return Config{}, fmt.Errorf("parsing http client config: %w", err)
+		return ScrapperConfig{}, fmt.Errorf("parsing http client config: %w", err)
 	}
 
 	retryConfig, err := config.ParseRetryConfig()
 	if err != nil {
-		return Config{}, fmt.Errorf("parsing retry config: %w", err)
+		return ScrapperConfig{}, fmt.Errorf("parsing retry config: %w", err)
 	}
 
 	circuitBreakerConfig, err := config.ParseCircuitBreakerConfig()
 	if err != nil {
-		return Config{}, fmt.Errorf("parsing circuit breaker config: %w", err)
+		return ScrapperConfig{}, fmt.Errorf("parsing circuit breaker config: %w", err)
 	}
 
 	rateLimitConfig, err := config.ParseRateLimitConfig()
 	if err != nil {
-		return Config{}, fmt.Errorf("parsing rate limit config: %w", err)
+		return ScrapperConfig{}, fmt.Errorf("parsing rate limit config: %w", err)
 	}
-	return Config{GithubToken: githubToken,
+	return ScrapperConfig{GithubToken: githubToken,
 		StackoverflowToken:   stackoverflowToken,
 		BotServerAddr:        botServAddr,
 		AssetType:            asset,

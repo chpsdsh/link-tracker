@@ -15,7 +15,7 @@ func TestParseConfig(t *testing.T) {
 		token         string
 		scrapperAddr  string
 		withAPIFlag   string
-		expectedCfg   Config
+		expectedCfg   BotConfig
 		expectedError error
 	}{
 		{
@@ -23,7 +23,7 @@ func TestParseConfig(t *testing.T) {
 			token:        "telegram_token",
 			scrapperAddr: "http://localhost:8080",
 			withAPIFlag:  "true",
-			expectedCfg: Config{
+			expectedCfg: BotConfig{
 				TelegramToken:         "telegram_token",
 				ScrapperServerAddress: "http://localhost:8080",
 				WithTelegramAPI:       true,
@@ -72,14 +72,14 @@ func TestParseConfig(t *testing.T) {
 			token:         "",
 			scrapperAddr:  "http://localhost:8080",
 			withAPIFlag:   "true",
-			expectedCfg:   Config{},
+			expectedCfg:   BotConfig{},
 			expectedError: ErrNoTelegramToken,
 		},
 		{
 			name:          "missing scrapper address",
 			token:         "telegram_token",
 			scrapperAddr:  "",
-			expectedCfg:   Config{},
+			expectedCfg:   BotConfig{},
 			expectedError: ErrNoScrapperAddress,
 		},
 		{
@@ -87,7 +87,7 @@ func TestParseConfig(t *testing.T) {
 			token:         "telegram_token",
 			scrapperAddr:  "http://localhost:8080",
 			withAPIFlag:   "",
-			expectedCfg:   Config{},
+			expectedCfg:   BotConfig{},
 			expectedError: ErrNoTelegramAPIFlag,
 		},
 	}

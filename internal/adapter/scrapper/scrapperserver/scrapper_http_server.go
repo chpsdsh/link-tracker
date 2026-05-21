@@ -24,7 +24,7 @@ type ScrapperHTTPServer struct {
 	rateLimiter *middleware.IPRateLimiter
 }
 
-func NewScrapperHTTPServer(baseLogger *slog.Logger, scrapperHandler service.LinksService, conf config.Config) ScrapperHTTPServer {
+func NewScrapperHTTPServer(baseLogger *slog.Logger, scrapperHandler service.LinksService, conf config.ScrapperConfig) ScrapperHTTPServer {
 	serverImplementation := ScrapperServer{BaseLogger: baseLogger, Handler: scrapperHandler}
 	h := HandlerWithOptions(serverImplementation,
 		StdHTTPServerOptions{ErrorHandlerFunc: JSONErrorHandler})

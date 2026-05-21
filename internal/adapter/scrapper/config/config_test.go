@@ -24,7 +24,7 @@ func TestParseConfig(t *testing.T) {
 		numWorkers string
 		valkeyTTL  string
 
-		expectedCfg Config
+		expectedCfg ScrapperConfig
 		expectedErr error
 	}{
 		{
@@ -38,7 +38,7 @@ func TestParseConfig(t *testing.T) {
 			numWorkers:      "4",
 			updateSendType:  "http",
 			valkeyTTL:       "5",
-			expectedCfg: Config{
+			expectedCfg: ScrapperConfig{
 				GithubToken:        "github_token",
 				StackoverflowToken: "stack_token",
 				BotServerAddr:      "http://localhost:8080",

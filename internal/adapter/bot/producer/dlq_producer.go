@@ -16,7 +16,7 @@ type DlqProducer struct {
 	dLQTopic string
 }
 
-func NewDLQProducer(conf config.Config) (DlqProducer, error) {
+func NewDLQProducer(conf config.BotConfig) (DlqProducer, error) {
 	saramaConf := sarama.NewConfig()
 
 	saramaConf.Version = sarama.V3_6_0_0

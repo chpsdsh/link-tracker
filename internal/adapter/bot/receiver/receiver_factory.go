@@ -23,7 +23,7 @@ type Receiver interface {
 	Shutdown() error
 }
 
-func NewReceiver(conf config.Config, telegramHandler handler.TelegramHandler, logger *slog.Logger, repository consumer.InboxRepository) (Receiver, error) {
+func NewReceiver(conf config.BotConfig, telegramHandler handler.TelegramHandler, logger *slog.Logger, repository consumer.InboxRepository) (Receiver, error) {
 	switch conf.UpdatesReceiveType {
 	case kafkaReceiverType:
 		notificationConsumer, err := consumer.NewNotificationsConsumer(conf, logger, telegramHandler, repository)

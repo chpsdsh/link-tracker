@@ -1,19 +1,24 @@
+//go:generate mockgen -source fallback_sender.go -destination=../mocks/fallback_sender.go -package=mocks
+
 package fallbacksender
 
 import (
 	"fmt"
 
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/notificationsender/httpsender"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/notificationsender/producer"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/pkg"
 )
 
-type FallbackSender struct {
-	kafkaSender *producer.KafkaProducer
-	httpSender  *httpsender.UpdatesClient
+type UpdateSender interface {
+	SendLinkUpdate(update pkg.LinkUpdate, key string) error
+	Close()
 }
 
-func NewFallbackSender(kafkaSender *producer.KafkaProducer, httpSender *httpsender.UpdatesClient) *FallbackSender {
+type FallbackSender struct {
+	kafkaSender UpdateSender
+	httpSender  UpdateSender
+}
+
+func NewFallbackSender(kafkaSender UpdateSender, httpSender UpdateSender) *FallbackSender {
 	return &FallbackSender{kafkaSender: kafkaSender, httpSender: httpSender}
 }
 

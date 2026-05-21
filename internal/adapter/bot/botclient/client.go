@@ -29,12 +29,12 @@ var ErrIncorrectCastType = errors.New("incorrect type cast")
 
 type Client struct {
 	Client  *http.Client
-	Config  config.Config
+	Config  config.BotConfig
 	Retrier *retry.Retrier
 	Breaker *gobreaker.CircuitBreaker
 }
 
-func NewBotClient(conf config.Config) Client {
+func NewBotClient(conf config.BotConfig) Client {
 	client := &http.Client{Timeout: conf.HTTPClientConfig.Timeout}
 	retrier := retry.New(
 		retry.Attempts(conf.RetryConfig.MaxAttempts),

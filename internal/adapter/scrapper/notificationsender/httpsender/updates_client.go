@@ -23,12 +23,12 @@ const (
 
 type UpdatesClient struct {
 	Client  *http.Client
-	Config  config.Config
+	Config  config.ScrapperConfig
 	Breaker *gobreaker.CircuitBreaker
 	Retrier *retry.Retrier
 }
 
-func NewUpdatesClient(conf config.Config) *UpdatesClient {
+func NewUpdatesClient(conf config.ScrapperConfig) *UpdatesClient {
 	client := &http.Client{Timeout: conf.HTTPClientConfig.Timeout}
 	retrier := retry.New(
 		retry.Attempts(conf.RetryConfig.MaxAttempts),
@@ -66,7 +66,7 @@ func (c UpdatesClient) SendLinkUpdate(update pkg.LinkUpdate, _ string) error {
 				if resp != nil && resp.Body != nil {
 					_ = resp.Body.Close()
 				}
-				return fmt.Errorf("error sending link update: %w", err)
+				return fmt.Errorf("error sending link update: %w", reqErr)
 			}
 			defer func() { _ = resp.Body.Close() }()
 

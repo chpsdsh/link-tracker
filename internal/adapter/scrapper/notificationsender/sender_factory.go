@@ -22,7 +22,7 @@ const (
 	fallbackSender = "fallback"
 )
 
-func NewSender(ctx context.Context, conf config.Config, logger *slog.Logger, updatesChan chan pkg.KafkaLinkUpdate) (service.Sender, error) {
+func NewSender(ctx context.Context, conf config.ScrapperConfig, logger *slog.Logger, updatesChan chan pkg.KafkaLinkUpdate) (service.Sender, error) {
 	switch conf.UpdatesSendType {
 	case kafkaSender:
 		notificationProducer, err := producer.NewKafkaProducer(conf, logger, updatesChan)

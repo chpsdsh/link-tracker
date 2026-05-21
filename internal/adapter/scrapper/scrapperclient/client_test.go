@@ -32,7 +32,7 @@ func TestDoGithubRequestSuccess(t *testing.T) {
 	}))
 	defer server.Close()
 
-	conf := config.Config{BotServerAddr: server.URL, RetryConfig: conf2.RetryConfig{MaxAttempts: 3,
+	conf := config.ScrapperConfig{BotServerAddr: server.URL, RetryConfig: conf2.RetryConfig{MaxAttempts: 3,
 		Delay: 10 * time.Second, RetryableStatuses: []int{500}},
 		CircuitBreakerConfig: conf2.CircuitBreakerConfig{Interval: 10 * time.Second, Timeout: 10 * time.Second, MaxRequests: 10, FailureRatio: 0.5}}
 	client := NewScrapperClient(conf)
@@ -54,7 +54,7 @@ func TestDoGithubRequestInvalidJSON(t *testing.T) {
 	}))
 	defer server.Close()
 
-	conf := config.Config{BotServerAddr: server.URL, RetryConfig: conf2.RetryConfig{MaxAttempts: 3,
+	conf := config.ScrapperConfig{BotServerAddr: server.URL, RetryConfig: conf2.RetryConfig{MaxAttempts: 3,
 		Delay: 10 * time.Second, RetryableStatuses: []int{500}},
 		CircuitBreakerConfig: conf2.CircuitBreakerConfig{Interval: 10 * time.Second, Timeout: 10 * time.Second, MaxRequests: 10, FailureRatio: 0.5}}
 	client := NewScrapperClient(conf)
@@ -93,7 +93,7 @@ func TestDoGithubIssueRequestSuccess(t *testing.T) {
 	}))
 	defer server.Close()
 
-	conf := config.Config{BotServerAddr: server.URL, RetryConfig: conf2.RetryConfig{MaxAttempts: 3,
+	conf := config.ScrapperConfig{BotServerAddr: server.URL, RetryConfig: conf2.RetryConfig{MaxAttempts: 3,
 		Delay: 10 * time.Second, RetryableStatuses: []int{500}},
 		CircuitBreakerConfig: conf2.CircuitBreakerConfig{Interval: 10 * time.Second, Timeout: 10 * time.Second, MaxRequests: 10, FailureRatio: 0.5}}
 	client := NewScrapperClient(conf)
@@ -124,7 +124,7 @@ func TestDoGithubIssueRequest_BadJSON(t *testing.T) {
 	}))
 	defer server.Close()
 
-	conf := config.Config{BotServerAddr: server.URL, RetryConfig: conf2.RetryConfig{MaxAttempts: 3,
+	conf := config.ScrapperConfig{BotServerAddr: server.URL, RetryConfig: conf2.RetryConfig{MaxAttempts: 3,
 		Delay: 10 * time.Second, RetryableStatuses: []int{500}},
 		CircuitBreakerConfig: conf2.CircuitBreakerConfig{Interval: 10 * time.Second, Timeout: 10 * time.Second, MaxRequests: 10, FailureRatio: 0.5}}
 	client := NewScrapperClient(conf)
@@ -163,7 +163,7 @@ func TestDoGithubPullRequestRequestSuccess(t *testing.T) {
 	}))
 	defer server.Close()
 
-	conf := config.Config{BotServerAddr: server.URL, RetryConfig: conf2.RetryConfig{MaxAttempts: 3,
+	conf := config.ScrapperConfig{BotServerAddr: server.URL, RetryConfig: conf2.RetryConfig{MaxAttempts: 3,
 		Delay: 10 * time.Second, RetryableStatuses: []int{500}},
 		CircuitBreakerConfig: conf2.CircuitBreakerConfig{Interval: 10 * time.Second, Timeout: 10 * time.Second, MaxRequests: 10, FailureRatio: 0.5}}
 	client := NewScrapperClient(conf)
@@ -205,7 +205,7 @@ func TestDoStackOverflowRequestSuccess(t *testing.T) {
 	}))
 	defer server.Close()
 
-	conf := config.Config{BotServerAddr: server.URL, RetryConfig: conf2.RetryConfig{MaxAttempts: 3,
+	conf := config.ScrapperConfig{BotServerAddr: server.URL, RetryConfig: conf2.RetryConfig{MaxAttempts: 3,
 		Delay: 10 * time.Second, RetryableStatuses: []int{500}},
 		CircuitBreakerConfig: conf2.CircuitBreakerConfig{Interval: 10 * time.Second, Timeout: 10 * time.Second, MaxRequests: 10, FailureRatio: 0.5}}
 	client := NewScrapperClient(conf)
@@ -230,7 +230,7 @@ func TestDoStackOverflowRequestInvalidJSON(t *testing.T) {
 	}))
 	defer server.Close()
 
-	conf := config.Config{BotServerAddr: server.URL, RetryConfig: conf2.RetryConfig{MaxAttempts: 3,
+	conf := config.ScrapperConfig{BotServerAddr: server.URL, RetryConfig: conf2.RetryConfig{MaxAttempts: 3,
 		Delay: 10 * time.Second, RetryableStatuses: []int{500}},
 		CircuitBreakerConfig: conf2.CircuitBreakerConfig{Interval: 10 * time.Second, Timeout: 10 * time.Second, MaxRequests: 10, FailureRatio: 0.5}}
 	client := NewScrapperClient(conf)
@@ -265,7 +265,7 @@ func TestDoStackOverflowAnswersRequestSuccess(t *testing.T) {
 	}))
 	defer server.Close()
 
-	conf := config.Config{BotServerAddr: server.URL, RetryConfig: conf2.RetryConfig{MaxAttempts: 3,
+	conf := config.ScrapperConfig{BotServerAddr: server.URL, RetryConfig: conf2.RetryConfig{MaxAttempts: 3,
 		Delay: 10 * time.Second, RetryableStatuses: []int{500}},
 		CircuitBreakerConfig: conf2.CircuitBreakerConfig{Interval: 10 * time.Second, Timeout: 10 * time.Second, MaxRequests: 10, FailureRatio: 0.5}}
 	client := NewScrapperClient(conf)
@@ -286,7 +286,7 @@ func TestDoStackOverflowAnswersRequest_BadJSON(t *testing.T) {
 	}))
 	defer server.Close()
 
-	conf := config.Config{BotServerAddr: server.URL, RetryConfig: conf2.RetryConfig{MaxAttempts: 3,
+	conf := config.ScrapperConfig{BotServerAddr: server.URL, RetryConfig: conf2.RetryConfig{MaxAttempts: 3,
 		Delay: 10 * time.Second, RetryableStatuses: []int{500}},
 		CircuitBreakerConfig: conf2.CircuitBreakerConfig{Interval: 10 * time.Second, Timeout: 10 * time.Second, MaxRequests: 10, FailureRatio: 0.5}}
 	client := NewScrapperClient(conf)
@@ -320,7 +320,7 @@ func TestDoStackOverflowCommentsRequestSuccess(t *testing.T) {
 	}))
 	defer server.Close()
 
-	conf := config.Config{BotServerAddr: server.URL, RetryConfig: conf2.RetryConfig{MaxAttempts: 3,
+	conf := config.ScrapperConfig{BotServerAddr: server.URL, RetryConfig: conf2.RetryConfig{MaxAttempts: 3,
 		Delay: 10 * time.Second, RetryableStatuses: []int{500}},
 		CircuitBreakerConfig: conf2.CircuitBreakerConfig{Interval: 10 * time.Second, Timeout: 10 * time.Second, MaxRequests: 10, FailureRatio: 0.5}}
 	client := NewScrapperClient(conf)

@@ -26,13 +26,13 @@ const (
 
 type Client struct {
 	Client               *http.Client
-	Config               config.Config
+	Config               config.ScrapperConfig
 	Retrier              *retry.Retrier
 	GithubBreaker        *gobreaker.CircuitBreaker
 	StackOverflowBreaker *gobreaker.CircuitBreaker
 }
 
-func NewScrapperClient(conf config.Config) Client {
+func NewScrapperClient(conf config.ScrapperConfig) Client {
 	client := &http.Client{Timeout: conf.HTTPClientConfig.Timeout}
 	retrier := retry.New(
 		retry.Attempts(conf.RetryConfig.MaxAttempts),
@@ -197,9 +197,18 @@ func (c Client) doRequestWithRetry(url string, queryFunc func(url string) (*http
 		if c.isRetryableStatus(resp.StatusCode) {
 			return fmt.Errorf("retriable status code %d", resp.StatusCode)
 		}
+
+		if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+			return retry.Unrecoverable(
+				fmt.Errorf("unexpected status code %d", resp.StatusCode),
+			)
+		}
+
 		body, err = io.ReadAll(resp.Body)
 		if err != nil {
-			return fmt.Errorf("error reading response body: %w", err)
+			return retry.Unrecoverable(
+				fmt.Errorf("error reading response body: %w", err),
+			)
 		}
 		return nil
 	})

@@ -24,7 +24,7 @@ type BotHTTPServer struct {
 	rateLimit *middleware.IPRateLimiter
 }
 
-func NewBotHTTPServer(baseLogger *slog.Logger, telegramHandler handler.TelegramHandler, conf config.Config) BotHTTPServer {
+func NewBotHTTPServer(baseLogger *slog.Logger, telegramHandler handler.TelegramHandler, conf config.BotConfig) BotHTTPServer {
 	router := UpdatesRouter{BaseLogger: baseLogger, Handler: telegramHandler}
 	mux := http.NewServeMux()
 	h := HandlerFromMux(&router, mux)

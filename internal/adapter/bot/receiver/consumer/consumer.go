@@ -21,7 +21,7 @@ type NotificationsConsumer struct {
 	groupHandler      GroupHandler
 }
 
-func NewNotificationsConsumer(conf config.Config, logger *slog.Logger, tgHandler handler.TelegramBotHandler, inboxRepo InboxRepository) (*NotificationsConsumer, error) {
+func NewNotificationsConsumer(conf config.BotConfig, logger *slog.Logger, tgHandler handler.TelegramBotHandler, inboxRepo InboxRepository) (*NotificationsConsumer, error) {
 	saramaConf := sarama.NewConfig()
 
 	saramaConf.Version = sarama.V3_6_0_0
