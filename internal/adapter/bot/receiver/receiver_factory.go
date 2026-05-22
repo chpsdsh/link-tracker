@@ -26,7 +26,7 @@ type Receiver interface {
 func NewReceiver(conf config.BotConfig, telegramHandler handler.TelegramHandler, logger *slog.Logger, repository consumer.InboxRepository) (Receiver, error) {
 	switch conf.UpdatesReceiveType {
 	case kafkaReceiverType:
-		notificationConsumer, err := consumer.NewNotificationsConsumer(conf, logger, telegramHandler, repository)
+		notificationConsumer, err := consumer.NewBotNotificationsConsumer(conf, logger, telegramHandler, repository)
 		if err != nil {
 			return nil, fmt.Errorf("error creating kafka notifications consumer: %w", err)
 		}
@@ -35,7 +35,7 @@ func NewReceiver(conf config.BotConfig, telegramHandler handler.TelegramHandler,
 		server := botserver.NewBotHTTPServer(logger, telegramHandler, conf)
 		return server, nil
 	case fallbackReceiverType:
-		notificationConsumer, err := consumer.NewNotificationsConsumer(conf, logger, telegramHandler, repository)
+		notificationConsumer, err := consumer.NewBotNotificationsConsumer(conf, logger, telegramHandler, repository)
 		if err != nil {
 			return nil, fmt.Errorf("error creating kafka notifications consumer: %w", err)
 		}

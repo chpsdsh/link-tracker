@@ -1,4 +1,4 @@
-package producer
+package dlqproducer
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 
 	"github.com/IBM/sarama"
 	"github.com/goccy/go-json"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/bot/config"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/pkg/config"
 )
 
 const producerRetryMax = 10
@@ -16,7 +16,7 @@ type DlqProducer struct {
 	dLQTopic string
 }
 
-func NewDLQProducer(conf config.BotConfig) (DlqProducer, error) {
+func NewDLQProducer(conf config.KafkaConfig) (DlqProducer, error) {
 	saramaConf := sarama.NewConfig()
 
 	saramaConf.Version = sarama.V3_6_0_0
@@ -25,11 +25,11 @@ func NewDLQProducer(conf config.BotConfig) (DlqProducer, error) {
 	saramaConf.Producer.Retry.Max = producerRetryMax
 	saramaConf.Producer.RequiredAcks = sarama.WaitForAll
 
-	producer, err := sarama.NewSyncProducer(conf.KafkaConfig.Brokers, saramaConf)
+	producer, err := sarama.NewSyncProducer(conf.Brokers, saramaConf)
 	if err != nil {
 		return DlqProducer{}, fmt.Errorf("creating DLQ producer: %w", err)
 	}
-	return DlqProducer{producer: producer, dLQTopic: conf.KafkaConfig.DLQTopic}, nil
+	return DlqProducer{producer: producer, dLQTopic: conf.DLQTopic}, nil
 }
 
 func (p DlqProducer) SendToDLQ(msg *sarama.ConsumerMessage, reason error) error {

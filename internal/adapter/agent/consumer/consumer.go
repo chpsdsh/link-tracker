@@ -7,9 +7,8 @@ import (
 	"sync"
 
 	"github.com/IBM/sarama"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/bot/config"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/pkg/config"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/pkg/dlqproducer"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/bot/handler"
 )
 
 type NotificationsConsumer struct {
@@ -21,7 +20,7 @@ type NotificationsConsumer struct {
 	groupHandler      GroupHandler
 }
 
-func NewBotNotificationsConsumer(conf config.BotConfig, logger *slog.Logger, tgHandler handler.TelegramBotHandler, inboxRepo InboxRepository) (*NotificationsConsumer, error) {
+func NewNotificationsConsumer(conf config.KafkaConfig, logger *slog.Logger, summarizer Summarizer, inboxRepo InboxRepository) (*NotificationsConsumer, error) {
 	saramaConf := sarama.NewConfig()
 
 	saramaConf.Version = sarama.V3_6_0_0
@@ -30,20 +29,20 @@ func NewBotNotificationsConsumer(conf config.BotConfig, logger *slog.Logger, tgH
 	saramaConf.Consumer.Offsets.AutoCommit.Enable = false
 	saramaConf.Consumer.Return.Errors = true
 
-	consumer, err := sarama.NewConsumerGroup(conf.KafkaConfig.Brokers, conf.KafkaConfig.ConsumerGroup, saramaConf)
+	consumer, err := sarama.NewConsumerGroup(conf.Brokers, conf.ConsumerGroup, saramaConf)
 	if err != nil {
 		return nil, fmt.Errorf("creating consumer group connection: %w", err)
 	}
 
-	dlqProducer, err := dlqproducer.NewDLQProducer(conf.KafkaConfig)
+	dlqProducer, err := dlqproducer.NewDLQProducer(conf)
 	if err != nil {
 		return nil, fmt.Errorf("creating dlq producer: %w", err)
 	}
 
-	groupHandler := NewGroupHandler(dlqProducer, tgHandler, inboxRepo, logger, conf.KafkaConfig.ConsumerGroup)
+	groupHandler := NewGroupHandler(dlqProducer, summarizer, inboxRepo, logger, conf.ConsumerGroup)
 
 	return &NotificationsConsumer{consumer: consumer,
-		notificationTopic: conf.KafkaConfig.ProcessedNotificationsTopic,
+		notificationTopic: conf.RawNotificationsTopic,
 		wg:                sync.WaitGroup{},
 		logger:            logger,
 		dlqProducer:       dlqProducer,

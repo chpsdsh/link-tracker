@@ -1,5 +1,18 @@
 package main
 
+import (
+	"log/slog"
+	"os"
+
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/logger"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/agent"
+)
+
 func main() {
-	// TODO
+	baseLogger := logger.NewLogger(os.Stdout, logger.OutputFormatJSON, slog.LevelInfo)
+
+	if err := agent.StartAgent(baseLogger); err != nil {
+		baseLogger.Error("error starting bot", slog.String("err", err.Error()))
+		os.Exit(1)
+	}
 }

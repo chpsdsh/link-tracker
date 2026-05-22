@@ -11,7 +11,6 @@ import (
 	"github.com/goccy/go-json"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/pkg/dlqproducer"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/pkg/repository"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/bot/handler"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/pkg"
 )
 
@@ -28,27 +27,31 @@ const (
 )
 
 type InboxRepository interface {
-	Save(ctx context.Context, eventID, consumerName string) error
+	Save(ctx context.Context, eventID string, consumerName string) error
 	UpdateProcessedTime(ctx context.Context, eventID string) error
+}
+
+type Summarizer interface {
+	Summarize(update pkg.LinkUpdate) error
 }
 
 type GroupHandler struct {
 	logger            *slog.Logger
 	dlqProducer       dlqproducer.DlqProducer
-	TgHandler         handler.TelegramBotHandler
-	InboxRepo         InboxRepository
+	summarizer        Summarizer
+	inboxRepo         InboxRepository
 	consumerGroupName string
 }
 
-func NewGroupHandler(dlqProducer dlqproducer.DlqProducer, tgHandler handler.TelegramBotHandler, inboxRepo InboxRepository, logger *slog.Logger, consumerGroupName string) GroupHandler {
-	return GroupHandler{dlqProducer: dlqProducer, TgHandler: tgHandler, logger: logger, InboxRepo: inboxRepo, consumerGroupName: consumerGroupName}
+func NewGroupHandler(dlqProducer dlqproducer.DlqProducer, summarizer Summarizer, inboxRepo InboxRepository, logger *slog.Logger, consumerGroupName string) GroupHandler {
+	return GroupHandler{dlqProducer: dlqProducer, summarizer: summarizer, logger: logger, inboxRepo: inboxRepo, consumerGroupName: consumerGroupName}
 }
 
 func (GroupHandler) Setup(_ sarama.ConsumerGroupSession) error   { return nil }
 func (GroupHandler) Cleanup(_ sarama.ConsumerGroupSession) error { return nil }
 func (h GroupHandler) ConsumeClaim(sess sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
 	for msg := range claim.Messages() {
-		linkUpdate := pkg.ProcessedLinkUpdate{}
+		linkUpdate := pkg.LinkUpdate{}
 		if err := json.Unmarshal(msg.Value, &linkUpdate); err != nil {
 			h.logger.Error("unmarshall:", slog.String("err", err.Error()))
 			if dlqErr := h.dlqProducer.SendToDLQ(msg, err); dlqErr != nil {
@@ -59,7 +62,7 @@ func (h GroupHandler) ConsumeClaim(sess sarama.ConsumerGroupSession, claim saram
 			sess.Commit()
 			continue
 		}
-
+		slog.Info("link update", slog.Any("linkUpdate", linkUpdate))
 		eventID, err := h.deduplicateMessage(sess, msg)
 		if err != nil {
 			if errors.Is(err, repository.ErrNotificationAlreadySent) {
@@ -70,7 +73,7 @@ func (h GroupHandler) ConsumeClaim(sess sarama.ConsumerGroupSession, claim saram
 			h.logger.Error("deduplicate message:", slog.String("err", err.Error()))
 		}
 
-		if linkUpdate.Description == "" || linkUpdate.Priority == "" || len(linkUpdate.TgChatIDs) == 0 {
+		if linkUpdate.Description == "" || linkUpdate.URL == "" || len(linkUpdate.TgChatIDs) == 0 {
 			h.logger.Error("validation:", slog.String("err", ErrValidatingLinkUpdate.Error()))
 			if dlqErr := h.dlqProducer.SendToDLQ(msg, ErrValidatingLinkUpdate); dlqErr != nil {
 				h.logger.Error("dlq send failed", slog.String("err", dlqErr.Error()))
@@ -95,7 +98,7 @@ func (h GroupHandler) ConsumeClaim(sess sarama.ConsumerGroupSession, claim saram
 		sess.Commit()
 		ctx, cancel := context.WithTimeout(context.Background(), repositoryRequestTimeout)
 
-		if err = h.InboxRepo.UpdateProcessedTime(ctx, eventID); err != nil {
+		if err = h.inboxRepo.UpdateProcessedTime(ctx, eventID); err != nil {
 			h.logger.Error("update processed time in inbox table failed:", slog.String("err", err.Error()))
 		}
 		cancel()
@@ -116,7 +119,7 @@ func (h GroupHandler) deduplicateMessage(sess sarama.ConsumerGroupSession, msg *
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), repositoryRequestTimeout)
 	defer cancel()
-	if err := h.InboxRepo.Save(ctx, eventID, h.consumerGroupName); err != nil {
+	if err := h.inboxRepo.Save(ctx, eventID, h.consumerGroupName); err != nil {
 		if errors.Is(err, repository.ErrNotificationAlreadySent) {
 			sess.MarkMessage(msg, "")
 			sess.Commit()
@@ -133,10 +136,11 @@ func (h GroupHandler) deduplicateMessage(sess sarama.ConsumerGroupSession, msg *
 	return eventID, nil
 }
 
-func (h GroupHandler) processWithRetry(linkUpdate pkg.ProcessedLinkUpdate) error {
+func (h GroupHandler) processWithRetry(linkUpdate pkg.LinkUpdate) error {
 	var err error
 	for range maxRetries {
-		err = h.TgHandler.HandleLinkUpdate(linkUpdate)
+		slog.Info("processing linkUpdate")
+		err = h.summarizer.Summarize(linkUpdate)
 		if err == nil {
 			return nil
 		}

@@ -28,7 +28,7 @@ type BotConfig struct {
 	TelegramToken         string
 	ScrapperServerAddress string
 	UpdatesReceiveType    string
-	KafkaConfig           KafkaConfig
+	KafkaConfig           config.KafkaConfig
 	PostgresConfig        config.PostgresConfig
 	HTTPClientConfig      config.HTTPClientConfig
 	CircuitBreakerConfig  config.CircuitBreakerConfig
@@ -58,7 +58,7 @@ func ParseConfig() (BotConfig, error) {
 		return BotConfig{}, ErrNoUpdatesReceiveType
 	}
 
-	kafkaConf, err := ParseKafkaConfig()
+	kafkaConf, err := config.ParseKafkaConfig()
 	if err != nil {
 		return BotConfig{}, fmt.Errorf("parsing kafka config: %w", err)
 	}

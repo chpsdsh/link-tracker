@@ -49,7 +49,7 @@ const (
 )
 
 type TelegramBotHandler interface {
-	HandleLinkUpdate(linkUpdate pkg.LinkUpdate) error
+	HandleLinkUpdate(linkUpdate pkg.ProcessedLinkUpdate) error
 }
 
 type Sender interface {
@@ -86,9 +86,9 @@ func (h TelegramHandler) HandleUpdate(update tgbotapi.Update) {
 	}
 }
 
-func (h TelegramHandler) HandleLinkUpdate(linkUpdate pkg.LinkUpdate) error {
+func (h TelegramHandler) HandleLinkUpdate(linkUpdate pkg.ProcessedLinkUpdate) error {
 	for _, id := range linkUpdate.TgChatIDs {
-		if err := h.MsgSender.SendMessage(id, linkUpdate.Description+" "+linkUpdate.URL); err != nil {
+		if err := h.MsgSender.SendMessage(id, linkUpdate.Description+" "+linkUpdate.Priority); err != nil {
 			h.BaseLogger.Error("error while sending message", slog.String("error", err.Error()))
 			return fmt.Errorf("telegram send message: %w", err)
 		}

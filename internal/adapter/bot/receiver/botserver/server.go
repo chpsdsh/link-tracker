@@ -45,8 +45,8 @@ func (u *UpdatesRouter) PostUpdates(w http.ResponseWriter, r *http.Request) {
 	}
 
 	u.BaseLogger.Info("response ", slog.Any("update", linkUpdate))
-	if handlerErr := u.Handler.HandleLinkUpdate(pkg.LinkUpdate{Description: *linkUpdate.Description,
-		TgChatIDs: *linkUpdate.TgChatIds, URL: *linkUpdate.Url}); handlerErr != nil {
+	if handlerErr := u.Handler.HandleLinkUpdate(pkg.ProcessedLinkUpdate{Description: *linkUpdate.Description,
+		TgChatIDs: *linkUpdate.TgChatIds}); handlerErr != nil {
 		sendAPIErrorResponse(w, "handling link update:", errors.New("error sending telegram message"))
 		return
 	}

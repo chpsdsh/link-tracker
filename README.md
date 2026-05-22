@@ -9,15 +9,16 @@
 **Для запуска необходимо:** 
 1) **Создать файл "bot.env" с полями:**
 ```yaml
-   APP_TELEGRAM_TOKEN=key
+   APP_TELEGRAM_TOKEN=token
    SCRAPPER_SERVER_ADDRESS=http://scrapper:8081
    WITH_TELEGRAM_API=true
    UPDATES_HANDLE_TYPE=(kafka/http/fallback)
    KAFKA_USER=user1
    KAFKA_PASSWORD=user1-secret
-   KAFKA_TOPIC=notification-topic
+   KAFKA_RAW_TOPIC=raw-notification-topic
+   KAFKA_PROCESSED_TOPIC=processed-notification-topic
    KAFKA_DLQ_TOPIC=notification-dlq
-   KAFKA_CONSUMER_GROUP=notification-consumers
+   KAFKA_CONSUMER_GROUP=processed-notification-consumers
    KAFKA_BROKERS=kafka1:9092,kafka2:9092,kafka3:9092
    POSTGRES_HOST=postgres
    POSTGRES_PORT=5432
@@ -53,7 +54,7 @@
    UPDATES_HANDLE_TYPE=(kafka/http/fallback)
    KAFKA_USER=user1
    KAFKA_PASSWORD=user1-secret
-   KAFKA_TOPIC=notification-topic
+   KAFKA_TOPIC=raw-notification-topic
    KAFKA_BROKERS=kafka1:9092,kafka2:9092,kafka3:9092
    VALKEY_PASSWORD=valkey
    VALKEY_ADDRESSES=valkey-node-0:6379
@@ -68,4 +69,23 @@
    CIRCUIT_BREAKER_FAILURE_RATIO=0.6
    RATE_LIMIT_RPS=5
    RATE_LIMIT_BURST=10
+```
+3) **Создать файл "agent.env" с полями:**
+```yaml
+   KAFKA_USER=user1
+   KAFKA_PASSWORD=user1-secret
+   KAFKA_RAW_TOPIC=raw-notification-topic
+   KAFKA_PROCESSED_TOPIC=processed-notification-topic
+   KAFKA_DLQ_TOPIC=notification-dlq
+   KAFKA_CONSUMER_GROUP=raw-notification-consumers
+   KAFKA_BROKERS=kafka1:9092,kafka2:9092,kafka3:9092
+   POSTGRES_HOST=postgres
+   POSTGRES_PORT=5432
+   POSTGRES_USER=user
+   POSTGRES_PASSWORD=password
+   POSTGRES_DB=mydb
+   AI_STOP_WORDS=spam,ads,promo
+   AI_EXCLUDED_AUTHORS=bot-user,spam-author
+   AI_MIN_LENGTH=20
+   AI_SUMMARIZATION_THRESHOLD=500
 ```

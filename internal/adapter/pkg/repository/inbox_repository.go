@@ -21,12 +21,12 @@ func NewInboxRepository(db *pgxpool.Pool) *InboxRepository {
 	return &InboxRepository{db: db}
 }
 
-func (r *InboxRepository) Save(ctx context.Context, eventID string) error {
+func (r *InboxRepository) Save(ctx context.Context, eventID, consumerName string) error {
 	q := database.GetQuerier(ctx, r.db)
 	_, err := q.Exec(ctx, `
-		INSERT INTO inbox(event_id) 
-		VALUES ($1)
-		ON CONFLICT (event_id) DO NOTHING`, eventID)
+		INSERT INTO inbox(event_id, consumer_name) 
+		VALUES ($1, $2)
+		ON CONFLICT (event_id, consumer_name) DO NOTHING`, eventID, consumerName)
 	if err != nil {
 		if database.IsUniqueViolation(err) {
 			return ErrNotificationAlreadySent

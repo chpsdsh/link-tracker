@@ -105,7 +105,8 @@ services:
     command: |
       "
       kafka-topics --bootstrap-server kafka1:9092 --list
-      kafka-topics --bootstrap-server kafka1:9092 --create --if-not-exists --topic notification-topic --replication-factor 3 --partitions 3
+      kafka-topics --bootstrap-server kafka1:9092 --create --if-not-exists --topic raw-notification-topic --replication-factor 3 --partitions 3
+      kafka-topics --bootstrap-server kafka1:9092 --create --if-not-exists --topic processed-notification-topic --replication-factor 3 --partitions 3
       kafka-topics --bootstrap-server kafka1:9092 --create --if-not-exists --topic notification-dlq --replication-factor 3 --partitions 3      
       "
 
@@ -131,7 +132,7 @@ services:
       - kafka-init
     restart: unless-stopped
     volumes:
-      - ./scrapper.env:/app/scrapper.env
+      - ./bot.env:/app/bot.env
 
   scrapper:
     build:
@@ -143,7 +144,21 @@ services:
       - postgres
     restart: unless-stopped
     volumes:
-      - ./bot.env:/app/bot.env
+      - ./scrapper.env:/app/scrapper.env
+
+  agent:
+    build:
+      context: .
+      dockerfile: agent.dockerfile
+    container_name: agent
+    depends_on:
+      - kafka-init
+      - postgres
+      - scrapper
+      - bot
+    restart: unless-stopped
+    volumes:
+      - ./agent.env:/app/agent.env
 
   valkey-node-0:
     image: valkey/valkey:9.0.3

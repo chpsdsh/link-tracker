@@ -28,13 +28,13 @@ func TestParseConfig(t *testing.T) {
 				ScrapperServerAddress: "http://localhost:8080",
 				WithTelegramAPI:       true,
 				UpdatesReceiveType:    "kafka",
-				KafkaConfig: KafkaConfig{
-					Brokers:            []string{"localhost:9092"},
-					NotificationsTopic: "topic",
-					DLQTopic:           "dlq",
-					ConsumerGroup:      "group",
-					User:               "user",
-					Password:           "pass",
+				KafkaConfig: config.KafkaConfig{
+					Brokers:               []string{"localhost:9092"},
+					RawNotificationsTopic: "topic",
+					DLQTopic:              "dlq",
+					ConsumerGroup:         "group",
+					User:                  "user",
+					Password:              "pass",
 				},
 				PostgresConfig: config.PostgresConfig{
 					Host:     "POSTGRES_HOST",
@@ -99,12 +99,12 @@ func TestParseConfig(t *testing.T) {
 			t.Setenv(withTelegramAPI, tt.withAPIFlag)
 			t.Setenv(updatesHandleType, "kafka")
 
-			t.Setenv(kafkaUser, "user")
-			t.Setenv(kafkaPassword, "pass")
-			t.Setenv(kafkaTopic, "topic")
-			t.Setenv(kafkaDLQTopic, "dlq")
-			t.Setenv(kafkaBrokers, "localhost:9092")
-			t.Setenv(kafkaConsumerGroup, "group")
+			t.Setenv("KAFKA_USER", "user")
+			t.Setenv("KAFKA_PASSWORD", "pass")
+			t.Setenv("KAFKA_TOPIC", "topic")
+			t.Setenv("KAFKA_DLQ_TOPIC", "dlq")
+			t.Setenv("KAFKA_BROKERS", "localhost:9092")
+			t.Setenv("KAFKA_CONSUMER_GROUP", "group")
 			t.Setenv("POSTGRES_HOST", "POSTGRES_HOST")
 			t.Setenv("POSTGRES_PORT", "POSTGRES_PORT")
 			t.Setenv("POSTGRES_USER", "POSTGRES_USER")
