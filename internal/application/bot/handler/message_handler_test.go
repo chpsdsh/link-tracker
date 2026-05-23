@@ -894,9 +894,9 @@ func TestTelegramHandlerHandleLinkUpdate(t *testing.T) {
 		BaseLogger: slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}
 
-	update := pkg.LinkUpdate{
+	update := pkg.ProcessedLinkUpdate{
 		Description: "Ссылка обновлена",
-		URL:         "https://github.com/golang/go",
+		Priority:    "high",
 		TgChatIDs:   []int64{1, 2, 3},
 	}
 

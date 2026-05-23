@@ -3,7 +3,6 @@ package requesterutils
 import (
 	"errors"
 	"fmt"
-	"log/slog"
 	"strings"
 	"time"
 
@@ -86,7 +85,6 @@ func ParseGithubLink(link string) (scrapper.GithubLink, error) {
 	parts := strings.Split(strings.Trim(link[8:], "/"), "/")
 
 	if len(parts) < minGithubURLParts {
-		slog.Info("invalid link", slog.Any("parts", parts))
 		return scrapper.GithubLink{}, ErrInvalidGitHubURL
 	}
 

@@ -1,4 +1,4 @@
-//go:generate mockgen -destination=../mocks/server_mocks.go -package=mocks gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/bot/handler TelegramBotHandler
+//go:generate mockgen -destination=../../mocks/server_mocks.go -package=mocks gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/bot/handler TelegramBotHandler
 package botserver
 
 import (

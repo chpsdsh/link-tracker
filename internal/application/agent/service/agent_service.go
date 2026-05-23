@@ -2,7 +2,6 @@ package service
 
 import (
 	"fmt"
-	"log/slog"
 
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/pkg"
 )
@@ -35,7 +34,6 @@ func (a AgentService) Summarize(update pkg.LinkUpdate) error {
 		Priority:    stubPriority,
 	}
 
-	slog.Info("sending link update: ", processedUpdate)
 	if err = a.Sender.SendLinkUpdate(processedUpdate, summarizedString); err != nil {
 		return fmt.Errorf("could not send link update: %w", err)
 	}

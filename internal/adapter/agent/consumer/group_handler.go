@@ -62,7 +62,6 @@ func (h GroupHandler) ConsumeClaim(sess sarama.ConsumerGroupSession, claim saram
 			sess.Commit()
 			continue
 		}
-		slog.Info("link update", slog.Any("linkUpdate", linkUpdate))
 		eventID, err := h.deduplicateMessage(sess, msg)
 		if err != nil {
 			if errors.Is(err, repository.ErrNotificationAlreadySent) {
@@ -113,6 +112,7 @@ func (h GroupHandler) deduplicateMessage(sess sarama.ConsumerGroupSession, msg *
 			h.logger.Error("dlq send failed", slog.String("err", err.Error()))
 			return eventID, fmt.Errorf("error sending to dlq %w", err)
 		}
+		h.logger.Info("message is sent to dlq succeeded", slog.Any("msg", msg))
 		sess.MarkMessage(msg, "")
 		sess.Commit()
 		return eventID, ErrNoEventIDInHeader
@@ -139,7 +139,6 @@ func (h GroupHandler) deduplicateMessage(sess sarama.ConsumerGroupSession, msg *
 func (h GroupHandler) processWithRetry(linkUpdate pkg.LinkUpdate) error {
 	var err error
 	for range maxRetries {
-		slog.Info("processing linkUpdate")
 		err = h.summarizer.Summarize(linkUpdate)
 		if err == nil {
 			return nil

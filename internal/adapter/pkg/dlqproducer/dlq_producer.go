@@ -56,6 +56,7 @@ func (p DlqProducer) SendToDLQ(msg *sarama.ConsumerMessage, reason error) error 
 	if err != nil {
 		return fmt.Errorf("send to dlq: %w", err)
 	}
+
 	return nil
 }
 

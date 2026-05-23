@@ -32,7 +32,7 @@ func StartAgent(baseLogger *slog.Logger) error {
 	conf, err := config.ParseAIAgentConfig()
 	if err != nil {
 		baseLogger.Error("error parsing config", slog.String("err", err.Error()))
-		return err
+		return fmt.Errorf("error parsing config: %w", err)
 	}
 	db, err := database.NewDB(conf.PostgresConfig)
 	if err != nil {
@@ -63,7 +63,7 @@ func StartAgent(baseLogger *slog.Logger) error {
 	}
 
 	if err = updatesConsumer.Start(ctx); err != nil {
-		return err
+		return fmt.Errorf("error starting kafka consumer: %w", err)
 	}
 	<-ctx.Done()
 	db.CloseConnectionPool()
