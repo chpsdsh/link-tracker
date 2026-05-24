@@ -2,7 +2,10 @@ package integration
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/go-connections/nat"
 	"github.com/stretchr/testify/suite"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/network"
@@ -23,6 +26,13 @@ const (
 	stackoverflowAPIKey   = "STACKOVERFLOW_API_KEY"
 	botServerAddress      = "BOT_SERVER_ADDRESS"
 	botAPIFlag            = "WITH_TELEGRAM_API"
+
+	scrapperTimeIntervalEnv = "SCRAPPER_TIME_INTERVAL"
+	scrapperTimeInterval    = "10"
+	linksBatchSizeEnv       = "LINKS_BATCH_SIZE"
+	linksBatchSize          = "20"
+	schedulerNumWorkersEnv  = "SCHEDULER_NUM_WORKERS"
+	schedulerNumWorkers     = "5"
 
 	APIToken           = "API_TOKEN"
 	botServerAddr      = "http://bot:8080"
@@ -48,7 +58,7 @@ const (
 	postgresDatabase = "POSTGRES_DB"
 
 	updatesHandleTypeEnv = "UPDATES_HANDLE_TYPE"
-	updatesHandleType    = "http"
+	updatesHandleType    = "fallback"
 
 	kafkaConsumerGroupEnv = "KAFKA_CONSUMER_GROUP"
 	kafkaUserEnv          = "KAFKA_USER"
@@ -57,12 +67,16 @@ const (
 	kafkaBrokersEnv       = "KAFKA_BROKERS"
 	kafkaDLQTopicEnv      = "KAFKA_DLQ_TOPIC"
 
-	kafkaUser          = "user1"
-	kafkaPassword      = "user1-secret"
-	kafkaTopic         = "notification-topic"
-	kafkaDLQTopic      = "notification-dlq"
-	kafkaConsumerGroup = "notification-consumers"
-	kafkaBrokers       = "kafka1:9092,kafka2:9092,kafka3:9092"
+	kafkaUser                         = "user1"
+	kafkaPassword                     = "user1-secret"
+	kafkaRawTopic                     = "raw-notification-topic"
+	kafkaProcessedTopic               = "processed-notification-topic"
+	kafkaDLQTopic                     = "notification-dlq"
+	kafkaRawTopicEnv                  = "KAFKA_RAW_TOPIC"
+	kafkaProcessedTopicEnv            = "KAFKA_PROCESSED_TOPIC"
+	kafkaConsumerGroup                = "notification-consumers"
+	kafkaRawNotificationConsumerGroup = "raw-notification-consumers"
+	kafkaBrokers                      = "kafka1:9092"
 
 	valkeyPasswordEnv   = "VALKEY_PASSWORD"
 	valkeyAddressesEnv  = "VALKEY_ADDRESSES"
@@ -97,81 +111,98 @@ const (
 
 	rateLimitRPS   = "20"
 	rateLimitBurst = "20"
+
+	agentDockerfile             = "agent.dockerfile"
+	agentAlias                  = "agent"
+	kafkaImage                  = "confluentinc/cp-kafka:7.8.0"
+	kafkaPort                   = "9092/tcp"
+	kafkaAlias                  = "kafka1"
+	aiStopWordsEnv              = "AI_STOP_WORDS"
+	aiExcludedAuthorsEnv        = "AI_EXCLUDED_AUTHORS"
+	aiMinLengthEnv              = "AI_MIN_LENGTH"
+	aiSummarizationThresholdEnv = "AI_SUMMARIZATION_THRESHOLD"
+	aiStopWords                 = "spam,ads,promo"
+	aiExcludedAuthors           = "bot-user"
+	aiMinLength                 = "2"
+	aiSummarizationThreshold    = "500"
+	yandexAPIKeyEnv             = "YANDEX_API_KEY"
+	yandexFolderIDEnv           = "YANDEX_FOLDER_ID"
+	yandexModelEnv              = "YANDEX_MODEL"
+	yandexBaseURLEnv            = "YANDEX_BASE_URL"
+	yandexAPIKey                = "test-api-key"
+	yandexFolderID              = "test-folder-id"
+	yandexModel                 = "yandexgpt-5-lite"
+	yandexBaseURL               = "http://localhost:9999/v1"
 )
 
 type Suite struct {
 	suite.Suite
-	botContainer      testcontainers.Container
-	scrapperContainer testcontainers.Container
-	dbContainer       testcontainers.Container
-	valkeyContainer   testcontainers.Container
-	network           *testcontainers.DockerNetwork
-	scrapperURL       string
-	botURL            string
+	botContainer         testcontainers.Container
+	scrapperContainer    testcontainers.Container
+	dbContainer          testcontainers.Container
+	valkeyContainer      testcontainers.Container
+	kafkaContainer       testcontainers.Container
+	kafkaInitContainer   testcontainers.Container
+	agentContainer       testcontainers.Container
+	network              *testcontainers.DockerNetwork
+	scrapperURL          string
+	botURL               string
+	kafkaExternalBrokers []string
 }
 
 func (s *Suite) SetupSuite() {
 	ctx := context.Background()
 
 	s.setupNetwork(ctx)
-
 	s.setupPostgres(ctx)
-
 	s.setupValkey(ctx)
-
+	s.setupKafka(ctx)
+	s.setupKafkaTopics(ctx)
 	s.setupScrapper(ctx)
-
 	s.setupBot(ctx)
+	s.setupAgent(ctx)
 
 	host, err := s.scrapperContainer.Host(ctx)
 	s.Require().NoError(err)
 
 	port, err := s.scrapperContainer.MappedPort(ctx, scrapperPort)
 	s.Require().NoError(err)
-
 	s.scrapperURL = "http://" + host + ":" + port.Port()
 
 	host, err = s.botContainer.Host(ctx)
 	s.Require().NoError(err)
-
 	port, err = s.botContainer.MappedPort(ctx, botPort)
-	s.Require().NoError(err)
 
+	s.Require().NoError(err)
 	s.botURL = "http://" + host + ":" + port.Port()
 }
 
 func (s *Suite) TearDownSuite() {
+
+	ctx := context.Background()
+	if s.agentContainer != nil {
+		_ = s.agentContainer.Terminate(ctx)
+	}
 	if s.scrapperContainer != nil {
-		err := s.scrapperContainer.Terminate(context.Background())
-		if err != nil {
-			return
-		}
+		_ = s.scrapperContainer.Terminate(ctx)
 	}
 	if s.botContainer != nil {
-		err := s.botContainer.Terminate(context.Background())
-		if err != nil {
-			return
-		}
+		_ = s.botContainer.Terminate(ctx)
+	}
+	if s.kafkaInitContainer != nil {
+		_ = s.kafkaInitContainer.Terminate(ctx)
+	}
+	if s.kafkaContainer != nil {
+		_ = s.kafkaContainer.Terminate(ctx)
 	}
 	if s.dbContainer != nil {
-		err := s.dbContainer.Terminate(context.Background())
-		if err != nil {
-			return
-		}
+		_ = s.dbContainer.Terminate(ctx)
 	}
-
 	if s.valkeyContainer != nil {
-		err := s.valkeyContainer.Terminate(context.Background())
-		if err != nil {
-			return
-		}
+		_ = s.valkeyContainer.Terminate(ctx)
 	}
-
 	if s.network != nil {
-		err := s.network.Remove(context.Background())
-		if err != nil {
-			return
-		}
+		_ = s.network.Remove(ctx)
 	}
 }
 
@@ -189,12 +220,13 @@ func (s *Suite) setupBot(ctx context.Context) {
 
 			updatesHandleTypeEnv: updatesHandleType,
 
-			kafkaUserEnv:          kafkaUser,
-			kafkaPasswordEnv:      kafkaPassword,
-			kafkaTopicEnv:         kafkaTopic,
-			kafkaDLQTopicEnv:      kafkaDLQTopic,
-			kafkaConsumerGroupEnv: kafkaConsumerGroup,
-			kafkaBrokersEnv:       kafkaBrokers,
+			kafkaUserEnv:           kafkaUser,
+			kafkaPasswordEnv:       kafkaPassword,
+			kafkaRawTopicEnv:       kafkaRawTopic,
+			kafkaProcessedTopicEnv: kafkaProcessedTopic,
+			kafkaDLQTopicEnv:       kafkaDLQTopic,
+			kafkaConsumerGroupEnv:  kafkaConsumerGroup,
+			kafkaBrokersEnv:        kafkaBrokers,
 
 			postgresHost:     dbHost,
 			postgresPort:     dbPort,
@@ -219,7 +251,6 @@ func (s *Suite) setupBot(ctx context.Context) {
 		NetworkAliases: map[string][]string{
 			s.network.Name: {botAlias},
 		},
-		WaitingFor: wait.ForListeningPort(botPort),
 	}
 
 	botC, err := testcontainers.GenericContainer(
@@ -229,6 +260,9 @@ func (s *Suite) setupBot(ctx context.Context) {
 			Started:          true,
 		},
 	)
+	if err != nil {
+		fmt.Printf("Failed to start bot container: %s\n", err)
+	}
 	s.Require().NoError(err)
 	s.botContainer = botC
 }
@@ -244,9 +278,9 @@ func (s *Suite) setupScrapper(ctx context.Context) {
 			githubAPIKey:                  APIToken,
 			stackoverflowAPIKey:           APIToken,
 			botServerAddress:              botServerAddr,
-			"SCRAPPER_TIME_INTERVAL":      "10",
-			"LINKS_BATCH_SIZE":            "20",
-			"SCHEDULER_NUM_WORKERS":       "5",
+			scrapperTimeIntervalEnv:       scrapperTimeInterval,
+			linksBatchSizeEnv:             linksBatchSize,
+			schedulerNumWorkersEnv:        schedulerNumWorkers,
 			assetType:                     assetTypeBuilder,
 			postgresHost:                  dbHost,
 			postgresPort:                  dbPort,
@@ -256,7 +290,7 @@ func (s *Suite) setupScrapper(ctx context.Context) {
 			updatesHandleTypeEnv:          updatesHandleType,
 			kafkaUserEnv:                  kafkaUser,
 			kafkaPasswordEnv:              kafkaPassword,
-			kafkaTopicEnv:                 kafkaTopic,
+			kafkaTopicEnv:                 kafkaRawTopic,
 			kafkaBrokersEnv:               kafkaBrokers,
 			valkeyPasswordEnv:             valkeyPassword,
 			valkeyAddressesEnv:            valkeyAddresses,
@@ -316,6 +350,148 @@ func (s *Suite) setupPostgres(ctx context.Context) {
 	s.dbContainer = dbC
 }
 
+func (s *Suite) setupKafka(ctx context.Context) {
+	kafkaReq := testcontainers.ContainerRequest{
+		Image:        kafkaImage,
+		ExposedPorts: []string{"9092/tcp", "9094/tcp"},
+		Env: map[string]string{
+			"KAFKA_NODE_ID":       "1",
+			"KAFKA_BROKER_ID":     "1",
+			"KAFKA_PROCESS_ROLES": "broker,controller",
+
+			"KAFKA_CONTROLLER_QUORUM_VOTERS": "1@kafka1:9093",
+
+			"KAFKA_LISTENERS": "INTERNAL://kafka1:9092,EXTERNAL://0.0.0.0:9094,CONTROLLER://kafka1:9093",
+
+			"KAFKA_ADVERTISED_LISTENERS": "INTERNAL://kafka1:9092,EXTERNAL://127.0.0.1:9094",
+
+			"KAFKA_LISTENER_SECURITY_PROTOCOL_MAP": "INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT",
+			"KAFKA_CONTROLLER_LISTENER_NAMES":      "CONTROLLER",
+			"KAFKA_INTER_BROKER_LISTENER_NAME":     "INTERNAL",
+
+			"CLUSTER_ID": "EmptNWtoR4GGWx-BH6nGLQ",
+
+			"KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR":         "1",
+			"KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR": "1",
+			"KAFKA_TRANSACTION_STATE_LOG_MIN_ISR":            "1",
+			"KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS":         "0",
+			"KAFKA_DEFAULT_REPLICATION_FACTOR":               "1",
+			"KAFKA_MIN_INSYNC_REPLICAS":                      "1",
+			"KAFKA_AUTO_CREATE_TOPICS_ENABLE":                "true",
+		},
+		HostConfigModifier: func(hostConfig *container.HostConfig) {
+			hostConfig.PortBindings = nat.PortMap{
+				"9094/tcp": []nat.PortBinding{
+					{
+						HostIP:   "127.0.0.1",
+						HostPort: "9094",
+					},
+				},
+			}
+		},
+		Networks: []string{s.network.Name},
+		NetworkAliases: map[string][]string{
+			s.network.Name: {kafkaAlias},
+		},
+		WaitingFor: wait.ForListeningPort("9094/tcp"),
+	}
+
+	kafkaC, err := testcontainers.GenericContainer(
+		ctx,
+		testcontainers.GenericContainerRequest{
+			ContainerRequest: kafkaReq,
+			Started:          true,
+		},
+	)
+	s.Require().NoError(err)
+
+	s.kafkaContainer = kafkaC
+
+	s.kafkaExternalBrokers = []string{"127.0.0.1:9094"}
+}
+
+func (s *Suite) setupKafkaTopics(ctx context.Context) {
+	initReq := testcontainers.ContainerRequest{
+		Image: kafkaImage,
+		Entrypoint: []string{
+			"/bin/sh",
+			"-c",
+		},
+		Cmd: []string{
+			`
+echo "Waiting for Kafka..."
+cub kafka-ready -b kafka1:9092 1 60
+
+echo "Creating topics..."
+kafka-topics --bootstrap-server kafka1:9092 --create --if-not-exists --topic raw-notification-topic --replication-factor 1 --partitions 3
+kafka-topics --bootstrap-server kafka1:9092 --create --if-not-exists --topic processed-notification-topic --replication-factor 1 --partitions 3
+kafka-topics --bootstrap-server kafka1:9092 --create --if-not-exists --topic notification-dlq --replication-factor 1 --partitions 3
+
+echo "Topics:"
+kafka-topics --bootstrap-server kafka1:9092 --list
+`,
+		},
+		Networks:   []string{s.network.Name},
+		WaitingFor: wait.ForLog("Topics:"),
+	}
+
+	initC, err := testcontainers.GenericContainer(
+		ctx,
+		testcontainers.GenericContainerRequest{
+			ContainerRequest: initReq,
+			Started:          true,
+		},
+	)
+	s.Require().NoError(err)
+
+	s.kafkaInitContainer = initC
+}
+
+func (s *Suite) setupAgent(ctx context.Context) {
+
+	agentReq := testcontainers.ContainerRequest{
+		FromDockerfile: testcontainers.FromDockerfile{
+			Context:    pathToDockerfile,
+			Dockerfile: agentDockerfile,
+		},
+		Env: map[string]string{
+			postgresHost:                dbHost,
+			postgresPort:                dbPort,
+			postgresUser:                dbUser,
+			postgresPassword:            dbPassword,
+			postgresDatabase:            dbName,
+			kafkaUserEnv:                kafkaUser,
+			kafkaPasswordEnv:            kafkaPassword,
+			kafkaBrokersEnv:             kafkaBrokers,
+			kafkaDLQTopicEnv:            kafkaDLQTopic,
+			kafkaConsumerGroupEnv:       kafkaRawNotificationConsumerGroup,
+			kafkaRawTopicEnv:            kafkaRawTopic,
+			kafkaProcessedTopicEnv:      kafkaProcessedTopic,
+			aiStopWordsEnv:              aiStopWords,
+			aiExcludedAuthorsEnv:        aiExcludedAuthors,
+			aiMinLengthEnv:              aiMinLength,
+			aiSummarizationThresholdEnv: aiSummarizationThreshold,
+			yandexAPIKeyEnv:             yandexAPIKey,
+			yandexFolderIDEnv:           yandexFolderID,
+			yandexModelEnv:              yandexModel,
+			yandexBaseURLEnv:            yandexBaseURL,
+		},
+		Networks: []string{s.network.Name},
+		NetworkAliases: map[string][]string{
+			s.network.Name: {agentAlias},
+		},
+	}
+	agentC, err := testcontainers.GenericContainer(
+		ctx,
+		testcontainers.GenericContainerRequest{
+			ContainerRequest: agentReq,
+			Started:          true,
+		},
+	)
+	s.Require().NoError(err)
+	s.agentContainer = agentC
+
+}
 func (s *Suite) setupValkey(ctx context.Context) {
 	valkeyReq := testcontainers.ContainerRequest{
 		Image:        "valkey/valkey:9.0.3",

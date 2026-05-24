@@ -25,7 +25,7 @@ func NewNotificationsConsumer(conf config.KafkaConfig, logger *slog.Logger, summ
 
 	saramaConf.Version = sarama.V3_6_0_0
 
-	saramaConf.Consumer.Offsets.Initial = sarama.OffsetNewest
+	saramaConf.Consumer.Offsets.Initial = sarama.OffsetOldest
 	saramaConf.Consumer.Offsets.AutoCommit.Enable = false
 	saramaConf.Consumer.Return.Errors = true
 
