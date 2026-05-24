@@ -32,10 +32,9 @@ func TestUpdatesServerPostUpdates(t *testing.T) {
 			}`,
 			setupMock: func(m *mocks.MockTelegramBotHandler) {
 				m.EXPECT().
-					HandleLinkUpdate(pkg.LinkUpdate{
+					HandleLinkUpdate(pkg.ProcessedLinkUpdate{
 						Description: "link updated",
 						TgChatIDs:   []int64{1, 2},
-						URL:         "https://github.com/golang/go",
 					})
 			},
 			expectedStatus: http.StatusOK,

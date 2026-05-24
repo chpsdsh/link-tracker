@@ -29,12 +29,13 @@ func TestParseConfig(t *testing.T) {
 				WithTelegramAPI:       true,
 				UpdatesReceiveType:    "kafka",
 				KafkaConfig: config.KafkaConfig{
-					Brokers:               []string{"localhost:9092"},
-					RawNotificationsTopic: "topic",
-					DLQTopic:              "dlq",
-					ConsumerGroup:         "group",
-					User:                  "user",
-					Password:              "pass",
+					Brokers:                     []string{"localhost:9092"},
+					RawNotificationsTopic:       "topic",
+					ProcessedNotificationsTopic: "topic",
+					DLQTopic:                    "dlq",
+					ConsumerGroup:               "group",
+					User:                        "user",
+					Password:                    "pass",
 				},
 				PostgresConfig: config.PostgresConfig{
 					Host:     "POSTGRES_HOST",
@@ -101,7 +102,8 @@ func TestParseConfig(t *testing.T) {
 
 			t.Setenv("KAFKA_USER", "user")
 			t.Setenv("KAFKA_PASSWORD", "pass")
-			t.Setenv("KAFKA_TOPIC", "topic")
+			t.Setenv("KAFKA_RAW_TOPIC", "topic")
+			t.Setenv("KAFKA_PROCESSED_TOPIC", "topic")
 			t.Setenv("KAFKA_DLQ_TOPIC", "dlq")
 			t.Setenv("KAFKA_BROKERS", "localhost:9092")
 			t.Setenv("KAFKA_CONSUMER_GROUP", "group")

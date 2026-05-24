@@ -88,4 +88,8 @@
    AI_EXCLUDED_AUTHORS=bot-user,spam-author
    AI_MIN_LENGTH=20
    AI_SUMMARIZATION_THRESHOLD=500
+   YANDEX_API_KEY=key(API ключ от Yandex AI Studio)
+   YANDEX_FOLDER_ID=key(id папки в Yandex AI Studio)
+   YANDEX_MODEL=yandexgpt-5-lite
+   YANDEX_BASE_URL=https://ai.api.cloud.yandex.net/v1
 ```

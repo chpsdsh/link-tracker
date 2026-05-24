@@ -14,11 +14,14 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/k3a/html2text v1.4.0
 	github.com/oapi-codegen/runtime v1.2.0
+	github.com/openai/openai-go v1.12.0
 	github.com/pressly/goose/v3 v3.27.0
+	github.com/sony/gobreaker v1.0.0
 	github.com/stretchr/testify v1.11.1
 	github.com/testcontainers/testcontainers-go v0.41.0
 	github.com/valkey-io/valkey-go v1.0.75
 	github.com/valkey-io/valkey-go/valkeyaside v1.0.75
+	golang.org/x/time v0.15.0
 )
 
 require (
@@ -82,7 +85,10 @@ require (
 	github.com/sethvargo/go-retry v0.3.0 // indirect
 	github.com/shirou/gopsutil/v4 v4.26.2 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
-	github.com/sony/gobreaker v1.0.0 // indirect
+	github.com/tidwall/gjson v1.14.4 // indirect
+	github.com/tidwall/match v1.1.1 // indirect
+	github.com/tidwall/pretty v1.2.1 // indirect
+	github.com/tidwall/sjson v1.2.5 // indirect
 	github.com/tklauser/go-sysconf v0.3.16 // indirect
 	github.com/tklauser/numcpus v0.11.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
@@ -101,6 +107,5 @@ require (
 	golang.org/x/sync v0.20.0 // indirect
 	golang.org/x/sys v0.43.0 // indirect
 	golang.org/x/text v0.36.0 // indirect
-	golang.org/x/time v0.15.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

@@ -901,15 +901,15 @@ func TestTelegramHandlerHandleLinkUpdate(t *testing.T) {
 	}
 
 	mockSender.EXPECT().
-		SendMessage(int64(1), "Ссылка обновлена https://github.com/golang/go").
+		SendMessage(int64(1), "Ссылка обновлена high").
 		Return(nil)
 
 	mockSender.EXPECT().
-		SendMessage(int64(2), "Ссылка обновлена https://github.com/golang/go").
+		SendMessage(int64(2), "Ссылка обновлена high").
 		Return(nil)
 
 	mockSender.EXPECT().
-		SendMessage(int64(3), "Ссылка обновлена https://github.com/golang/go").
+		SendMessage(int64(3), "Ссылка обновлена high").
 		Return(nil)
 
 	h.HandleLinkUpdate(update)

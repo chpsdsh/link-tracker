@@ -25,12 +25,13 @@ var (
 )
 
 type AIAgentConfig struct {
-	StopWords       []string
-	ExcludedAuthors []string
-	MinLength       int
-	Threshold       int
-	KafkaConfig     config.KafkaConfig
-	PostgresConfig  config.PostgresConfig
+	StopWords         []string
+	ExcludedAuthors   []string
+	MinLength         int
+	Threshold         int
+	KafkaConfig       config.KafkaConfig
+	PostgresConfig    config.PostgresConfig
+	YandexAgentConfig YandexAgentConfig
 }
 
 func ParseAIAgentConfig() (AIAgentConfig, error) {
@@ -63,13 +64,19 @@ func ParseAIAgentConfig() (AIAgentConfig, error) {
 		return AIAgentConfig{}, fmt.Errorf("failed to parse postgres config: %w", err)
 	}
 
+	yandexAgentConfig, err := ParseYandexConfig()
+	if err != nil {
+		return AIAgentConfig{}, fmt.Errorf("failed to parse yandex agent config: %w", err)
+	}
+
 	return AIAgentConfig{
-		StopWords:       parseStringList(os.Getenv(aiStopWords)),
-		ExcludedAuthors: parseStringList(os.Getenv(aiExcludedAuthors)),
-		MinLength:       minLength,
-		Threshold:       threshold,
-		KafkaConfig:     kafkaConfig,
-		PostgresConfig:  postgresConfig,
+		StopWords:         parseStringList(os.Getenv(aiStopWords)),
+		ExcludedAuthors:   parseStringList(os.Getenv(aiExcludedAuthors)),
+		MinLength:         minLength,
+		Threshold:         threshold,
+		KafkaConfig:       kafkaConfig,
+		PostgresConfig:    postgresConfig,
+		YandexAgentConfig: yandexAgentConfig,
 	}, nil
 }
 
