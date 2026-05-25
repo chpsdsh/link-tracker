@@ -31,19 +31,19 @@ type InboxRepository interface {
 	UpdateProcessedTime(ctx context.Context, eventID string) error
 }
 
-type Summarizer interface {
-	Summarize(update pkg.LinkUpdate) error
+type AgentService interface {
+	ProcessLinkUpdate(update pkg.LinkUpdate) error
 }
 
 type GroupHandler struct {
 	logger            *slog.Logger
 	dlqProducer       dlqproducer.DlqProducer
-	summarizer        Summarizer
+	summarizer        AgentService
 	inboxRepo         InboxRepository
 	consumerGroupName string
 }
 
-func NewGroupHandler(dlqProducer dlqproducer.DlqProducer, summarizer Summarizer, inboxRepo InboxRepository, logger *slog.Logger, consumerGroupName string) GroupHandler {
+func NewGroupHandler(dlqProducer dlqproducer.DlqProducer, summarizer AgentService, inboxRepo InboxRepository, logger *slog.Logger, consumerGroupName string) GroupHandler {
 	return GroupHandler{dlqProducer: dlqProducer, summarizer: summarizer, logger: logger, inboxRepo: inboxRepo, consumerGroupName: consumerGroupName}
 }
 
@@ -139,7 +139,7 @@ func (h GroupHandler) deduplicateMessage(sess sarama.ConsumerGroupSession, msg *
 func (h GroupHandler) processWithRetry(linkUpdate pkg.LinkUpdate) error {
 	var err error
 	for range maxRetries {
-		err = h.summarizer.Summarize(linkUpdate)
+		err = h.summarizer.ProcessLinkUpdate(linkUpdate)
 		if err == nil {
 			return nil
 		}

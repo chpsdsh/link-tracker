@@ -20,7 +20,7 @@ type NotificationsConsumer struct {
 	groupHandler      GroupHandler
 }
 
-func NewNotificationsConsumer(conf config.KafkaConfig, logger *slog.Logger, summarizer Summarizer, inboxRepo InboxRepository) (*NotificationsConsumer, error) {
+func NewNotificationsConsumer(conf config.KafkaConfig, logger *slog.Logger, summarizer AgentService, inboxRepo InboxRepository) (*NotificationsConsumer, error) {
 	saramaConf := sarama.NewConfig()
 
 	saramaConf.Version = sarama.V3_6_0_0
