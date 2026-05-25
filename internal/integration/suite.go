@@ -115,7 +115,6 @@ const (
 	agentDockerfile             = "agent.dockerfile"
 	agentAlias                  = "agent"
 	kafkaImage                  = "confluentinc/cp-kafka:7.8.0"
-	kafkaPort                   = "9092/tcp"
 	kafkaAlias                  = "kafka1"
 	aiStopWordsEnv              = "AI_STOP_WORDS"
 	aiExcludedAuthorsEnv        = "AI_EXCLUDED_AUTHORS"
@@ -133,6 +132,12 @@ const (
 	yandexFolderID              = "test-folder-id"
 	yandexModel                 = "yandexgpt-5-lite"
 	yandexBaseURL               = "http://localhost:9999/v1"
+	aiHighPriorityKeyWordsEnv   = "AI_HIGH_PRIORITY_KEY_WORDS"
+	groupWindowMSEnv            = "GROUP_WINDOW_MS"
+	aiLowPriorityKeyWordsEnv    = "AI_LOW_PRIORITY_KEY_WORDS"
+	aiHighPriorityKeyWordsValue = "critical,urgent,breaking"
+	groupWindowMSValue          = "3000"
+	aiLowPriorityKeyWordsValue  = "minor,typo,docs,chore"
 )
 
 type Suite struct {
@@ -475,6 +480,9 @@ func (s *Suite) setupAgent(ctx context.Context) {
 			yandexFolderIDEnv:           yandexFolderID,
 			yandexModelEnv:              yandexModel,
 			yandexBaseURLEnv:            yandexBaseURL,
+			aiHighPriorityKeyWordsEnv:   aiHighPriorityKeyWordsValue,
+			aiLowPriorityKeyWordsEnv:    aiLowPriorityKeyWordsValue,
+			groupWindowMSEnv:            groupWindowMSValue,
 		},
 		Networks: []string{s.network.Name},
 		NetworkAliases: map[string][]string{

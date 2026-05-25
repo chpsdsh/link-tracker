@@ -895,21 +895,21 @@ func TestTelegramHandlerHandleLinkUpdate(t *testing.T) {
 	}
 
 	update := pkg.ProcessedLinkUpdate{
-		Description: "Ссылка обновлена",
+		Description: "Ссылка обновлена ",
 		Priority:    "high",
 		TgChatIDs:   []int64{1, 2, 3},
 	}
 
 	mockSender.EXPECT().
-		SendMessage(int64(1), "Ссылка обновлена high").
+		SendMessage(int64(1), "Ссылка обновлена Приоритет: high").
 		Return(nil)
 
 	mockSender.EXPECT().
-		SendMessage(int64(2), "Ссылка обновлена high").
+		SendMessage(int64(2), "Ссылка обновлена Приоритет: high").
 		Return(nil)
 
 	mockSender.EXPECT().
-		SendMessage(int64(3), "Ссылка обновлена high").
+		SendMessage(int64(3), "Ссылка обновлена Приоритет: high").
 		Return(nil)
 
 	h.HandleLinkUpdate(update)

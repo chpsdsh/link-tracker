@@ -1,3 +1,4 @@
+//go:generate mockgen -source agent_service.go -destination=../mocks/agent_service_mocks.go -package=mocks
 package service
 
 import (
@@ -12,7 +13,11 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/pkg"
 )
 
-var ErrUnknownPriority = errors.New("unknown priority")
+var (
+	ErrUnknownPriority = errors.New("unknown priority")
+	ErrSummarizing     = errors.New("summarization error")
+	ErrSendingUpdate   = errors.New("error sending update")
+)
 
 const (
 	highPriority   = "HIGH"
@@ -53,7 +58,7 @@ func (a AgentService) ProcessLinkUpdate(update pkg.LinkUpdate) error {
 			slog.String("error", err.Error()),
 			slog.Any("update", update),
 		)
-		return fmt.Errorf("could not summarize link updates: %w", err)
+		return errors.Join(err, ErrSummarizing)
 	}
 
 	priority := a.Prioritizer.FindPriority(summarizedString)
@@ -79,13 +84,23 @@ func (a AgentService) FormAndSendUpdate(update agent.UpdateToSend) error {
 			TgChatIDs:   []int64{update.TgChatID},
 			Priority:    prioritySting,
 		}, eventID.String()); err != nil {
-		return fmt.Errorf("could not send link update: %w", err)
+		a.BaseLogger.Error("sending update", slog.String("err", err.Error()), slog.Any("update", update))
+		return errors.Join(err, ErrSendingUpdate)
 	}
 	return nil
 }
 
 func formatUpdate(update agent.UpdateToSend) string {
 	var builder strings.Builder
+
+	if len(update.GroupedUpdates.Updates) == 1 {
+		builder.WriteString(update.GroupedUpdates.Updates[0].Description)
+		builder.WriteString("\n")
+		builder.WriteString("Ссылка: ")
+		builder.WriteString(update.GroupedUpdates.Updates[0].URL)
+		builder.WriteString("\n")
+		return builder.String()
+	}
 
 	for i, u := range update.GroupedUpdates.Updates {
 		builder.WriteString(strconv.Itoa(i + 1))

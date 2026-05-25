@@ -1,3 +1,4 @@
+//go:generate mockgen -source updates_grouper.go -destination=../mocks/updates_grouper_mocks.go -package=mocks
 package grouper
 
 import (

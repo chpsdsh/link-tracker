@@ -156,8 +156,8 @@ func (s *Suite) TestAgentConsumesValidRawUpdate() {
 	defer cancel()
 
 	rawUpdate := pkg.LinkUpdate{
-		Description: "This is a valid ",
-		TgChatIDs:   []int64{1, 2},
+		Description: "This is a valid",
+		TgChatIDs:   []int64{1},
 		URL:         "https://github.com/myrepo/go",
 	}
 
@@ -174,9 +174,9 @@ func (s *Suite) TestAgentConsumesValidRawUpdate() {
 	s.Require().NoError(err)
 
 	s.Equal(rawUpdate.ID, processed.ID)
-	s.Equal(rawUpdate.Description, processed.Description)
+	s.Equal(rawUpdate.Description+"\nСсылка: https://github.com/myrepo/go\n", processed.Description)
 	s.Equal(rawUpdate.TgChatIDs, processed.TgChatIDs)
-	s.Equal("stub", processed.Priority)
+	s.Equal("MEDIUM", processed.Priority)
 }
 
 func (s *Suite) TestAgentConsumesInvalidRawUpdate() {
