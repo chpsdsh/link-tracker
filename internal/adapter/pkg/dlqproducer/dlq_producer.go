@@ -7,9 +7,14 @@ import (
 	"github.com/IBM/sarama"
 	"github.com/goccy/go-json"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/pkg/config"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/metrics"
 )
 
-const producerRetryMax = 10
+const (
+	producerRetryMax     = 10
+	kafkaScope           = "kafkaScope"
+	dlqProducerScopeType = "dlq_producer"
+)
 
 type DlqProducer struct {
 	producer sarama.SyncProducer
@@ -52,7 +57,11 @@ func (p DlqProducer) SendToDLQ(msg *sarama.ConsumerMessage, reason error) error 
 		Key:   sarama.ByteEncoder(msg.Key),
 		Value: sarama.ByteEncoder(bytes),
 	}
+
+	startTime := time.Now()
 	_, _, err = p.producer.SendMessage(producerMsg)
+	metrics.ObserveRequestDuration(startTime, kafkaScope, dlqProducerScopeType)
+
 	if err != nil {
 		return fmt.Errorf("send to dlq: %w", err)
 	}

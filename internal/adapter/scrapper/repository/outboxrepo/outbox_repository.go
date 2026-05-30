@@ -8,9 +8,12 @@ import (
 	"github.com/goccy/go-json"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/pkg/database"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/metrics"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/pkg"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/scrapper"
 )
+
+const databaseScope = "database"
 
 type OutboxRepository struct {
 	db *pgxpool.Pool
@@ -29,11 +32,14 @@ func (r *OutboxRepository) SaveUpdate(ctx context.Context, update pkg.LinkUpdate
 		return fmt.Errorf("could not marshal update: %w", err)
 	}
 
+	startTime := time.Now()
 	_, err = q.Exec(ctx, `
 	insert into outbox(event_type, payload) values ($1, $2::jsonb)`,
 		update.Description,
 		updateJSON,
 	)
+	metrics.ObserveRequestDuration(startTime, databaseScope, "outbox")
+
 	if err != nil {
 		return fmt.Errorf("could not insert update: %w", err)
 	}
@@ -42,12 +48,16 @@ func (r *OutboxRepository) SaveUpdate(ctx context.Context, update pkg.LinkUpdate
 
 func (r *OutboxRepository) GetUpdates(ctx context.Context) ([]scrapper.OutboxEvent, error) {
 	q := database.GetQuerier(ctx, r.db)
+
+	startTime := time.Now()
 	rows, err := q.Query(ctx, `
 	SELECT id,  event_id::text, payload FROM outbox
 	WHERE sent_at IS NULL
 	ORDER BY created_at
 	LIMIT 10
 	FOR UPDATE SKIP LOCKED`)
+	metrics.ObserveRequestDuration(startTime, databaseScope, "outbox")
+
 	if err != nil {
 		return nil, fmt.Errorf("could not get outbox rows: %w", err)
 	}

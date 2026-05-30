@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/pkg/middleware"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/config"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/scrapper/service"
@@ -32,8 +33,12 @@ func NewScrapperHTTPServer(baseLogger *slog.Logger, scrapperHandler service.Link
 	rateLimit := middleware.NewIPRateLimiter(conf.RateLimitConfig.RPS, conf.RateLimitConfig.Burst)
 	h = rateLimit.Middleware(h)
 
+	mux := http.NewServeMux()
+	mux.Handle("/metrics", promhttp.Handler())
+	mux.Handle("/", h)
+
 	server := &http.Server{
-		Handler: h,
+		Handler: mux,
 		Addr:    scrapperServerPort,
 	}
 	return ScrapperHTTPServer{server: server, logger: baseLogger, rateLimiter: rateLimit}

@@ -12,6 +12,7 @@ import (
 	"github.com/joho/godotenv"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/pkg/database"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/cache"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/metrics"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/notificationsender"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/repository/outboxrepo"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/pkg"
@@ -85,7 +86,6 @@ func NewApp(logger *slog.Logger) (*App, error) {
 		cancel:            cancel,
 		notificationsChan: make(chan pkg.KafkaLinkUpdate, notificationChanBufSize),
 	}
-
 	if err = app.initDB(); err != nil {
 		cancel()
 		return nil, err
@@ -120,6 +120,8 @@ func NewApp(logger *slog.Logger) (*App, error) {
 
 	app.initServices()
 	app.initServer()
+
+	metrics.RegisterScrapperMetrics()
 
 	return app, nil
 }

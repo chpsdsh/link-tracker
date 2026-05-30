@@ -8,6 +8,7 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/pkg/database"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/metrics"
 
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/pkg"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/scrapper"
@@ -42,7 +43,9 @@ func (r *LinkRepository) AddLink(ctx context.Context, chatID int64, link pkg.Lin
 		return fmt.Errorf("build insert link: %w", err)
 	}
 
+	startTime := time.Now()
 	err = q.QueryRow(ctx, query, args...).Scan(&linkID)
+	metrics.ObserveRequestDuration(startTime, databaseScope, "links")
 	if err != nil {
 		return fmt.Errorf("insert link: %w", err)
 	}
@@ -58,7 +61,10 @@ func (r *LinkRepository) AddLink(ctx context.Context, chatID int64, link pkg.Lin
 		return fmt.Errorf("build insert link_chat: %w", err)
 	}
 
+	startTime = time.Now()
 	commandTag, err := q.Exec(ctx, query, args...)
+	metrics.ObserveRequestDuration(startTime, databaseScope, "link_chat")
+
 	if err != nil {
 		if database.IsForeignKeyViolation(err) {
 			return scrapper.ErrChatNotFound
@@ -87,7 +93,10 @@ func (r *LinkRepository) AddLink(ctx context.Context, chatID int64, link pkg.Lin
 			return fmt.Errorf("build insert tag: %w", err)
 		}
 
+		startTime = time.Now()
 		err = q.QueryRow(ctx, query, args...).Scan(&tagID)
+		metrics.ObserveRequestDuration(startTime, databaseScope, "tags")
+
 		if err != nil {
 			return fmt.Errorf("insert tag: %w", err)
 		}
@@ -103,7 +112,10 @@ func (r *LinkRepository) AddLink(ctx context.Context, chatID int64, link pkg.Lin
 			return fmt.Errorf("build insert link_tag: %w", err)
 		}
 
+		startTime = time.Now()
 		_, err = q.Exec(ctx, query, args...)
+		metrics.ObserveRequestDuration(startTime, databaseScope, "link_tag")
+
 		if err != nil {
 			return fmt.Errorf("insert link_tag: %w", err)
 		}
@@ -131,7 +143,10 @@ func (r *LinkRepository) LinkExists(ctx context.Context, url string) (bool, erro
 		return false, fmt.Errorf("build link exists query: %w", err)
 	}
 
+	startTime := time.Now()
 	err = q.QueryRow(ctx, query, args...).Scan(&exists)
+	metrics.ObserveRequestDuration(startTime, databaseScope, "links")
+
 	if err != nil {
 		return false, fmt.Errorf("query link exists: %w", err)
 	}
@@ -164,8 +179,10 @@ func (r *LinkRepository) DeleteLink(ctx context.Context, chatID int64, url strin
 		group by d.id, d.url, d.updated_at
 	`
 
+	startTime := time.Now()
 	err := q.QueryRow(ctx, query, chatID, url).
 		Scan(&li.Link, &li.LastUpdateTime, &tags)
+	metrics.ObserveRequestDuration(startTime, databaseScope, "link_chat")
 
 	if err != nil {
 		return pkg.LinkInfo{}, fmt.Errorf("delete link error: %w", err)
@@ -203,7 +220,10 @@ func (r *LinkRepository) DeleteLink(ctx context.Context, chatID int64, url strin
 		return pkg.LinkInfo{}, fmt.Errorf("build delete links: %w", err)
 	}
 
+	startTime = time.Now()
 	_, err = q.Exec(ctx, query, args[0])
+	metrics.ObserveRequestDuration(startTime, databaseScope, "links")
+
 	if err != nil {
 		return pkg.LinkInfo{}, fmt.Errorf("delete links: %w", err)
 	}
@@ -229,7 +249,10 @@ func (r *LinkRepository) GetUserLinks(ctx context.Context, chatID int64) ([]pkg.
 		return nil, fmt.Errorf("build get user links: %w", err)
 	}
 
+	startTime := time.Now()
 	rows, err := q.Query(ctx, query, args...)
+	metrics.ObserveRequestDuration(startTime, databaseScope, "link_chat")
+
 	if err != nil {
 		return nil, fmt.Errorf("query get user links: %w", err)
 	}
@@ -268,7 +291,9 @@ func (r *LinkRepository) GetAllLinks(ctx context.Context, limit int, offset int)
 		return nil, fmt.Errorf("build get all links: %w", err)
 	}
 
+	startTime := time.Now()
 	rows, err := q.Query(ctx, query, args...)
+	metrics.ObserveRequestDuration(startTime, databaseScope, "links")
 	if err != nil {
 		return nil, fmt.Errorf("query get all links: %w", err)
 	}
@@ -306,7 +331,9 @@ func (r *LinkRepository) UpdateLinksTime(ctx context.Context, newTime time.Time,
 		return fmt.Errorf("build update links: %w", err)
 	}
 
+	startTime := time.Now()
 	_, err = q.Exec(ctx, query, args...)
+	metrics.ObserveRequestDuration(startTime, databaseScope, "links")
 	if err != nil {
 		return fmt.Errorf("update links: %w", err)
 	}
@@ -328,7 +355,10 @@ func (r *LinkRepository) GetChatIDsByLink(ctx context.Context, link string) ([]i
 		return nil, fmt.Errorf("build get chatIDs by link: %w", err)
 	}
 
+	startTime := time.Now()
 	rows, err := q.Query(ctx, query, args...)
+	metrics.ObserveRequestDuration(startTime, databaseScope, "link_chat")
+
 	if err != nil {
 		return nil, fmt.Errorf("query get chatIDs by link: %w", err)
 	}
