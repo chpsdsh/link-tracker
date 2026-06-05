@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/avast/retry-go/v5"
 	"github.com/sony/gobreaker"
@@ -25,6 +26,7 @@ const (
 	stackBreakerName    = "stack-overflow-breaker"
 	stackOverflowSource = "stackOverflow"
 	githubSource        = "github"
+	httpClientSource    = "http_client"
 )
 
 type Client struct {
@@ -74,9 +76,11 @@ func NewScrapperClient(conf config.ScrapperConfig) Client {
 }
 
 func (c Client) DoGithubRequest(url string) (scrapper.GitHubRepositoryResponse, error) {
+	startTime := time.Now()
 	body, err := c.doGithubRequest(url, c.doGithubAPIRequest)
-
+	metrics.ObserveRequestDuration(startTime, httpClientSource, githubSource)
 	if err != nil {
+		metrics.APIErrorsTotal.WithLabelValues(githubSource).Inc()
 		return scrapper.GitHubRepositoryResponse{}, fmt.Errorf("github request error: %w", err)
 	}
 
@@ -90,8 +94,11 @@ func (c Client) DoGithubRequest(url string) (scrapper.GitHubRepositoryResponse, 
 }
 
 func (c Client) DoGithubIssueRequest(url string) ([]scrapper.GithubIssue, error) {
+	startTime := time.Now()
 	body, err := c.doGithubRequest(url, c.doGithubAPIRequest)
+	metrics.ObserveRequestDuration(startTime, httpClientSource, githubSource)
 	if err != nil {
+		metrics.APIErrorsTotal.WithLabelValues(githubSource).Inc()
 		return nil, fmt.Errorf("error doing github api request: %w", err)
 	}
 
@@ -105,8 +112,11 @@ func (c Client) DoGithubIssueRequest(url string) ([]scrapper.GithubIssue, error)
 }
 
 func (c Client) DoGithubPullRequestRequest(url string) ([]scrapper.GithubPullRequest, error) {
+	startTime := time.Now()
 	body, err := c.doGithubRequest(url, c.doGithubAPIRequest)
+	metrics.ObserveRequestDuration(startTime, httpClientSource, githubSource)
 	if err != nil {
+		metrics.APIErrorsTotal.WithLabelValues(githubSource).Inc()
 		return nil, fmt.Errorf("error requesting github API: %w", err)
 	}
 
@@ -120,8 +130,11 @@ func (c Client) DoGithubPullRequestRequest(url string) ([]scrapper.GithubPullReq
 }
 
 func (c Client) DoStackOverflowQuestionRequest(url string) (scrapper.StackOverflowQuestionResponse, error) {
+	startTime := time.Now()
 	body, err := c.doStackOverflowRequest(url, c.doStackoverflowAPIRequest)
+	metrics.ObserveRequestDuration(startTime, httpClientSource, stackOverflowSource)
 	if err != nil {
+		metrics.APIErrorsTotal.WithLabelValues(stackOverflowSource).Inc()
 		return scrapper.StackOverflowQuestionResponse{}, fmt.Errorf("error requesting stackOverflow API: %w", err)
 	}
 
@@ -136,9 +149,12 @@ func (c Client) DoStackOverflowQuestionRequest(url string) (scrapper.StackOverfl
 }
 
 func (c Client) DoStackOverflowAnswersRequest(url string) (scrapper.StackOverflowAnswersResponse, error) {
+	startTime := time.Now()
 	body, err := c.doStackOverflowRequest(url, c.doStackoverflowAPIRequest)
+	metrics.ObserveRequestDuration(startTime, httpClientSource, stackOverflowSource)
 
 	if err != nil {
+		metrics.APIErrorsTotal.WithLabelValues(stackOverflowSource).Inc()
 		return scrapper.StackOverflowAnswersResponse{}, fmt.Errorf("error requesting stackOverflow API: %w", err)
 	}
 	metrics.APIRequestsTotal.WithLabelValues(stackOverflowSource).Inc()
@@ -151,9 +167,12 @@ func (c Client) DoStackOverflowAnswersRequest(url string) (scrapper.StackOverflo
 }
 
 func (c Client) DoStackOverflowCommentsRequest(url string) (scrapper.StackOverflowCommentsResponse, error) {
+	startTime := time.Now()
 	body, err := c.doStackOverflowRequest(url, c.doStackoverflowAPIRequest)
+	metrics.ObserveRequestDuration(startTime, httpClientSource, stackOverflowSource)
 
 	if err != nil {
+		metrics.APIErrorsTotal.WithLabelValues(stackOverflowSource).Inc()
 		return scrapper.StackOverflowCommentsResponse{}, fmt.Errorf("error requesting stackOverflow API: %w", err)
 	}
 

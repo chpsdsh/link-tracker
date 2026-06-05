@@ -11,28 +11,31 @@ import (
 )
 
 const (
-	githubAPIKey         = "GITHUB_API_KEY"
-	stackoverflowAPIKey  = "STACKOVERFLOW_API_KEY"
-	botServerAddress     = "BOT_SERVER_ADDRESS"
-	assetType            = "ASSET_TYPE"
-	scrapperTimeInterval = "SCRAPPER_TIME_INTERVAL"
-	linksBatchSize       = "LINKS_BATCH_SIZE"
-	schedulerNumWorkers  = "SCHEDULER_NUM_WORKERS"
-	updatesHandleType    = "UPDATES_HANDLE_TYPE"
+	githubAPIKey             = "GITHUB_API_KEY"
+	stackoverflowAPIKey      = "STACKOVERFLOW_API_KEY"
+	botServerAddress         = "BOT_SERVER_ADDRESS"
+	assetType                = "ASSET_TYPE"
+	scrapperTimeInterval     = "SCRAPPER_TIME_INTERVAL"
+	linksBatchSize           = "LINKS_BATCH_SIZE"
+	schedulerNumWorkers      = "SCHEDULER_NUM_WORKERS"
+	updatesHandleType        = "UPDATES_HANDLE_TYPE"
+	metricsCalculateInterval = "METRICS_CALCULATE_INTERVAL"
 )
 
 var (
-	ErrNoTelegramToken             = errors.New("telegram token should be set up with " + githubAPIKey + " environment variable")
-	ErrNoStackOverflowToken        = errors.New("stackoverflow token should be set up with " + stackoverflowAPIKey + " environment variable")
-	ErrNoBotServerAddress          = errors.New("bot server address should be set with " + botServerAddress + " environment variable")
-	ErrNoAssetType                 = errors.New("asset type should be set with " + assetType + " environment variable")
-	ErrNoScrapperTimeInterval      = errors.New("scrapper time interval should  be set with " + scrapperTimeInterval + " environment variable")
-	ErrInvalidScrapperTimeInterval = errors.New(scrapperTimeInterval + "should be integer")
-	ErrNoLinksBatchSize            = errors.New("scrapper links batch size should  be set with " + linksBatchSize + " environment variable")
-	ErrInvalidBachSize             = errors.New(linksBatchSize + "should be integer")
-	ErrNoNumWorkers                = errors.New("scrapper num workers should be set with " + schedulerNumWorkers + " environment variable")
-	ErrInvalidNumWorkers           = errors.New(schedulerNumWorkers + "should be integer")
-	ErrNoUpdatesSendType           = errors.New("updates send type should be set with " + updatesHandleType + " environment variable")
+	ErrNoTelegramToken                     = errors.New("telegram token should be set up with " + githubAPIKey + " environment variable")
+	ErrNoStackOverflowToken                = errors.New("stackoverflow token should be set up with " + stackoverflowAPIKey + " environment variable")
+	ErrNoBotServerAddress                  = errors.New("bot server address should be set with " + botServerAddress + " environment variable")
+	ErrNoAssetType                         = errors.New("asset type should be set with " + assetType + " environment variable")
+	ErrNoScrapperTimeInterval              = errors.New("scrapper time interval should  be set with " + scrapperTimeInterval + " environment variable")
+	ErrInvalidScrapperTimeInterval         = errors.New(scrapperTimeInterval + "should be integer")
+	ErrNoLinksBatchSize                    = errors.New("scrapper links batch size should  be set with " + linksBatchSize + " environment variable")
+	ErrInvalidBachSize                     = errors.New(linksBatchSize + "should be integer")
+	ErrNoNumWorkers                        = errors.New("scrapper num workers should be set with " + schedulerNumWorkers + " environment variable")
+	ErrInvalidNumWorkers                   = errors.New(schedulerNumWorkers + "should be integer")
+	ErrNoUpdatesSendType                   = errors.New("updates send type should be set with " + updatesHandleType + " environment variable")
+	ErrNoMetricsCalculateInterval          = errors.New("metrics calculate interval should be set with " + metricsCalculateInterval + " environment variable")
+	ErrInvalidMetricsCalculateIntervalType = errors.New(metricsCalculateInterval + " should have time format")
 )
 
 type AssetType int
@@ -43,22 +46,23 @@ const (
 )
 
 type ScrapperConfig struct {
-	GithubToken          string
-	StackoverflowToken   string
-	BotServerAddr        string
-	PostgresURL          string
-	AssetType            AssetType
-	ScrapperInterval     time.Duration
-	BatchSize            int
-	NumWorkers           int
-	UpdatesSendType      string
-	KafkaConfig          KafkaConfig
-	PostgresConfig       config.PostgresConfig
-	ValkeyConfig         ValkeyConfig
-	HTTPClientConfig     config.HTTPClientConfig
-	RetryConfig          config.RetryConfig
-	CircuitBreakerConfig config.CircuitBreakerConfig
-	RateLimitConfig      config.RateLimitConfig
+	GithubToken              string
+	StackoverflowToken       string
+	BotServerAddr            string
+	PostgresURL              string
+	AssetType                AssetType
+	ScrapperInterval         time.Duration
+	BatchSize                int
+	NumWorkers               int
+	UpdatesSendType          string
+	KafkaConfig              KafkaConfig
+	PostgresConfig           config.PostgresConfig
+	ValkeyConfig             ValkeyConfig
+	HTTPClientConfig         config.HTTPClientConfig
+	RetryConfig              config.RetryConfig
+	CircuitBreakerConfig     config.CircuitBreakerConfig
+	RateLimitConfig          config.RateLimitConfig
+	MetricsCalculateInterval time.Duration
 }
 
 func ParseConfig() (ScrapperConfig, error) { //nolint:funlen // config parsing should be in ine method
@@ -114,6 +118,16 @@ func ParseConfig() (ScrapperConfig, error) { //nolint:funlen // config parsing s
 		return ScrapperConfig{}, ErrNoUpdatesSendType
 	}
 
+	metricsCalculateIntervalStr := os.Getenv(metricsCalculateInterval)
+	if metricsCalculateIntervalStr == "" {
+		return ScrapperConfig{}, ErrNoMetricsCalculateInterval
+	}
+
+	metricsCalculateTimeInterval, err := time.ParseDuration(metricsCalculateIntervalStr)
+	if err != nil {
+		return ScrapperConfig{}, ErrInvalidMetricsCalculateIntervalType
+	}
+
 	kafkaConfig, err := ParseKafkaConfig()
 	if err != nil {
 		return ScrapperConfig{}, fmt.Errorf("parsing kafka config: %w", err)
@@ -149,20 +163,21 @@ func ParseConfig() (ScrapperConfig, error) { //nolint:funlen // config parsing s
 		return ScrapperConfig{}, fmt.Errorf("parsing rate limit config: %w", err)
 	}
 	return ScrapperConfig{GithubToken: githubToken,
-		StackoverflowToken:   stackoverflowToken,
-		BotServerAddr:        botServAddr,
-		AssetType:            asset,
-		ScrapperInterval:     time.Duration(scrapperInterval) * time.Second,
-		BatchSize:            batchSize,
-		NumWorkers:           numWorkers,
-		UpdatesSendType:      updatesSendTypeStr,
-		KafkaConfig:          kafkaConfig,
-		PostgresConfig:       postgresConfig,
-		ValkeyConfig:         valkeyConfig,
-		HTTPClientConfig:     httpClientConfig,
-		RetryConfig:          retryConfig,
-		CircuitBreakerConfig: circuitBreakerConfig,
-		RateLimitConfig:      rateLimitConfig,
+		StackoverflowToken:       stackoverflowToken,
+		BotServerAddr:            botServAddr,
+		AssetType:                asset,
+		ScrapperInterval:         time.Duration(scrapperInterval) * time.Second,
+		BatchSize:                batchSize,
+		NumWorkers:               numWorkers,
+		UpdatesSendType:          updatesSendTypeStr,
+		KafkaConfig:              kafkaConfig,
+		PostgresConfig:           postgresConfig,
+		ValkeyConfig:             valkeyConfig,
+		HTTPClientConfig:         httpClientConfig,
+		RetryConfig:              retryConfig,
+		CircuitBreakerConfig:     circuitBreakerConfig,
+		RateLimitConfig:          rateLimitConfig,
+		MetricsCalculateInterval: metricsCalculateTimeInterval,
 	}, nil
 
 }

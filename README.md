@@ -7,7 +7,7 @@
   docker compose up -d
 ```
 **Для запуска необходимо:** 
-1) **Создать файл "bot.env" с полями:**
+1) **Создать файл "deploy/bot.env" с полями:**
 ```yaml
    APP_TELEGRAM_TOKEN=token
    SCRAPPER_SERVER_ADDRESS=http://scrapper:8081
@@ -37,7 +37,7 @@
    RATE_LIMIT_BURST=10
 ```
  
-2) **Создать файл "scrapper.env" с полями:**
+2) **Создать файл "deploy/scrapper.env" с полями:**
 ```yaml
    GITHUB_API_KEY=key
    STACKOVERFLOW_API_KEY=key
@@ -69,8 +69,9 @@
    CIRCUIT_BREAKER_FAILURE_RATIO=0.6
    RATE_LIMIT_RPS=5
    RATE_LIMIT_BURST=10
+   METRICS_CALCULATE_INTERVAL=5s
 ```
-3) **Создать файл "agent.env" с полями:**
+3) **Создать файл "deploy/agent.env" с полями:**
 ```yaml
    KAFKA_USER=user1
    KAFKA_PASSWORD=user1-secret

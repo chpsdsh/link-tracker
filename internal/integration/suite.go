@@ -13,8 +13,8 @@ import (
 )
 
 const (
-	scrapperDockerfile = "scrapper.Dockerfile"
-	botDockerfile      = "bot.Dockerfile"
+	scrapperDockerfile = "deploy/scrapper.Dockerfile"
+	botDockerfile      = "deploy/bot.Dockerfile"
 	scrapperPort       = "8081/tcp"
 	botPort            = "8080/tcp"
 	scrapperAlias      = "scrapper"
@@ -112,7 +112,7 @@ const (
 	rateLimitRPS   = "20"
 	rateLimitBurst = "20"
 
-	agentDockerfile             = "agent.dockerfile"
+	agentDockerfile             = "deploy/agent.dockerfile"
 	agentAlias                  = "agent"
 	kafkaImage                  = "confluentinc/cp-kafka:7.8.0"
 	kafkaAlias                  = "kafka1"
@@ -138,6 +138,9 @@ const (
 	aiHighPriorityKeyWordsValue = "critical,urgent,breaking"
 	groupWindowMSValue          = "3000"
 	aiLowPriorityKeyWordsValue  = "minor,typo,docs,chore"
+
+	metricsCalculateIntervalEnv = "METRICS_CALCULATE_INTERVAL"
+	metricsCalculateInterval    = "5s"
 )
 
 type Suite struct {
@@ -310,6 +313,7 @@ func (s *Suite) setupScrapper(ctx context.Context) {
 			circuitBreakerFailureRatioEnv: circuitBreakerFailureRatio,
 			rateLimitRPSEnv:               rateLimitRPS,
 			rateLimitBurstEnv:             rateLimitBurst,
+			metricsCalculateIntervalEnv:   metricsCalculateInterval,
 		},
 		Networks: []string{s.network.Name},
 		NetworkAliases: map[string][]string{

@@ -1,0 +1,68 @@
+# Link Tracker Business Metrics PromQL examples
+
+# 1. User Messages per second
+sum(rate(command_requests_total{app="bot"}[1m]))
+
+
+# 2. Active tracked links by source
+links_on_track_total{app="scrapper"}
+
+
+# 3. Scrape duration percentiles by source
+# Query A
+histogram_quantile(
+  0.50,
+  sum(rate(request_duration_ms_total_bucket{app="scrapper", scope="database"}[5m])) by (le, scope_type)
+)
+
+# Query B
+histogram_quantile(
+  0.95,
+  sum(rate(request_duration_ms_total_bucket{app="scrapper", scope="database"}[5m])) by (le, scope_type)
+)
+
+# Query C
+histogram_quantile(
+  0.99,
+  sum(rate(request_duration_ms_total_bucket{app="scrapper", scope="database"}[5m])) by (le, scope_type)
+)
+
+
+# 4. Bot command duration percentiles
+# Query A
+histogram_quantile(
+  0.50,
+  sum(rate(command_duration_ms_total_bucket{app="bot"}[5m])) by (le, scope, scope_type)
+)
+
+# Query B
+histogram_quantile(
+  0.50,
+  sum(rate(command_duration_ms_total_bucket{app="bot"}[5m])) by (le, scope, scope_type)
+)
+
+# Query C
+histogram_quantile(
+  0.99,
+  sum(rate(command_duration_ms_total_bucket{app="bot"}[5m])) by (le, scope, scope_type)
+)
+
+
+# 5. Telegram bot requests total
+sum(command_requests_total{app="bot"})
+
+
+# 6. Sent notifications
+sum(rate(sent_notification_total{app="bot"}[1m]))
+
+
+# 7. Memory usage, MB
+process_resident_memory_bytes{job="$app"} / 1024 / 1024
+
+
+# 8. New panel
+go_memstats_alloc_bytes{job="$app"} / 1024 / 1024
+
+
+# 9. New panel
+go_memstats_stack_inuse_bytes{job="$app"} / 1024 / 1024

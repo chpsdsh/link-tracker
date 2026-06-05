@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/bot/metrics"
 
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/bot/statestorage"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/bot"
@@ -92,6 +93,7 @@ func (h TelegramHandler) HandleLinkUpdate(linkUpdate pkg.ProcessedLinkUpdate) er
 			h.BaseLogger.Error("error while sending message", slog.String("error", err.Error()))
 			return fmt.Errorf("telegram send message: %w", err)
 		}
+		metrics.SentNotificationsTotal.Inc()
 	}
 	return nil
 }
@@ -155,6 +157,7 @@ func (h TelegramHandler) handleCommand(update tgbotapi.Update) {
 	if err := h.MsgSender.SendMessage(update.Message.Chat.ID, text); err != nil {
 		h.BaseLogger.Error("error while sending message", slog.String("error", err.Error()))
 	}
+	metrics.CommandRequestTotal.WithLabelValues(text).Inc()
 }
 
 func (h TelegramHandler) handleLinks(chatID int64, links bot.ListLinksResponse) {

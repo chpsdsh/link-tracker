@@ -63,7 +63,8 @@ linters:
     funlen:
       # Maximum number of lines per function
       # Default: 60
-      lines: 90
+      lines: 100
+      statements: 50
 
     govet:
       # Enable all analyzers.

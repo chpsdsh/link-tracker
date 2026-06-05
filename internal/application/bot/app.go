@@ -7,11 +7,13 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
+	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/joho/godotenv"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/bot/botclient"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/bot/config"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/bot/metrics"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/bot/receiver"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/bot/telegram"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/pkg/database"
@@ -22,7 +24,8 @@ import (
 )
 
 const (
-	envFilename = "bot.env"
+	envFilename      = "deploy/bot.env"
+	shutdownDuration = time.Second * 10
 )
 
 func StartBot(baseLogger *slog.Logger) error {
@@ -83,19 +86,28 @@ func StartBot(baseLogger *slog.Logger) error {
 	}
 
 	telegramBot.StartMainLoop(ctx, wg)
+	metricsServer := metrics.NewMetricsServer(baseLogger)
+	metricsServer.Start()
+
+	metrics.RegisterBotMetrics()
 
 	<-ctx.Done()
 
 	defer cancel()
-	shutdown(baseLogger, botReceiver, wg, db)
+	shutdown(baseLogger, botReceiver, wg, db, metricsServer)
 	return nil
 }
 
-func shutdown(baseLogger *slog.Logger, receiver receiver.Receiver, wg *sync.WaitGroup, db *database.DB) {
+func shutdown(baseLogger *slog.Logger, receiver receiver.Receiver, wg *sync.WaitGroup, db *database.DB, server metrics.Server) {
 	if shutdownErr := receiver.Shutdown(); shutdownErr != nil {
 		baseLogger.Error("shutdown error", slog.String("err", shutdownErr.Error()))
 	}
 	wg.Wait()
 
 	db.CloseConnectionPool()
+	ctx, cancel := context.WithTimeout(context.Background(), shutdownDuration)
+	defer cancel()
+	if err := server.Shutdown(ctx); err != nil {
+		baseLogger.Error("error shutting down metrics server", slog.String("err", err.Error()))
+	}
 }

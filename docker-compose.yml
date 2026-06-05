@@ -126,30 +126,31 @@ services:
   bot:
     build:
       context: .
-      dockerfile: bot.dockerfile
+      dockerfile: deploy/bot.dockerfile
     container_name: bot
     depends_on:
+      - postgres
       - kafka-init
     restart: unless-stopped
     volumes:
-      - ./bot.env:/app/bot.env
+      - ./deploy/bot.env:/app/deploy/bot.env
 
   scrapper:
     build:
       context: .
-      dockerfile: scrapper.dockerfile
+      dockerfile: deploy/scrapper.dockerfile
     container_name: scrapper
     depends_on:
       - kafka-init
       - postgres
     restart: unless-stopped
     volumes:
-      - ./scrapper.env:/app/scrapper.env
+      - ./deploy/scrapper.env:/app/deploy/scrapper.env
 
   agent:
     build:
       context: .
-      dockerfile: agent.dockerfile
+      dockerfile: deploy/agent.dockerfile
     container_name: agent
     depends_on:
       - kafka-init
@@ -158,7 +159,7 @@ services:
       - bot
     restart: unless-stopped
     volumes:
-      - ./agent.env:/app/agent.env
+      - ./deploy/agent.env:/app/deploy/agent.env
 
   valkey-node-0:
     image: valkey/valkey:9.0.3
@@ -166,23 +167,15 @@ services:
     ports:
       - "6379:6379"
 
-  pushgateway:
-    image: prom/pushgateway:latest
-    container_name: pushgateway
-    ports:
-      - "9091:9091"
-
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus
     ports:
       - "9090:9090"
     volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./deploy/prometheus.yml:/etc/prometheus/prometheus.yml:ro
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
-    depends_on:
-      - pushgateway
 
   grafana:
     image: grafana/grafana-oss:latest
@@ -192,6 +185,10 @@ services:
     environment:
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - ./deploy/dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml
+      - ./deploy/link_tracker_dashboard.json:/var/lib/grafana/dashboards/link_tracker_dashboard.json
+      - ./deploy/datasource.yml:/etc/grafana/provisioning/datasources/datasource.yml
     depends_on:
       - prometheus
 

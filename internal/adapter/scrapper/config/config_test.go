@@ -86,6 +86,7 @@ func TestParseConfig(t *testing.T) {
 					RPS:   5,
 					Burst: 10,
 				},
+				MetricsCalculateInterval: 10 * time.Second,
 			},
 			expectedErr: nil,
 		},
@@ -192,6 +193,7 @@ func TestParseConfig(t *testing.T) {
 			t.Setenv("CIRCUIT_BREAKER_FAILURE_RATIO", "0.6")
 			t.Setenv("RATE_LIMIT_RPS", "5")
 			t.Setenv("RATE_LIMIT_BURST", "10")
+			t.Setenv("METRICS_CALCULATE_INTERVAL", "10s")
 
 			cfg, err := ParseConfig()
 

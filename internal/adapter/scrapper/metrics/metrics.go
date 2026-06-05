@@ -32,7 +32,18 @@ var RequestDurationMsTotal = prometheus.NewHistogramVec(
 var APIRequestsTotal = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
 		Name: "api_requests_total",
-		Help: "Duration of bot command processing operations in milliseconds.",
+		Help: "Counter of API requests.",
+		ConstLabels: prometheus.Labels{
+			"app": "scrapper",
+		},
+	},
+	[]string{"source"},
+)
+
+var APIErrorsTotal = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "api_errors_total",
+		Help: "Counter of API errors.",
 		ConstLabels: prometheus.Labels{
 			"app": "scrapper",
 		},
@@ -44,6 +55,7 @@ func RegisterScrapperMetrics() {
 	prometheus.MustRegister(LinksOnTrackTotal)
 	prometheus.MustRegister(RequestDurationMsTotal)
 	prometheus.MustRegister(APIRequestsTotal)
+	prometheus.MustRegister(APIErrorsTotal)
 }
 
 func ObserveRequestDuration(start time.Time, scope string, scopeType string) {

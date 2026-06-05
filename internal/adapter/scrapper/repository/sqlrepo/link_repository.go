@@ -33,7 +33,6 @@ func (r *LinkRepository) AddLink(ctx context.Context, chatID int64, link pkg.Lin
 	returning id
 	`, link.Link).Scan(&linkID)
 	metrics.ObserveRequestDuration(startTime, databaseScope, "links")
-
 	if err != nil {
 		return fmt.Errorf("error insert link: %w", err)
 	}

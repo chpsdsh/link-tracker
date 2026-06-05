@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	envFilename             = "agent.env"
+	envFilename             = "deploy/agent.env"
 	notificationChanBufSize = 10
 )
 
