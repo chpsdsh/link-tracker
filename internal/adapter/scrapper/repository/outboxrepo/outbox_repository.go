@@ -8,7 +8,7 @@ import (
 	"github.com/goccy/go-json"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/pkg/database"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/metrics"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/scrappermetrics"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/pkg"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/scrapper"
 )
@@ -38,7 +38,7 @@ func (r *OutboxRepository) SaveUpdate(ctx context.Context, update pkg.LinkUpdate
 		update.Description,
 		updateJSON,
 	)
-	metrics.ObserveRequestDuration(startTime, databaseScope, "outbox")
+	scrappermetrics.ObserveRequestDuration(startTime, databaseScope, "outbox")
 
 	if err != nil {
 		return fmt.Errorf("could not insert update: %w", err)
@@ -56,7 +56,7 @@ func (r *OutboxRepository) GetUpdates(ctx context.Context) ([]scrapper.OutboxEve
 	ORDER BY created_at
 	LIMIT 10
 	FOR UPDATE SKIP LOCKED`)
-	metrics.ObserveRequestDuration(startTime, databaseScope, "outbox")
+	scrappermetrics.ObserveRequestDuration(startTime, databaseScope, "outbox")
 
 	if err != nil {
 		return nil, fmt.Errorf("could not get outbox rows: %w", err)

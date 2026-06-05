@@ -8,7 +8,7 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/pkg/database"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/metrics"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/scrappermetrics"
 
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/scrapper"
 )
@@ -44,7 +44,7 @@ func (r *ChatRepository) ChatExists(ctx context.Context, chatID int64) (bool, er
 
 	startTime := time.Now()
 	err = q.QueryRow(ctx, query, args...).Scan(&exists)
-	metrics.ObserveRequestDuration(startTime, databaseScope, "chats")
+	scrappermetrics.ObserveRequestDuration(startTime, databaseScope, "chats")
 
 	if err != nil {
 		return false, fmt.Errorf("error checking existence of chat: %w", err)
@@ -64,7 +64,7 @@ func (r *ChatRepository) AddChat(ctx context.Context, chatID int64) error {
 
 	startTime := time.Now()
 	_, err = q.Exec(ctx, query, args...)
-	metrics.ObserveRequestDuration(startTime, databaseScope, "chats")
+	scrappermetrics.ObserveRequestDuration(startTime, databaseScope, "chats")
 
 	switch {
 	case database.IsUniqueViolation(err):
@@ -88,7 +88,7 @@ func (r *ChatRepository) DeleteChat(ctx context.Context, chatID int64) error {
 
 	startTime := time.Now()
 	commandTag, err := q.Exec(ctx, query, args...)
-	metrics.ObserveRequestDuration(startTime, databaseScope, "chats")
+	scrappermetrics.ObserveRequestDuration(startTime, databaseScope, "chats")
 
 	if err != nil {
 		return fmt.Errorf("error deleting chat: %w", err)

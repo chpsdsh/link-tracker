@@ -12,7 +12,7 @@ import (
 	"github.com/avast/retry-go/v5"
 	"github.com/sony/gobreaker"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/config"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/metrics"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/scrappermetrics"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/scrapper"
 )
 
@@ -78,13 +78,13 @@ func NewScrapperClient(conf config.ScrapperConfig) Client {
 func (c Client) DoGithubRequest(url string) (scrapper.GitHubRepositoryResponse, error) {
 	startTime := time.Now()
 	body, err := c.doGithubRequest(url, c.doGithubAPIRequest)
-	metrics.ObserveRequestDuration(startTime, httpClientSource, githubSource)
+	scrappermetrics.ObserveRequestDuration(startTime, httpClientSource, githubSource)
 	if err != nil {
-		metrics.APIErrorsTotal.WithLabelValues(githubSource).Inc()
+		scrappermetrics.APIErrorsTotal.WithLabelValues(githubSource).Inc()
 		return scrapper.GitHubRepositoryResponse{}, fmt.Errorf("github request error: %w", err)
 	}
 
-	metrics.APIRequestsTotal.WithLabelValues(githubSource).Inc()
+	scrappermetrics.APIRequestsTotal.WithLabelValues(githubSource).Inc()
 
 	gitUpdate := scrapper.GitHubRepositoryResponse{}
 	if err = json.Unmarshal(body, &gitUpdate); err != nil {
@@ -96,13 +96,13 @@ func (c Client) DoGithubRequest(url string) (scrapper.GitHubRepositoryResponse, 
 func (c Client) DoGithubIssueRequest(url string) ([]scrapper.GithubIssue, error) {
 	startTime := time.Now()
 	body, err := c.doGithubRequest(url, c.doGithubAPIRequest)
-	metrics.ObserveRequestDuration(startTime, httpClientSource, githubSource)
+	scrappermetrics.ObserveRequestDuration(startTime, httpClientSource, githubSource)
 	if err != nil {
-		metrics.APIErrorsTotal.WithLabelValues(githubSource).Inc()
+		scrappermetrics.APIErrorsTotal.WithLabelValues(githubSource).Inc()
 		return nil, fmt.Errorf("error doing github api request: %w", err)
 	}
 
-	metrics.APIRequestsTotal.WithLabelValues(githubSource).Inc()
+	scrappermetrics.APIRequestsTotal.WithLabelValues(githubSource).Inc()
 
 	var issueResponse []scrapper.GithubIssue
 	if err = json.Unmarshal(body, &issueResponse); err != nil {
@@ -114,13 +114,13 @@ func (c Client) DoGithubIssueRequest(url string) ([]scrapper.GithubIssue, error)
 func (c Client) DoGithubPullRequestRequest(url string) ([]scrapper.GithubPullRequest, error) {
 	startTime := time.Now()
 	body, err := c.doGithubRequest(url, c.doGithubAPIRequest)
-	metrics.ObserveRequestDuration(startTime, httpClientSource, githubSource)
+	scrappermetrics.ObserveRequestDuration(startTime, httpClientSource, githubSource)
 	if err != nil {
-		metrics.APIErrorsTotal.WithLabelValues(githubSource).Inc()
+		scrappermetrics.APIErrorsTotal.WithLabelValues(githubSource).Inc()
 		return nil, fmt.Errorf("error requesting github API: %w", err)
 	}
 
-	metrics.APIRequestsTotal.WithLabelValues(githubSource).Inc()
+	scrappermetrics.APIRequestsTotal.WithLabelValues(githubSource).Inc()
 
 	var pullRequestsResponse []scrapper.GithubPullRequest
 	if err = json.Unmarshal(body, &pullRequestsResponse); err != nil {
@@ -132,13 +132,13 @@ func (c Client) DoGithubPullRequestRequest(url string) ([]scrapper.GithubPullReq
 func (c Client) DoStackOverflowQuestionRequest(url string) (scrapper.StackOverflowQuestionResponse, error) {
 	startTime := time.Now()
 	body, err := c.doStackOverflowRequest(url, c.doStackoverflowAPIRequest)
-	metrics.ObserveRequestDuration(startTime, httpClientSource, stackOverflowSource)
+	scrappermetrics.ObserveRequestDuration(startTime, httpClientSource, stackOverflowSource)
 	if err != nil {
-		metrics.APIErrorsTotal.WithLabelValues(stackOverflowSource).Inc()
+		scrappermetrics.APIErrorsTotal.WithLabelValues(stackOverflowSource).Inc()
 		return scrapper.StackOverflowQuestionResponse{}, fmt.Errorf("error requesting stackOverflow API: %w", err)
 	}
 
-	metrics.APIRequestsTotal.WithLabelValues(stackOverflowSource).Inc()
+	scrappermetrics.APIRequestsTotal.WithLabelValues(stackOverflowSource).Inc()
 
 	stackOverflowUpdate := scrapper.StackOverflowQuestionResponse{}
 	if err = json.Unmarshal(body, &stackOverflowUpdate); err != nil {
@@ -151,13 +151,13 @@ func (c Client) DoStackOverflowQuestionRequest(url string) (scrapper.StackOverfl
 func (c Client) DoStackOverflowAnswersRequest(url string) (scrapper.StackOverflowAnswersResponse, error) {
 	startTime := time.Now()
 	body, err := c.doStackOverflowRequest(url, c.doStackoverflowAPIRequest)
-	metrics.ObserveRequestDuration(startTime, httpClientSource, stackOverflowSource)
+	scrappermetrics.ObserveRequestDuration(startTime, httpClientSource, stackOverflowSource)
 
 	if err != nil {
-		metrics.APIErrorsTotal.WithLabelValues(stackOverflowSource).Inc()
+		scrappermetrics.APIErrorsTotal.WithLabelValues(stackOverflowSource).Inc()
 		return scrapper.StackOverflowAnswersResponse{}, fmt.Errorf("error requesting stackOverflow API: %w", err)
 	}
-	metrics.APIRequestsTotal.WithLabelValues(stackOverflowSource).Inc()
+	scrappermetrics.APIRequestsTotal.WithLabelValues(stackOverflowSource).Inc()
 	stackOverflowAnswers := scrapper.StackOverflowAnswersResponse{}
 	if err = json.Unmarshal(body, &stackOverflowAnswers); err != nil {
 		return scrapper.StackOverflowAnswersResponse{}, errors.Join(err, ErrUnmarshallingJSON)
@@ -169,14 +169,14 @@ func (c Client) DoStackOverflowAnswersRequest(url string) (scrapper.StackOverflo
 func (c Client) DoStackOverflowCommentsRequest(url string) (scrapper.StackOverflowCommentsResponse, error) {
 	startTime := time.Now()
 	body, err := c.doStackOverflowRequest(url, c.doStackoverflowAPIRequest)
-	metrics.ObserveRequestDuration(startTime, httpClientSource, stackOverflowSource)
+	scrappermetrics.ObserveRequestDuration(startTime, httpClientSource, stackOverflowSource)
 
 	if err != nil {
-		metrics.APIErrorsTotal.WithLabelValues(stackOverflowSource).Inc()
+		scrappermetrics.APIErrorsTotal.WithLabelValues(stackOverflowSource).Inc()
 		return scrapper.StackOverflowCommentsResponse{}, fmt.Errorf("error requesting stackOverflow API: %w", err)
 	}
 
-	metrics.APIRequestsTotal.WithLabelValues(stackOverflowSource).Inc()
+	scrappermetrics.APIRequestsTotal.WithLabelValues(stackOverflowSource).Inc()
 
 	stackOverflowComments := scrapper.StackOverflowCommentsResponse{}
 	if err = json.Unmarshal(body, &stackOverflowComments); err != nil {

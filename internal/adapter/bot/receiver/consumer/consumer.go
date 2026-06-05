@@ -7,8 +7,8 @@ import (
 	"sync"
 
 	"github.com/IBM/sarama"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/bot/botmetrics"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/bot/config"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/bot/metrics"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/pkg/dlqproducer"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/bot/handler"
 )
@@ -83,7 +83,7 @@ func (c *NotificationsConsumer) Start(ctx context.Context) error {
 				if !ok {
 					return
 				}
-				metrics.ErrorsCounterTotal.WithLabelValues(kafkaScope, "consumer-error").Inc()
+				botmetrics.ErrorsCounterTotal.WithLabelValues(kafkaScope, "consumer-error").Inc()
 				c.logger.Error("error consuming", slog.String("err", groupErr.Error()))
 			}
 		}

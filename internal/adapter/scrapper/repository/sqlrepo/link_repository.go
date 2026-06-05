@@ -7,7 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/pkg/database"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/metrics"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/scrappermetrics"
 
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/pkg"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/scrapper"
@@ -32,7 +32,7 @@ func (r *LinkRepository) AddLink(ctx context.Context, chatID int64, link pkg.Lin
 	on conflict (url) do update set url = excluded.url
 	returning id
 	`, link.Link).Scan(&linkID)
-	metrics.ObserveRequestDuration(startTime, databaseScope, "links")
+	scrappermetrics.ObserveRequestDuration(startTime, databaseScope, "links")
 	if err != nil {
 		return fmt.Errorf("error insert link: %w", err)
 	}
@@ -43,7 +43,7 @@ func (r *LinkRepository) AddLink(ctx context.Context, chatID int64, link pkg.Lin
 	values($1,$2)
 	on conflict do nothing
 	`, chatID, linkID)
-	metrics.ObserveRequestDuration(startTime, databaseScope, "link_chat")
+	scrappermetrics.ObserveRequestDuration(startTime, databaseScope, "link_chat")
 
 	if err != nil {
 		if database.IsForeignKeyViolation(err) {
@@ -65,7 +65,7 @@ func (r *LinkRepository) AddLink(ctx context.Context, chatID int64, link pkg.Lin
 		on conflict (tag) do update set tag = excluded.tag
 		returning id
 		`, tag).Scan(&tagID)
-		metrics.ObserveRequestDuration(startTime, databaseScope, "tags")
+		scrappermetrics.ObserveRequestDuration(startTime, databaseScope, "tags")
 
 		if err != nil {
 			return fmt.Errorf("error insert link: %w", err)
@@ -77,7 +77,7 @@ func (r *LinkRepository) AddLink(ctx context.Context, chatID int64, link pkg.Lin
 		values($1,$2)
 		on conflict do nothing
 		`, linkID, tagID)
-		metrics.ObserveRequestDuration(startTime, databaseScope, "link_tag")
+		scrappermetrics.ObserveRequestDuration(startTime, databaseScope, "link_tag")
 
 		if err != nil {
 			return fmt.Errorf("error insert link_tag: %w", err)
@@ -95,7 +95,7 @@ func (r *LinkRepository) LinkExists(ctx context.Context, url string) (bool, erro
 	select exists( 
 	select 1 from links where url = $1 
 	)`, url).Scan(&exists)
-	metrics.ObserveRequestDuration(startTime, databaseScope, "links")
+	scrappermetrics.ObserveRequestDuration(startTime, databaseScope, "links")
 
 	if err != nil {
 		return false, fmt.Errorf("error query link exists: %w", err)
@@ -127,7 +127,7 @@ func (r *LinkRepository) DeleteLink(ctx context.Context, chatID int64, url strin
 		left join tags t on t.id = lt.tag_id
 		group by d.id, d.url, d.updated_at
 	`, chatID, url).Scan(&li.Link, &li.LastUpdateTime, &tags)
-	metrics.ObserveRequestDuration(startTime, databaseScope, "link_chat")
+	scrappermetrics.ObserveRequestDuration(startTime, databaseScope, "link_chat")
 
 	if err != nil {
 		return pkg.LinkInfo{}, fmt.Errorf("error delete link from link_chat: %w", err)
@@ -147,7 +147,7 @@ func (r *LinkRepository) DeleteLink(ctx context.Context, chatID int64, url strin
 			where l.url = $1
 		)
 	`, url)
-	metrics.ObserveRequestDuration(startTime, databaseScope, "links")
+	scrappermetrics.ObserveRequestDuration(startTime, databaseScope, "links")
 
 	if err != nil {
 		return pkg.LinkInfo{}, fmt.Errorf("error deleting link link: %w", err)
@@ -171,7 +171,7 @@ func (r *LinkRepository) GetUserLinks(ctx context.Context, chatID int64) ([]pkg.
 	where lc.chat_id = $1
 	group by l.id, l.url, l.updated_at
 	`, chatID)
-	metrics.ObserveRequestDuration(startTime, databaseScope, "link_chat")
+	scrappermetrics.ObserveRequestDuration(startTime, databaseScope, "link_chat")
 
 	if err != nil {
 		return nil, fmt.Errorf("error get user links: %w", err)
@@ -206,7 +206,7 @@ func (r *LinkRepository) GetAllLinks(ctx context.Context, limit int, offset int)
     order by id
     limit $2
 	`, offset, limit)
-	metrics.ObserveRequestDuration(startTime, databaseScope, "links")
+	scrappermetrics.ObserveRequestDuration(startTime, databaseScope, "links")
 
 	if err != nil {
 		return nil, fmt.Errorf("error query get all links: %w", err)
@@ -236,7 +236,7 @@ func (r *LinkRepository) UpdateLinksTime(ctx context.Context, newTime time.Time,
 	set updated_at = $1
 	where url = $2
 	`, newTime, url)
-	metrics.ObserveRequestDuration(startTime, databaseScope, "links")
+	scrappermetrics.ObserveRequestDuration(startTime, databaseScope, "links")
 
 	if err != nil {
 		return fmt.Errorf("error update links: %w", err)
@@ -255,7 +255,7 @@ func (r *LinkRepository) GetChatIDsByLink(ctx context.Context, link string) ([]i
 	join links l on lc.link_id = l.id
 	where l.url = $1
 	`, link)
-	metrics.ObserveRequestDuration(startTime, databaseScope, "link_chat")
+	scrappermetrics.ObserveRequestDuration(startTime, databaseScope, "link_chat")
 	if err != nil {
 		return nil, fmt.Errorf("error get chatIDs by link: %w", err)
 	}

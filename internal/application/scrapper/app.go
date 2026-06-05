@@ -12,10 +12,10 @@ import (
 	"github.com/joho/godotenv"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/pkg/database"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/cache"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/metrics"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/notificationsender"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/repository/metricsrepository"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/repository/outboxrepo"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/scrappermetrics"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/pkg"
 
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/config"
@@ -57,7 +57,7 @@ type App struct {
 	notificationsChan chan pkg.KafkaLinkUpdate
 	wg                sync.WaitGroup
 
-	metricsScheduler metrics.LinksCounterScheduler
+	metricsScheduler scrappermetrics.LinksCounterScheduler
 }
 
 func StartScrapper(baseLogger *slog.Logger) error {
@@ -201,14 +201,14 @@ func (a *App) initDB() error {
 }
 
 func (a *App) initMetrics() error {
-	updater := metrics.LinksOnTrackUpdater{Requester: a.metricsRepo, Logger: a.logger}
-	metricsCounterScheduler, err := metrics.NewLinksCounterScheduler(updater)
+	updater := scrappermetrics.LinksOnTrackUpdater{Requester: a.metricsRepo, Logger: a.logger}
+	metricsCounterScheduler, err := scrappermetrics.NewLinksCounterScheduler(updater)
 	if err != nil {
 		a.logger.Error("error creating metrics collector", slog.String("err", err.Error()))
 		return fmt.Errorf("creating metrics collector: %w", err)
 	}
 	a.metricsScheduler = metricsCounterScheduler
-	metrics.RegisterScrapperMetrics()
+	scrappermetrics.RegisterScrapperMetrics()
 	return nil
 }
 

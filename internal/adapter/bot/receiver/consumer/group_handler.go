@@ -9,7 +9,7 @@ import (
 
 	"github.com/IBM/sarama"
 	"github.com/goccy/go-json"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/bot/metrics"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/bot/botmetrics"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/pkg/dlqproducer"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/pkg/repository"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/bot/handler"
@@ -49,7 +49,7 @@ func (GroupHandler) Setup(_ sarama.ConsumerGroupSession) error   { return nil }
 func (GroupHandler) Cleanup(_ sarama.ConsumerGroupSession) error { return nil }
 func (h GroupHandler) ConsumeClaim(sess sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
 	for msg := range claim.Messages() {
-		metrics.CommandRequestTotal.WithLabelValues("consumer-message").Inc()
+		botmetrics.CommandRequestTotal.WithLabelValues("consumer-message").Inc()
 		startTime := time.Now()
 		linkUpdate := pkg.ProcessedLinkUpdate{}
 		if err := json.Unmarshal(msg.Value, &linkUpdate); err != nil {
@@ -60,7 +60,7 @@ func (h GroupHandler) ConsumeClaim(sess sarama.ConsumerGroupSession, claim saram
 			}
 			sess.MarkMessage(msg, "")
 			sess.Commit()
-			metrics.ObserveCommandDuration(startTime, kafkaScope, "consumer-message")
+			botmetrics.ObserveCommandDuration(startTime, kafkaScope, "consumer-message")
 			continue
 		}
 
@@ -69,7 +69,7 @@ func (h GroupHandler) ConsumeClaim(sess sarama.ConsumerGroupSession, claim saram
 			if errors.Is(err, repository.ErrNotificationAlreadySent) {
 				sess.MarkMessage(msg, "")
 				sess.Commit()
-				metrics.ObserveCommandDuration(startTime, kafkaScope, "consumer-message")
+				botmetrics.ObserveCommandDuration(startTime, kafkaScope, "consumer-message")
 				continue
 			}
 			h.logger.Error("deduplicate message:", slog.String("err", err.Error()))
@@ -83,7 +83,7 @@ func (h GroupHandler) ConsumeClaim(sess sarama.ConsumerGroupSession, claim saram
 			}
 			sess.MarkMessage(msg, "")
 			sess.Commit()
-			metrics.ObserveCommandDuration(startTime, kafkaScope, "consumer-message")
+			botmetrics.ObserveCommandDuration(startTime, kafkaScope, "consumer-message")
 			continue
 		}
 
@@ -95,12 +95,12 @@ func (h GroupHandler) ConsumeClaim(sess sarama.ConsumerGroupSession, claim saram
 			}
 			sess.MarkMessage(msg, "")
 			sess.Commit()
-			metrics.ObserveCommandDuration(startTime, kafkaScope, "consumer-message")
+			botmetrics.ObserveCommandDuration(startTime, kafkaScope, "consumer-message")
 			continue
 		}
 		sess.MarkMessage(msg, "")
 		sess.Commit()
-		metrics.ObserveCommandDuration(startTime, kafkaScope, "consumer-message")
+		botmetrics.ObserveCommandDuration(startTime, kafkaScope, "consumer-message")
 
 		ctx, cancel := context.WithTimeout(context.Background(), repositoryRequestTimeout)
 

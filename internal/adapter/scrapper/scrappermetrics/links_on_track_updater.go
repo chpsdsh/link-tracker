@@ -1,4 +1,4 @@
-package metrics
+package scrappermetrics
 
 import (
 	"context"

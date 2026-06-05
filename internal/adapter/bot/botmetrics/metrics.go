@@ -1,4 +1,4 @@
-package metrics
+package botmetrics
 
 import (
 	"time"

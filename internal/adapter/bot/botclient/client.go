@@ -13,8 +13,8 @@ import (
 
 	"github.com/avast/retry-go/v5"
 	"github.com/sony/gobreaker"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/bot/botmetrics"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/bot/config"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/bot/metrics"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/bot/handler"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/bot"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/pkg"
@@ -62,10 +62,10 @@ func NewBotClient(conf config.BotConfig) Client {
 }
 
 func (c Client) RegisterChat(chatID int64) error {
-	metrics.CommandRequestTotal.WithLabelValues("register_chat").Inc()
+	botmetrics.CommandRequestTotal.WithLabelValues("register_chat").Inc()
 	httpResult, err := c.doRequestWithMethodAndRetry(chatID, http.MethodPost, c.Config.ScrapperServerAddress+"/tg-chat/", c.doRequest)
 	if err != nil {
-		metrics.ErrorsCounterTotal.WithLabelValues(httpClientScope, "register_chat").Inc()
+		botmetrics.ErrorsCounterTotal.WithLabelValues(httpClientScope, "register_chat").Inc()
 		return fmt.Errorf("error doing request: %w", err)
 	}
 	switch httpResult.StatusCode {
@@ -81,13 +81,13 @@ func (c Client) RegisterChat(chatID int64) error {
 }
 
 func (c Client) UnregisterChat(chatID int64) error {
-	metrics.CommandRequestTotal.WithLabelValues("unregister_chat").Inc()
+	botmetrics.CommandRequestTotal.WithLabelValues("unregister_chat").Inc()
 	startTime := time.Now()
 	httpResult, err := c.doRequestWithMethodAndRetry(chatID, http.MethodDelete, c.Config.ScrapperServerAddress+"/tg-chat/", c.doRequest)
-	metrics.ObserveCommandDuration(startTime, httpClientScope, "unregister_chat")
+	botmetrics.ObserveCommandDuration(startTime, httpClientScope, "unregister_chat")
 
 	if err != nil {
-		metrics.ErrorsCounterTotal.WithLabelValues(httpClientScope, "unregister_chat").Inc()
+		botmetrics.ErrorsCounterTotal.WithLabelValues(httpClientScope, "unregister_chat").Inc()
 		return fmt.Errorf("error doing request: %w", err)
 	}
 
@@ -104,12 +104,12 @@ func (c Client) UnregisterChat(chatID int64) error {
 }
 
 func (c Client) GetLinks(chatID int64) (bot.ListLinksResponse, error) {
-	metrics.CommandRequestTotal.WithLabelValues("get_links").Inc()
+	botmetrics.CommandRequestTotal.WithLabelValues("get_links").Inc()
 	startTime := time.Now()
 	httpResult, err := c.doRequestWithMethodAndRetry(chatID, http.MethodGet, c.Config.ScrapperServerAddress+"/links", c.doRequestWithHeader)
-	metrics.ObserveCommandDuration(startTime, httpClientScope, "get_links")
+	botmetrics.ObserveCommandDuration(startTime, httpClientScope, "get_links")
 	if err != nil {
-		metrics.ErrorsCounterTotal.WithLabelValues(httpClientScope, "get_links").Inc()
+		botmetrics.ErrorsCounterTotal.WithLabelValues(httpClientScope, "get_links").Inc()
 		return bot.ListLinksResponse{}, fmt.Errorf("error doing request: %w", err)
 	}
 
@@ -128,7 +128,7 @@ func (c Client) GetLinks(chatID int64) (bot.ListLinksResponse, error) {
 }
 
 func (c Client) AddLink(chatID int64, linkRequest pkg.AddLinkRequest) (bot.LinkResponse, error) {
-	metrics.CommandRequestTotal.WithLabelValues("add_link").Inc()
+	botmetrics.CommandRequestTotal.WithLabelValues("add_link").Inc()
 	linkRequestJSON, err := json.Marshal(linkRequest)
 	if err != nil {
 		return bot.LinkResponse{}, fmt.Errorf("error marshalling JSON: %w", err)
@@ -136,10 +136,10 @@ func (c Client) AddLink(chatID int64, linkRequest pkg.AddLinkRequest) (bot.LinkR
 
 	startTime := time.Now()
 	httpResult, err := c.doRequestWithRetry(chatID, linkRequestJSON, c.doAddLinkRequest)
-	metrics.ObserveCommandDuration(startTime, httpClientScope, "add_link")
+	botmetrics.ObserveCommandDuration(startTime, httpClientScope, "add_link")
 
 	if err != nil {
-		metrics.ErrorsCounterTotal.WithLabelValues(httpClientScope, "add_link").Inc()
+		botmetrics.ErrorsCounterTotal.WithLabelValues(httpClientScope, "add_link").Inc()
 		return bot.LinkResponse{}, fmt.Errorf("error adding link: %w", err)
 	}
 
@@ -160,7 +160,7 @@ func (c Client) AddLink(chatID int64, linkRequest pkg.AddLinkRequest) (bot.LinkR
 }
 
 func (c Client) RemoveLink(chatID int64, removeRequest bot.RemoveLinkRequest) (bot.LinkResponse, error) {
-	metrics.CommandRequestTotal.WithLabelValues("remove_link").Inc()
+	botmetrics.CommandRequestTotal.WithLabelValues("remove_link").Inc()
 	removeLinkJSON, err := json.Marshal(removeRequest)
 	if err != nil {
 		return bot.LinkResponse{}, fmt.Errorf("error marshalling JSON: %w", err)
@@ -168,10 +168,10 @@ func (c Client) RemoveLink(chatID int64, removeRequest bot.RemoveLinkRequest) (b
 
 	startTime := time.Now()
 	httpResult, err := c.doRequestWithRetry(chatID, removeLinkJSON, c.doRemoveLinkRequest)
-	metrics.ObserveCommandDuration(startTime, httpClientScope, "remove_link")
+	botmetrics.ObserveCommandDuration(startTime, httpClientScope, "remove_link")
 
 	if err != nil {
-		metrics.ErrorsCounterTotal.WithLabelValues(httpClientScope, "remove_link").Inc()
+		botmetrics.ErrorsCounterTotal.WithLabelValues(httpClientScope, "remove_link").Inc()
 		return bot.LinkResponse{}, err
 	}
 

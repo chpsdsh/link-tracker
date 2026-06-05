@@ -6,7 +6,7 @@ import (
 
 	"github.com/IBM/sarama"
 	"github.com/goccy/go-json"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/bot/metrics"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/bot/botmetrics"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/pkg/config"
 )
 
@@ -60,7 +60,7 @@ func (p DlqProducer) SendToDLQ(msg *sarama.ConsumerMessage, reason error) error 
 
 	startTime := time.Now()
 	_, _, err = p.producer.SendMessage(producerMsg)
-	metrics.ObserveCommandDuration(startTime, kafkaScope, dlqProducerScopeType)
+	botmetrics.ObserveCommandDuration(startTime, kafkaScope, dlqProducerScopeType)
 
 	if err != nil {
 		return fmt.Errorf("send to dlq: %w", err)
