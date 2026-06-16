@@ -2,12 +2,16 @@ package integration
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"strconv"
 	"testing"
+	"time"
 
+	"github.com/IBM/sarama"
 	"github.com/stretchr/testify/suite"
+	"github.com/testcontainers/testcontainers-go"
 
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/bot"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/pkg"
@@ -145,6 +149,125 @@ func (s *Suite) TestDeleteNonExistingChat() {
 	resp := s.deleteChat(9999)
 	defer resp.Body.Close()
 	s.Equal(http.StatusNotFound, resp.StatusCode)
+}
+
+func (s *Suite) TestAgentConsumesValidRawUpdate() {
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	rawUpdate := pkg.LinkUpdate{
+		Description: "This is a valid",
+		TgChatIDs:   []int64{1},
+		URL:         "https://github.com/myrepo/go",
+	}
+
+	body, err := json.Marshal(rawUpdate)
+	s.Require().NoError(err)
+
+	err = sendKafkaMessage(s.kafkaExternalBrokers, kafkaRawTopic, "https://github.com/myrepo/go", body)
+	s.Require().NoError(err)
+
+	msg, err := readKafkaMessage(ctx, s.kafkaExternalBrokers, kafkaProcessedTopic, "test-agent-valid-consumer")
+	s.Require().NoError(err)
+	var processed pkg.ProcessedLinkUpdate
+	err = json.Unmarshal(msg.Value, &processed)
+	s.Require().NoError(err)
+
+	s.Equal(rawUpdate.ID, processed.ID)
+	s.Equal(rawUpdate.Description+"\nСсылка: https://github.com/myrepo/go\n", processed.Description)
+	s.Equal(rawUpdate.TgChatIDs, processed.TgChatIDs)
+	s.Equal("MEDIUM", processed.Priority)
+}
+
+func (s *Suite) TestAgentConsumesInvalidRawUpdate() {
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	err := sendKafkaMessage(s.kafkaExternalBrokers, kafkaRawTopic, "https://github.com/myrepo/go", []byte("invalid msg"))
+	s.Require().NoError(err)
+
+	msg, err := readKafkaMessage(ctx, s.kafkaExternalBrokers, kafkaDLQTopic, "test-agent-invalid-consumer")
+	s.Require().NoError(err)
+
+	s.Contains(string(msg.Value), `"value":"invalid msg"`)
+	checkCtx, checkCancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer checkCancel()
+	isRunning, err := isContainerRunning(checkCtx, s.agentContainer)
+	s.Require().NoError(err)
+	s.True(isRunning)
+}
+
+func sendKafkaMessage(brokers []string, topic string, url string, value []byte) error {
+	cfg := sarama.NewConfig()
+	cfg.Version = sarama.V3_6_0_0
+	cfg.Producer.Return.Successes = true
+	cfg.Producer.RequiredAcks = sarama.WaitForAll
+	producer, err := sarama.NewSyncProducer(brokers, cfg)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = producer.Close() }()
+	_, _, err = producer.SendMessage(&sarama.ProducerMessage{
+		Topic: topic,
+		Key:   sarama.StringEncoder(url),
+		Value: sarama.ByteEncoder(value),
+		Headers: []sarama.RecordHeader{{
+			Key:   []byte("event_id"),
+			Value: []byte("event_id"),
+		}},
+	})
+	return err
+}
+
+func readKafkaMessage(
+	ctx context.Context,
+	brokers []string,
+	topic string,
+	groupID string,
+
+) (*sarama.ConsumerMessage, error) {
+
+	cfg := sarama.NewConfig()
+	cfg.Version = sarama.V4_0_0_0
+	cfg.Consumer.Offsets.Initial = sarama.OffsetOldest
+	consumerGroup, err := sarama.NewConsumerGroup(brokers, groupID, cfg)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = consumerGroup.Close() }()
+	handler := &testConsumerGroupHandler{
+		messageCh: make(chan *sarama.ConsumerMessage, 1),
+	}
+	errCh := make(chan error, 1)
+	go func() {
+		for {
+			if consumeErr := consumerGroup.Consume(ctx, []string{topic}, handler); consumeErr != nil {
+				errCh <- consumeErr
+				return
+			}
+			if ctx.Err() != nil {
+				return
+			}
+		}
+	}()
+	select {
+	case msg := <-handler.messageCh:
+		return msg, nil
+	case consumeErr := <-errCh:
+		return nil, consumeErr
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+
+}
+
+func isContainerRunning(ctx context.Context, container testcontainers.Container) (bool, error) {
+	state, err := container.State(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	return state.Running, nil
 }
 
 func (s *Suite) registerChat(chatID int64) *http.Response {

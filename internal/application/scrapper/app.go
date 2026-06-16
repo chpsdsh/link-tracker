@@ -4,20 +4,20 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"net/http"
 	"os/signal"
 	"sync"
 	"syscall"
-	"time"
 
 	"github.com/go-co-op/gocron/v2"
 	"github.com/joho/godotenv"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/pkg/database"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/cache"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/notificationsender"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/repository/metricsrepository"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/repository/outboxrepo"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/senderfactory"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/scrappermetrics"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/pkg"
 
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/database"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/config"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/repository"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/scrapper/scrapperclient"
@@ -27,25 +27,23 @@ import (
 )
 
 const (
-	envFilename             = "scrapper.env"
-	clientTimeout           = 15 * time.Second
+	envFilename             = "deploy/scrapper.env"
 	notificationChanBufSize = 10
 )
 
 type App struct {
 	logger *slog.Logger
-	conf   config.Config
+	conf   config.ScrapperConfig
 
 	ctx    context.Context
 	cancel context.CancelFunc
 
-	httpClient *http.Client
-
 	db *database.DB
 
-	chatRepo   service.ChatRepository
-	linkRepo   service.LinkRepository
-	outboxRepo *outboxrepo.OutboxRepository
+	chatRepo    service.ChatRepository
+	linkRepo    service.LinkRepository
+	outboxRepo  *outboxrepo.OutboxRepository
+	metricsRepo *metricsrepository.LinksMetricRepository
 
 	sender service.Sender
 	cache  cache.ScrapperCacheClient
@@ -58,6 +56,8 @@ type App struct {
 
 	notificationsChan chan pkg.KafkaLinkUpdate
 	wg                sync.WaitGroup
+
+	metricsScheduler scrappermetrics.LinksCounterScheduler
 }
 
 func StartScrapper(baseLogger *slog.Logger) error {
@@ -88,10 +88,8 @@ func NewApp(logger *slog.Logger) (*App, error) {
 		conf:              conf,
 		ctx:               ctx,
 		cancel:            cancel,
-		httpClient:        &http.Client{Timeout: clientTimeout},
 		notificationsChan: make(chan pkg.KafkaLinkUpdate, notificationChanBufSize),
 	}
-
 	if err = app.initDB(); err != nil {
 		cancel()
 		return nil, err
@@ -127,6 +125,14 @@ func NewApp(logger *slog.Logger) (*App, error) {
 	app.initServices()
 	app.initServer()
 
+	if err = app.initMetrics(); err != nil {
+		cancel()
+		app.closeCache()
+		app.closeSender()
+		app.closeDB()
+		return nil, err
+	}
+
 	return app, nil
 }
 
@@ -143,15 +149,20 @@ func (a *App) Run() error {
 		LinksRequester: a.linksRequester,
 		UpdatesSender:  a.updatesSender,
 	}
-	scrapperScheduler.StartScrapperScheduler()
+
+	if err := scrapperScheduler.StartScrapperScheduler(); err != nil {
+		a.logger.Error("error starting scrapper scheduler", slog.String("err", err.Error()))
+		return fmt.Errorf("starting scrapper scheduler: %w", err)
+	}
 
 	if err := a.server.Start(a.ctx); err != nil {
 		a.logger.Error("error starting server", slog.String("err", err.Error()))
 		return fmt.Errorf("starting scrapper server: %w", err)
 	}
 
-	<-a.ctx.Done()
+	a.metricsScheduler.Start(a.conf.MetricsCalculateInterval)
 
+	<-a.ctx.Done()
 	a.Shutdown()
 	return nil
 }
@@ -173,6 +184,9 @@ func (a *App) Shutdown() {
 
 	a.closeCache()
 	a.closeDB()
+	if err := a.metricsScheduler.Stop(); err != nil {
+		a.logger.Error("error shutting down metrics scheduler", slog.String("error", err.Error()))
+	}
 }
 
 func (a *App) initDB() error {
@@ -183,6 +197,18 @@ func (a *App) initDB() error {
 	}
 
 	a.db = db
+	return nil
+}
+
+func (a *App) initMetrics() error {
+	updater := scrappermetrics.LinksOnTrackUpdater{Requester: a.metricsRepo, Logger: a.logger}
+	metricsCounterScheduler, err := scrappermetrics.NewLinksCounterScheduler(updater)
+	if err != nil {
+		a.logger.Error("error creating metrics collector", slog.String("err", err.Error()))
+		return fmt.Errorf("creating metrics collector: %w", err)
+	}
+	a.metricsScheduler = metricsCounterScheduler
+	scrappermetrics.RegisterScrapperMetrics()
 	return nil
 }
 
@@ -199,12 +225,13 @@ func (a *App) initRepositories() error {
 	a.chatRepo = chatRepo
 	a.linkRepo = linkRepo
 	a.outboxRepo = outboxrepo.NewOutboxRepository(a.db.GetDBPool())
+	a.metricsRepo = metricsrepository.NewLinksMetricRepository(a.db.GetDBPool())
 
 	return nil
 }
 
 func (a *App) initSender() error {
-	sender, err := senderfactory.NewSender(
+	sender, err := notificationsender.NewSender(
 		a.ctx,
 		a.conf,
 		a.logger,
@@ -243,10 +270,7 @@ func (a *App) initScheduler() error {
 
 func (a *App) initServices() {
 	a.linksRequester = service.NewLinkRequester(
-		scrapperclient.Client{
-			Client: a.httpClient,
-			Config: a.conf,
-		},
+		scrapperclient.NewScrapperClient(a.conf),
 		a.sender,
 		a.linkRepo,
 		a.outboxRepo,
@@ -273,7 +297,7 @@ func (a *App) initServer() {
 		CacheRepo:  a.cache,
 	}
 
-	a.server = scrapperserver.NewScrapperHTTPServer(a.logger, scrapperHandler)
+	a.server = scrapperserver.NewScrapperHTTPServer(a.logger, scrapperHandler, a.conf)
 }
 
 func (a *App) closeSender() {

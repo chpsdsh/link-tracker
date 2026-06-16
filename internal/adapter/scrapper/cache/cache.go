@@ -25,7 +25,7 @@ type ScrapperCacheClient struct {
 	ttl         time.Duration
 }
 
-func NewScrapperCacheClient(conf config.Config) (ScrapperCacheClient, error) {
+func NewScrapperCacheClient(conf config.ScrapperConfig) (ScrapperCacheClient, error) {
 	baseClient, err := valkey.NewClient(valkey.ClientOption{
 		InitAddress: conf.ValkeyConfig.Addresses,
 		Password:    conf.ValkeyConfig.Password,

@@ -35,7 +35,7 @@ func (m *MockTelegramBotHandler) EXPECT() *MockTelegramBotHandlerMockRecorder {
 }
 
 // HandleLinkUpdate mocks base method.
-func (m *MockTelegramBotHandler) HandleLinkUpdate(arg0 pkg.LinkUpdate) error {
+func (m *MockTelegramBotHandler) HandleLinkUpdate(arg0 pkg.ProcessedLinkUpdate) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "HandleLinkUpdate", arg0)
 	ret0, _ := ret[0].(error)

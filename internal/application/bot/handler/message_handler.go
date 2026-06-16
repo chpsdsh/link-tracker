@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/bot/botmetrics"
 
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/bot/statestorage"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/bot"
@@ -49,7 +50,7 @@ const (
 )
 
 type TelegramBotHandler interface {
-	HandleLinkUpdate(linkUpdate pkg.LinkUpdate) error
+	HandleLinkUpdate(linkUpdate pkg.ProcessedLinkUpdate) error
 }
 
 type Sender interface {
@@ -86,12 +87,13 @@ func (h TelegramHandler) HandleUpdate(update tgbotapi.Update) {
 	}
 }
 
-func (h TelegramHandler) HandleLinkUpdate(linkUpdate pkg.LinkUpdate) error {
+func (h TelegramHandler) HandleLinkUpdate(linkUpdate pkg.ProcessedLinkUpdate) error {
 	for _, id := range linkUpdate.TgChatIDs {
-		if err := h.MsgSender.SendMessage(id, linkUpdate.Description+" "+linkUpdate.URL); err != nil {
+		if err := h.MsgSender.SendMessage(id, linkUpdate.Description+"Приоритет: "+linkUpdate.Priority); err != nil {
 			h.BaseLogger.Error("error while sending message", slog.String("error", err.Error()))
 			return fmt.Errorf("telegram send message: %w", err)
 		}
+		botmetrics.SentNotificationsTotal.Inc()
 	}
 	return nil
 }
@@ -155,6 +157,7 @@ func (h TelegramHandler) handleCommand(update tgbotapi.Update) {
 	if err := h.MsgSender.SendMessage(update.Message.Chat.ID, text); err != nil {
 		h.BaseLogger.Error("error while sending message", slog.String("error", err.Error()))
 	}
+	botmetrics.CommandRequestTotal.WithLabelValues(text).Inc()
 }
 
 func (h TelegramHandler) handleLinks(chatID int64, links bot.ListLinksResponse) {

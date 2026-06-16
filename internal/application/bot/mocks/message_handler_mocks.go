@@ -10,8 +10,45 @@ import (
 	gomock "github.com/golang/mock/gomock"
 	statestorage "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/bot/statestorage"
 	bot "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/bot"
-	shared "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/pkg"
+	pkg "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain/pkg"
 )
+
+// MockTelegramBotHandler is a mock of TelegramBotHandler interface.
+type MockTelegramBotHandler struct {
+	ctrl     *gomock.Controller
+	recorder *MockTelegramBotHandlerMockRecorder
+}
+
+// MockTelegramBotHandlerMockRecorder is the mock recorder for MockTelegramBotHandler.
+type MockTelegramBotHandlerMockRecorder struct {
+	mock *MockTelegramBotHandler
+}
+
+// NewMockTelegramBotHandler creates a new mock instance.
+func NewMockTelegramBotHandler(ctrl *gomock.Controller) *MockTelegramBotHandler {
+	mock := &MockTelegramBotHandler{ctrl: ctrl}
+	mock.recorder = &MockTelegramBotHandlerMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockTelegramBotHandler) EXPECT() *MockTelegramBotHandlerMockRecorder {
+	return m.recorder
+}
+
+// HandleLinkUpdate mocks base method.
+func (m *MockTelegramBotHandler) HandleLinkUpdate(linkUpdate pkg.ProcessedLinkUpdate) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "HandleLinkUpdate", linkUpdate)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// HandleLinkUpdate indicates an expected call of HandleLinkUpdate.
+func (mr *MockTelegramBotHandlerMockRecorder) HandleLinkUpdate(linkUpdate interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HandleLinkUpdate", reflect.TypeOf((*MockTelegramBotHandler)(nil).HandleLinkUpdate), linkUpdate)
+}
 
 // MockSender is a mock of Sender interface.
 type MockSender struct {
@@ -74,67 +111,67 @@ func (m *MockStateStorage) EXPECT() *MockStateStorageMockRecorder {
 }
 
 // ClearLinkAndUpdateState mocks base method.
-func (m *MockStateStorage) ClearLinkAndUpdateState(chatId int64, state statestorage.State) {
+func (m *MockStateStorage) ClearLinkAndUpdateState(chatID int64, state statestorage.State) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "ClearLinkAndUpdateState", chatId, state)
+	m.ctrl.Call(m, "ClearLinkAndUpdateState", chatID, state)
 }
 
 // ClearLinkAndUpdateState indicates an expected call of ClearLinkAndUpdateState.
-func (mr *MockStateStorageMockRecorder) ClearLinkAndUpdateState(chatId, state interface{}) *gomock.Call {
+func (mr *MockStateStorageMockRecorder) ClearLinkAndUpdateState(chatID, state interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClearLinkAndUpdateState", reflect.TypeOf((*MockStateStorage)(nil).ClearLinkAndUpdateState), chatId, state)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClearLinkAndUpdateState", reflect.TypeOf((*MockStateStorage)(nil).ClearLinkAndUpdateState), chatID, state)
 }
 
 // GetLink mocks base method.
-func (m *MockStateStorage) GetLink(chatId int64) string {
+func (m *MockStateStorage) GetLink(chatID int64) string {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetLink", chatId)
+	ret := m.ctrl.Call(m, "GetLink", chatID)
 	ret0, _ := ret[0].(string)
 	return ret0
 }
 
 // GetLink indicates an expected call of GetLink.
-func (mr *MockStateStorageMockRecorder) GetLink(chatId interface{}) *gomock.Call {
+func (mr *MockStateStorageMockRecorder) GetLink(chatID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLink", reflect.TypeOf((*MockStateStorage)(nil).GetLink), chatId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLink", reflect.TypeOf((*MockStateStorage)(nil).GetLink), chatID)
 }
 
 // GetState mocks base method.
-func (m *MockStateStorage) GetState(chatId int64) statestorage.State {
+func (m *MockStateStorage) GetState(chatID int64) statestorage.State {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetState", chatId)
+	ret := m.ctrl.Call(m, "GetState", chatID)
 	ret0, _ := ret[0].(statestorage.State)
 	return ret0
 }
 
 // GetState indicates an expected call of GetState.
-func (mr *MockStateStorageMockRecorder) GetState(chatId interface{}) *gomock.Call {
+func (mr *MockStateStorageMockRecorder) GetState(chatID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetState", reflect.TypeOf((*MockStateStorage)(nil).GetState), chatId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetState", reflect.TypeOf((*MockStateStorage)(nil).GetState), chatID)
 }
 
 // SetLinkAndUpdateState mocks base method.
-func (m *MockStateStorage) SetLinkAndUpdateState(chatId int64, link string, state statestorage.State) {
+func (m *MockStateStorage) SetLinkAndUpdateState(chatID int64, link string, state statestorage.State) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetLinkAndUpdateState", chatId, link, state)
+	m.ctrl.Call(m, "SetLinkAndUpdateState", chatID, link, state)
 }
 
 // SetLinkAndUpdateState indicates an expected call of SetLinkAndUpdateState.
-func (mr *MockStateStorageMockRecorder) SetLinkAndUpdateState(chatId, link, state interface{}) *gomock.Call {
+func (mr *MockStateStorageMockRecorder) SetLinkAndUpdateState(chatID, link, state interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetLinkAndUpdateState", reflect.TypeOf((*MockStateStorage)(nil).SetLinkAndUpdateState), chatId, link, state)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetLinkAndUpdateState", reflect.TypeOf((*MockStateStorage)(nil).SetLinkAndUpdateState), chatID, link, state)
 }
 
 // SetState mocks base method.
-func (m *MockStateStorage) SetState(chatId int64, state statestorage.State) {
+func (m *MockStateStorage) SetState(chatID int64, state statestorage.State) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetState", chatId, state)
+	m.ctrl.Call(m, "SetState", chatID, state)
 }
 
 // SetState indicates an expected call of SetState.
-func (mr *MockStateStorageMockRecorder) SetState(chatId, state interface{}) *gomock.Call {
+func (mr *MockStateStorageMockRecorder) SetState(chatID, state interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetState", reflect.TypeOf((*MockStateStorage)(nil).SetState), chatId, state)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetState", reflect.TypeOf((*MockStateStorage)(nil).SetState), chatID, state)
 }
 
 // MockNetworkClient is a mock of NetworkClient interface.
@@ -161,60 +198,60 @@ func (m *MockNetworkClient) EXPECT() *MockNetworkClientMockRecorder {
 }
 
 // AddLink mocks base method.
-func (m *MockNetworkClient) AddLink(chatId int64, linkRequest shared.AddLinkRequest) (bot.LinkResponse, error) {
+func (m *MockNetworkClient) AddLink(chatID int64, linkRequest pkg.AddLinkRequest) (bot.LinkResponse, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AddLink", chatId, linkRequest)
+	ret := m.ctrl.Call(m, "AddLink", chatID, linkRequest)
 	ret0, _ := ret[0].(bot.LinkResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // AddLink indicates an expected call of AddLink.
-func (mr *MockNetworkClientMockRecorder) AddLink(chatId, linkRequest interface{}) *gomock.Call {
+func (mr *MockNetworkClientMockRecorder) AddLink(chatID, linkRequest interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddLink", reflect.TypeOf((*MockNetworkClient)(nil).AddLink), chatId, linkRequest)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddLink", reflect.TypeOf((*MockNetworkClient)(nil).AddLink), chatID, linkRequest)
 }
 
 // GetLinks mocks base method.
-func (m *MockNetworkClient) GetLinks(chatId int64) (bot.ListLinksResponse, error) {
+func (m *MockNetworkClient) GetLinks(chatID int64) (bot.ListLinksResponse, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetLinks", chatId)
+	ret := m.ctrl.Call(m, "GetLinks", chatID)
 	ret0, _ := ret[0].(bot.ListLinksResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetLinks indicates an expected call of GetLinks.
-func (mr *MockNetworkClientMockRecorder) GetLinks(chatId interface{}) *gomock.Call {
+func (mr *MockNetworkClientMockRecorder) GetLinks(chatID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLinks", reflect.TypeOf((*MockNetworkClient)(nil).GetLinks), chatId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLinks", reflect.TypeOf((*MockNetworkClient)(nil).GetLinks), chatID)
 }
 
 // RegisterChat mocks base method.
-func (m *MockNetworkClient) RegisterChat(chatId int64) error {
+func (m *MockNetworkClient) RegisterChat(chatID int64) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RegisterChat", chatId)
+	ret := m.ctrl.Call(m, "RegisterChat", chatID)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // RegisterChat indicates an expected call of RegisterChat.
-func (mr *MockNetworkClientMockRecorder) RegisterChat(chatId interface{}) *gomock.Call {
+func (mr *MockNetworkClientMockRecorder) RegisterChat(chatID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RegisterChat", reflect.TypeOf((*MockNetworkClient)(nil).RegisterChat), chatId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RegisterChat", reflect.TypeOf((*MockNetworkClient)(nil).RegisterChat), chatID)
 }
 
 // RemoveLink mocks base method.
-func (m *MockNetworkClient) RemoveLink(chatId int64, removeRequest bot.RemoveLinkRequest) (bot.LinkResponse, error) {
+func (m *MockNetworkClient) RemoveLink(chatID int64, removeRequest bot.RemoveLinkRequest) (bot.LinkResponse, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RemoveLink", chatId, removeRequest)
+	ret := m.ctrl.Call(m, "RemoveLink", chatID, removeRequest)
 	ret0, _ := ret[0].(bot.LinkResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // RemoveLink indicates an expected call of RemoveLink.
-func (mr *MockNetworkClientMockRecorder) RemoveLink(chatId, removeRequest interface{}) *gomock.Call {
+func (mr *MockNetworkClientMockRecorder) RemoveLink(chatID, removeRequest interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveLink", reflect.TypeOf((*MockNetworkClient)(nil).RemoveLink), chatId, removeRequest)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveLink", reflect.TypeOf((*MockNetworkClient)(nil).RemoveLink), chatID, removeRequest)
 }

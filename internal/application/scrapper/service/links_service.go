@@ -61,7 +61,6 @@ func (h LinksService) AddChatID(ctx context.Context, chatID int64) error {
 		if exists {
 			return scrapper.ErrChatAlreadyExists
 		}
-
 		if err = h.ChatsRepo.AddChat(ctx, chatID); err != nil {
 			return errors.Join(err, scrapper.ErrInternalError)
 		}

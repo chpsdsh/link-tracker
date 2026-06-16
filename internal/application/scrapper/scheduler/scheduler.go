@@ -1,6 +1,7 @@
 package scheduler
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/go-co-op/gocron/v2"
@@ -19,29 +20,31 @@ type ScrapperScheduler struct {
 	UpdatesSender  service.UpdatesSender
 }
 
-func (r ScrapperScheduler) StartScrapperScheduler() {
-	_, err := r.Scheduler.NewJob(
+func (s ScrapperScheduler) StartScrapperScheduler() error {
+	_, err := s.Scheduler.NewJob(
 		gocron.DurationJob(
 			linkTrackInterval,
 		),
 		gocron.NewTask(
-			r.LinksRequester.HandleLinks,
+			s.LinksRequester.HandleLinks,
 		),
 	)
 	if err != nil {
-		return
+		return fmt.Errorf("failed to create job for handling links: %w", err)
 	}
-	_, err = r.Scheduler.NewJob(
+
+	_, err = s.Scheduler.NewJob(
 		gocron.DurationJob(
 			notificationCheckInterval,
 		),
 		gocron.NewTask(
-			r.UpdatesSender.SendUpdates,
+			s.UpdatesSender.SendUpdates,
 		),
 	)
 	if err != nil {
-		return
+		return fmt.Errorf("failed to create job for sending links: %w", err)
 	}
 
-	r.Scheduler.Start()
+	s.Scheduler.Start()
+	return nil
 }

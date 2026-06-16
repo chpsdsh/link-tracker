@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"net/http"
 	"os/signal"
 	"sync"
 	"syscall"
@@ -13,19 +12,20 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/joho/godotenv"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/bot/botclient"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/bot/botmetrics"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/bot/config"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/bot/receiverfactory"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/bot/repository"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/bot/receiver"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/bot/telegram"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/database"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/pkg/database"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/adapter/pkg/repository"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/bot/handler"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/bot/statestorage"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/integration"
 )
 
 const (
-	envFilename   = "bot.env"
-	clientTimeout = 15 * time.Second
+	envFilename      = "deploy/bot.env"
+	shutdownDuration = time.Second * 10
 )
 
 func StartBot(baseLogger *slog.Logger) error {
@@ -55,12 +55,12 @@ func StartBot(baseLogger *slog.Logger) error {
 
 	wg := &sync.WaitGroup{}
 
-	client := &http.Client{Timeout: clientTimeout}
+	client := botclient.NewBotClient(conf)
 
 	telegramHandler := handler.TelegramHandler{MsgSender: telegramBot,
 		Session:    statestorage.NewStateStorage(),
 		BaseLogger: baseLogger,
-		Client:     botclient.Client{Client: client, Config: conf}}
+		Client:     client}
 
 	telegramBot.Handler = telegramHandler
 
@@ -71,7 +71,7 @@ func StartBot(baseLogger *slog.Logger) error {
 	}
 	inboxRepo := repository.NewInboxRepository(db.GetDBPool())
 
-	receiver, err := receiverfactory.NewReceiver(conf, telegramHandler, baseLogger, inboxRepo)
+	botReceiver, err := receiver.NewReceiver(conf, telegramHandler, baseLogger, inboxRepo)
 	if err != nil {
 		baseLogger.Error("error creating telegram receiver", slog.String("err", err.Error()))
 		return fmt.Errorf("error creating telegram receiver: %w", err)
@@ -80,25 +80,34 @@ func StartBot(baseLogger *slog.Logger) error {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
-	if receiverStartErr := receiver.Start(ctx); receiverStartErr != nil {
+	if receiverStartErr := botReceiver.Start(ctx); receiverStartErr != nil {
 		baseLogger.Error("error starting receiver", slog.String("err", receiverStartErr.Error()))
 		cancel()
 	}
 
 	telegramBot.StartMainLoop(ctx, wg)
+	metricsServer := botmetrics.NewMetricsServer(baseLogger)
+	metricsServer.Start()
+
+	botmetrics.RegisterBotMetrics()
 
 	<-ctx.Done()
 
 	defer cancel()
-	shutdown(baseLogger, receiver, wg, db)
+	shutdown(baseLogger, botReceiver, wg, db, metricsServer)
 	return nil
 }
 
-func shutdown(baseLogger *slog.Logger, receiver receiverfactory.Receiver, wg *sync.WaitGroup, db *database.DB) {
+func shutdown(baseLogger *slog.Logger, receiver receiver.Receiver, wg *sync.WaitGroup, db *database.DB, server botmetrics.Server) {
 	if shutdownErr := receiver.Shutdown(); shutdownErr != nil {
 		baseLogger.Error("shutdown error", slog.String("err", shutdownErr.Error()))
 	}
 	wg.Wait()
 
 	db.CloseConnectionPool()
+	ctx, cancel := context.WithTimeout(context.Background(), shutdownDuration)
+	defer cancel()
+	if err := server.Shutdown(ctx); err != nil {
+		baseLogger.Error("error shutting down metrics server", slog.String("err", err.Error()))
+	}
 }

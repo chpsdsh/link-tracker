@@ -894,22 +894,22 @@ func TestTelegramHandlerHandleLinkUpdate(t *testing.T) {
 		BaseLogger: slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}
 
-	update := pkg.LinkUpdate{
-		Description: "Ссылка обновлена",
-		URL:         "https://github.com/golang/go",
+	update := pkg.ProcessedLinkUpdate{
+		Description: "Ссылка обновлена ",
+		Priority:    "high",
 		TgChatIDs:   []int64{1, 2, 3},
 	}
 
 	mockSender.EXPECT().
-		SendMessage(int64(1), "Ссылка обновлена https://github.com/golang/go").
+		SendMessage(int64(1), "Ссылка обновлена Приоритет: high").
 		Return(nil)
 
 	mockSender.EXPECT().
-		SendMessage(int64(2), "Ссылка обновлена https://github.com/golang/go").
+		SendMessage(int64(2), "Ссылка обновлена Приоритет: high").
 		Return(nil)
 
 	mockSender.EXPECT().
-		SendMessage(int64(3), "Ссылка обновлена https://github.com/golang/go").
+		SendMessage(int64(3), "Ссылка обновлена Приоритет: high").
 		Return(nil)
 
 	h.HandleLinkUpdate(update)

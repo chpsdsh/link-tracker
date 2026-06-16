@@ -105,7 +105,8 @@ services:
     command: |
       "
       kafka-topics --bootstrap-server kafka1:9092 --list
-      kafka-topics --bootstrap-server kafka1:9092 --create --if-not-exists --topic notification-topic --replication-factor 3 --partitions 3
+      kafka-topics --bootstrap-server kafka1:9092 --create --if-not-exists --topic raw-notification-topic --replication-factor 3 --partitions 3
+      kafka-topics --bootstrap-server kafka1:9092 --create --if-not-exists --topic processed-notification-topic --replication-factor 3 --partitions 3
       kafka-topics --bootstrap-server kafka1:9092 --create --if-not-exists --topic notification-dlq --replication-factor 3 --partitions 3      
       "
 
@@ -125,31 +126,71 @@ services:
   bot:
     build:
       context: .
-      dockerfile: bot.dockerfile
+      dockerfile: deploy/bot.dockerfile
     container_name: bot
     depends_on:
+      - postgres
       - kafka-init
     restart: unless-stopped
     volumes:
-      - ./scrapper.env:/app/scrapper.env
+      - ./deploy/bot.env:/app/deploy/bot.env
 
   scrapper:
     build:
       context: .
-      dockerfile: scrapper.dockerfile
+      dockerfile: deploy/scrapper.dockerfile
     container_name: scrapper
     depends_on:
       - kafka-init
       - postgres
     restart: unless-stopped
     volumes:
-      - ./bot.env:/app/bot.env
+      - ./deploy/scrapper.env:/app/deploy/scrapper.env
+
+  agent:
+    build:
+      context: .
+      dockerfile: deploy/agent.dockerfile
+    container_name: agent
+    depends_on:
+      - kafka-init
+      - postgres
+      - scrapper
+      - bot
+    restart: unless-stopped
+    volumes:
+      - ./deploy/agent.env:/app/deploy/agent.env
 
   valkey-node-0:
     image: valkey/valkey:9.0.3
     container_name: valkey
     ports:
       - "6379:6379"
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./deploy/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+
+  grafana:
+    image: grafana/grafana-oss:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - ./deploy/dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml
+      - ./deploy/link_tracker_dashboard.json:/var/lib/grafana/dashboards/link_tracker_dashboard.json
+      - ./deploy/datasource.yml:/etc/grafana/provisioning/datasources/datasource.yml
+    depends_on:
+      - prometheus
 
 volumes:
   pgdata:
